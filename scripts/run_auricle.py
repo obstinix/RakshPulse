@@ -153,6 +153,7 @@ def main() -> int:
         return 0
     t0 = time.time()
     a = pd.read_csv(PROCESSED / "auricle_features.csv")
+    a = a[a.session == 1].reset_index(drop=True)  # session-1 analysis; cross-day lives in run_cross_day.py
     out: dict = {"meta": {}, "E1": [], "E2": [], "E3": [], "E4": []}
     out["meta"] = {
         "records": int(a.record_id.nunique()),

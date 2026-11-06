@@ -47,10 +47,11 @@ high-altitude settings, built around the MAX30102 optical sensor.
    (r = −0.35) that single-site PPG shape lacks. A two-site optical *pulse transit time* design is
    worth evaluating. ECG is not available on the MAX30102.
 8. **Earlobe evidence (Auricle, 41 healthy subjects, simultaneous finger + earlobe PPG, continuous BP):**
-   PPG tracks within-session SBP changes beyond heart rate (ear r 0.39, finger r 0.47). With one-point
-   calibration, earlobe SBP error beat carry-forward by about 1.1 mmHg (95 % CI [−2.13, −0.18]), but absolute
+   PPG tracks within-session SBP changes slightly better than heart rate (ear r 0.28 vs 0.19, finger r 0.34 vs 0.28,
+   after removing rail-clipped windows). With one-point
+   calibration, earlobe SBP error beat carry-forward by about 1.2 mmHg (95 % CI [−2.08, −0.34]), but absolute
    MAE was still about 14 mmHg and DBP showed no benefit. **Finger-trained models lost most tracking at the
-   ear (r 0.47 → ≤ 0.29)**, so a behind-ear model needs behind-ear training data.
+   ear (r 0.34 → ≤ 0.19)**, so a behind-ear model needs behind-ear training data.
 9. The realistic path forward is **per-user cuff calibration plus behind-ear data collection**.
    It is not a bigger model on fingertip data.
 

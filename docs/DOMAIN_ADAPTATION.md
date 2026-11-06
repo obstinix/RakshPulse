@@ -31,13 +31,14 @@ reflective MAX30102, but it is the closest open evidence available. Full tables 
 - **Morphology differs** (`docs/figures/auricle_ear_vs_finger_beat.png`): the earlobe pulse has a slower
   upstroke, a later systolic peak (~23 % vs ~15 % of the beat) and no diastolic shoulder. This matches the
   expectation in §1 of a smoother, more proximal waveform.
-- **Signal quality was lower at the ear** (SQI pass 78.8 % vs 85.7 %; exercise 52.5 % vs 64.7 %), so the
+- **Signal quality was lower at the ear** (SQI pass 78.8 % vs 79.7 % after removing
+  rail-clipped finger windows; exercise 52.5 % vs 57.5 %), so the
   ear is not automatically the more robust site.
-- **Finger-trained models do not transfer to the ear:** within-session SBP tracking fell from r 0.47
-  (finger→finger) to r 0.08–0.29 (finger→ear). Unsupervised per-site standardisation removed the bias
+- **Finger-trained models do not transfer to the ear:** within-session SBP tracking fell from r 0.34
+  (finger→finger) to r 0.03–0.19 (finger→ear). Unsupervised per-site standardisation removed the bias
   (−3.8 → +0.9 mmHg) but did **not** restore tracking.
-- **Ear-trained models do work modestly:** ear→ear tracking r 0.39 (vs 0.21 for heart rate alone). With
-  one-point calibration, SBP MAE was 14.10 vs 15.17 mmHg for carry-forward (ΔMAE −1.14, 95 % CI [−2.13, −0.18]).
+- **Ear-trained models do work modestly:** ear→ear tracking r 0.28 (vs 0.19 for heart rate alone). With
+  one-point calibration, SBP MAE was 14.36 vs 15.41 mmHg for carry-forward (ΔMAE −1.19, 95 % CI [−2.08, −0.34]).
   There was no DBP benefit.
 
 **Consequence for RakshPulse:** a behind-ear model must be trained on behind-ear data with a calibration

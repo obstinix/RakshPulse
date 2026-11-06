@@ -180,64 +180,74 @@ uses identical windows). Five-fold CV grouped by subject (balanced by subject me
 BP varies **within** subjects (breath-hold, Valsalva, exercise, cold pressor): median within-subject
 SBP SD 12.7 mmHg, against a between-subject SD of 14.0 mmHg.
 
-**Signal quality by site (SQI pass rate):** ear 78.8 %, finger 85.7 % overall. During exercise
-the rates were ear 52.5 % and finger 64.7 %; during cold pressor, ear 73.2 % and finger 83.7 %. (In one early-inspected record (HC_10_1) the ear
+**Signal quality by site (SQI pass rate, after the rail-clipping gate):** ear 78.8 %, finger 79.7 % overall.
+During exercise the rates were ear 52.5 % and finger 57.5 %; during cold pressor, ear 73.2 % and finger 80.0 %. (In one early-inspected record (HC_10_1) the ear
 passed every cold-pressor and exercise window while the finger did not. The cohort-level data do **not** show a
 general ear advantage. In the Auricle setup the earlobe is the *less* reliable site.)
+
+### Rail-clipping correction (applies to all of §F)
+
+The first version of this analysis accepted finger windows containing samples clipped at the ±10 V
+amplifier rail (11 % of finger windows; see DATA_PREPROCESSING.md). The tables below are the
+**corrected** results with a rail-clipping gate. Analysis windows must pass SQI at both sites, so the gate
+also changed the shared window set. Effect on within-session SBP tracking (ridge): finger r
+0.47 → 0.34, ear r
+0.39 → 0.28. The qualitative conclusions were unchanged.
+Finger SQI pass rate after the gate: 79.7 % (was 85.7 %); ear 78.8 %.
 
 ### F1. Calibration-free, subject-independent (window MAE / subject-mean MAE / median within-session r)
 
 | Site | Model | SBP win MAE | SBP subj MAE | SBP tracking r | DBP win MAE | DBP subj MAE | DBP tracking r |
 |---|---|---:|---:|---:|---:|---:|---:|
-| — | Mean | 15.26 | 11.15 | — | 10.59 | 7.78 | — |
-| — | Demographics ridge | 15.79 | 11.74 | — | 10.34 | 7.51 | — |
-| Finger | HR-only ridge | 14.39 | 10.15 | 0.31 | 10.31 | 7.72 | 0.14 |
-| Finger | Ridge (PPG features) | **14.14** | **9.93** | **0.47** | 11.07 | 7.98 | 0.09 |
-| Finger | XGBoost | 14.98 | 10.71 | 0.43 | 11.99 | 8.70 | 0.16 |
-| Ear | HR-only ridge | 14.46 | 10.21 | 0.21 | 10.34 | 7.75 | 0.15 |
-| Ear | Ridge (PPG features) | 14.66 | 10.78 | 0.39 | 10.38 | 7.23 | 0.14 |
-| Ear | XGBoost | 17.54 | 14.43 | 0.34 | 11.42 | 8.12 | 0.16 |
+| — | Mean | 15.42 | 11.11 | — | 10.68 | 7.86 | — |
+| — | Demographics ridge | 16.17 | 11.93 | — | 10.73 | 8.12 | — |
+| Finger | HR-only ridge | 14.78 | 10.52 | 0.28 | 10.62 | 8.05 | 0.15 |
+| Finger | Ridge (PPG features) | 14.37 | 9.93 | 0.34 | 11.05 | 8.06 | 0.07 |
+| Finger | XGBoost | 15.77 | 11.27 | 0.38 | 12.50 | 9.10 | 0.15 |
+| Ear | HR-only ridge | 14.88 | 10.61 | 0.19 | 10.63 | 8.06 | 0.15 |
+| Ear | Ridge (PPG features) | 15.18 | 10.98 | 0.28 | 10.58 | 7.33 | 0.11 |
+| Ear | XGBoost | 17.32 | 13.32 | 0.30 | 11.49 | 7.90 | 0.15 |
 
-PPG morphology tracks **within-session SBP changes** better than heart rate alone (finger r 0.47 vs 0.31;
-ear r 0.39 vs 0.21). This is the first positive PPG→BP signal in this project. Absolute calibration-free
-errors remain about 14–15 mmHg, and DBP shows essentially no PPG signal.
+PPG morphology tracks **within-session SBP changes** a little better than heart rate alone (finger r
+0.34 vs 0.28; ear r 0.28 vs 0.19). Absolute calibration-free errors stay
+around 14–15 mmHg, and DBP shows essentially no PPG signal. The heart-rate confound is examined
+properly in §G (partial correlations).
 
 ### F2. One-point personal calibration (first 3 rest windows ≈ 20 s of each session)
 
-Compared with the realistic baseline for a calibrated device, **carry-forward** (keep reporting the calibration value).
-ΔMAE = per-session MAE(model) − MAE(carry-forward), with a 95 % bootstrap CI over sessions.
+The comparison baseline is the realistic one for a calibrated device, **carry-forward** (keep reporting the
+calibration value). ΔMAE = per-session MAE(model) − MAE(carry-forward), with a 95 % bootstrap CI over sessions.
+**Bold** = CI excludes 0.
 
 | Site | Model | SBP calibrated MAE | Carry-forward | Stressor windows (model vs carry) | ΔMAE [95 % CI] | Δ-tracking r |
 |---|---|---:|---:|---|---|---:|
-| Finger | HR-only | 14.98 | 15.17 | 16.63 vs 16.83 | −0.52 [−1.34, +0.30] | 0.19 |
-| Finger | Ridge | **14.01** | 15.17 | **14.33 vs 16.83** | **−1.50 [−2.80, −0.18]** | 0.37 |
-| Finger | XGBoost | 14.24 | 15.17 | 14.27 vs 16.83 | −1.49 [−3.22, +0.15] | 0.40 |
-| Ear | HR-only | 15.03 | 15.17 | 16.66 vs 16.83 | −0.29 [−0.97, +0.41] | 0.16 |
-| Ear | Ridge | **14.10** | 15.17 | **14.80 vs 16.83** | **−1.14 [−2.13, −0.18]** | 0.29 |
-| Ear | XGBoost | 13.98 | 15.17 | 14.76 vs 16.83 | −1.06 [−2.66, +0.60] | 0.40 |
+| Finger | HR-only ridge | 15.18 | 15.41 | 17.06 vs 17.14 | -0.69 [-1.57, +0.14] | 0.15 |
+| Finger | Ridge | 14.24 | 15.41 | 14.56 vs 17.14 | **-1.61 [-2.91, -0.28]** | 0.35 |
+| Finger | XGBoost | 15.03 | 15.41 | 14.88 vs 17.14 | -1.18 [-2.91, +0.40] | 0.35 |
+| Ear | HR-only ridge | 15.29 | 15.41 | 17.11 vs 17.14 | -0.36 [-1.04, +0.34] | 0.12 |
+| Ear | Ridge | 14.36 | 15.41 | 15.29 vs 17.14 | **-1.19 [-2.08, -0.34]** | 0.23 |
+| Ear | XGBoost | 14.76 | 15.41 | 15.31 vs 17.14 | -0.54 [-2.26, +1.19] | 0.32 |
 
-For DBP, calibrated models were **no better than carry-forward** at either site (e.g. ear ridge
-9.21 vs 9.01, ΔMAE +0.23 [−0.22, +0.73]; ear XGBoost significantly worse, +1.05 [+0.27, +1.84]).
+DBP: finger Ridge 9.47 vs 9.19, ΔMAE +0.39 [-0.16, +0.92]; finger XGBoost 10.17 vs 9.19, ΔMAE +1.16 [+0.27, +2.04]; ear Ridge 9.58 vs 9.19, ΔMAE +0.47 [+0.02, +0.94]; ear XGBoost 10.49 vs 9.19, ΔMAE +1.26 [+0.47, +2.08]. No calibrated DBP model beat carry-forward.
 
-**Reading:** with per-user calibration, earlobe PPG gives a small but statistically reliable SBP
-improvement over carry-forward (about 1 mmHg), concentrated in BP-changing manoeuvres (about 2 mmHg). The
-remaining error (about 14 mmHg MAE) is roughly 3× what ISO 81060-2 would require. Note that CNAP itself is
+**Reading:** with per-user calibration, PPG gives a small but statistically reliable within-day SBP
+improvement over carry-forward (about 1–1.6 mmHg), mostly during BP-changing manoeuvres. Heart rate alone
+does not. The remaining error (about 14 mmHg MAE) is roughly 3× what ISO 81060-2 would require. CNAP is itself
 a calibrated finger-cuff estimate, not an arterial-line or auscultatory reference.
 
 ### F3. Finger → ear transfer (train on finger PPG, test on earlobe PPG of held-out subjects)
 
 | Model | Adaptation | SBP win MAE | SBP bias | SBP tracking r | DBP win MAE | DBP bias |
 |---|---|---:|---:|---:|---:|---:|
-| Ridge | none | 15.72 | −3.80 | 0.08 | 10.65 | +1.87 |
-| Ridge | per-site standardisation | 16.29 | +0.91 | 0.10 | 10.57 | −0.29 |
-| XGBoost | none | 15.58 | −1.94 | 0.29 | 11.18 | +0.90 |
-| XGBoost | per-site standardisation | 16.45 | −0.03 | 0.12 | 11.71 | −1.12 |
-| *Ear → ear (reference)* | — | *14.66* | — | *0.39* | *10.38* | — |
+| Ridge | none | 15.79 | -3.25 | 0.06 | 10.51 | +1.73 |
+| Ridge | per-site standardisation | 16.02 | +0.91 | 0.03 | 10.55 | +0.03 |
+| XGBoost | none | 16.48 | -2.03 | 0.19 | 11.08 | +0.06 |
+| XGBoost | per-site standardisation | 16.54 | -0.04 | 0.13 | 11.94 | -1.70 |
+| *Ear → ear (reference)* | — | *15.18* | — | *0.28* | *10.58* | — |
 
-A finger-trained model **loses most of its tracking ability at the ear** (r 0.47 → 0.08–0.29). Unsupervised
-per-site standardisation removes the bias, but it does not restore tracking. Morphology differs between
-sites (`docs/figures/auricle_ear_vs_finger_beat.png`: slower earlobe upstroke, later peak, no diastolic
-shoulder), so **ear models must be trained on ear data.**
+A finger-trained model **loses its tracking ability at the ear**. Unsupervised per-site standardisation
+removes the bias but does not restore tracking. Morphology differs between sites
+(`docs/figures/cross_day/fig1_ear_vs_finger_waveforms.png`), so ear models need ear training data.
 
 ### F4. Guilin (fingertip IR) → Auricle
 
