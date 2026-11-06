@@ -22,6 +22,27 @@ Supporting observation from this repository: the IR ensemble beats of Guilin, Fo
 PPG-BP (`docs/figures/mean_beat_by_dataset.png`) differ visibly between fingertip cohorts of
 different age. Site differences are expected to be at least as large.
 
+## 1b. Measured evidence: finger vs earlobe in the same people (Auricle)
+
+The Auricle dataset (PhysioNet, 41 healthy subjects analysed) records finger and **earlobe** PPG
+simultaneously with continuous CNAP BP. Earlobe is not posterior-auricular, and Nonin transmissive clips are not a
+reflective MAX30102, but it is the closest open evidence available. Full tables are in MODEL_EVALUATION.md §F.
+
+- **Morphology differs** (`docs/figures/auricle_ear_vs_finger_beat.png`): the earlobe pulse has a slower
+  upstroke, a later systolic peak (~23 % vs ~15 % of the beat) and no diastolic shoulder. This matches the
+  expectation in §1 of a smoother, more proximal waveform.
+- **Signal quality was lower at the ear** (SQI pass 78.8 % vs 85.7 %; exercise 52.5 % vs 64.7 %), so the
+  ear is not automatically the more robust site.
+- **Finger-trained models do not transfer to the ear:** within-session SBP tracking fell from r 0.47
+  (finger→finger) to r 0.08–0.29 (finger→ear). Unsupervised per-site standardisation removed the bias
+  (−3.8 → +0.9 mmHg) but did **not** restore tracking.
+- **Ear-trained models do work modestly:** ear→ear tracking r 0.39 (vs 0.21 for heart rate alone). With
+  one-point calibration, SBP MAE was 14.10 vs 15.17 mmHg for carry-forward (ΔMAE −1.14, 95 % CI [−2.13, −0.18]).
+  There was no DBP benefit.
+
+**Consequence for RakshPulse:** a behind-ear model must be trained on behind-ear data with a calibration
+step. Reusing fingertip models, even with feature re-scaling, is not supported by the evidence.
+
 ## 2. What the public-data work can and cannot tell us
 
 **Can:**
@@ -54,7 +75,8 @@ different age. Site differences are expected to be at least as large.
 4. **Unsupervised domain adaptation** (e.g. CORAL, domain-adversarial training) using
    *unlabelled* behind-ear recordings. Labelled data are expensive, but unlabelled field
    data are cheap. This needs a labelled ear test set to verify any gain.
-5. **Paired-site study (recommended next experiment):** record finger PPG and behind-ear
+5. **Paired-site study (recommended next experiment):** (the Auricle analysis above is the public-data
+   version of this, at the earlobe.) record finger PPG and behind-ear
    MAX30102 PPG at the same time, plus a validated cuff, on the same subjects. That allows
    direct finger↔ear morphology mapping and a fair test of transfer. The Auricle dataset
    (simultaneous finger + earlobe PPG with CNAP BP, PhysioNet) allows a preliminary

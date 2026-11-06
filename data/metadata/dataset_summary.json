@@ -1,4 +1,40 @@
 {
+  "auricle": {
+    "windows": 8458,
+    "subjects": 41,
+    "ear_sqi_pass": 0.7879,
+    "finger_sqi_pass": 0.8569,
+    "sbp": {
+      "min": 70.2,
+      "p25": 103.4,
+      "median": 113.5,
+      "p75": 127.3,
+      "max": 162.7,
+      "mean": 115.3,
+      "sd": 18.7
+    },
+    "dbp": {
+      "min": 46.4,
+      "p25": 58.8,
+      "median": 65.4,
+      "p75": 75.8,
+      "max": 93.8,
+      "mean": 67.6,
+      "sd": 12.2
+    },
+    "demo_age": {
+      "min": 19.0,
+      "p25": 22.0,
+      "median": 23.0,
+      "p75": 30.0,
+      "max": 57.0,
+      "mean": 27.2,
+      "sd": 9.5
+    },
+    "hypertensive_sbp_ge_140": 3,
+    "hypotensive_sbp_lt_90": 3,
+    "male_fraction": 0.488
+  },
   "foggia_multiwave": {
     "windows": 127,
     "subjects": 127,

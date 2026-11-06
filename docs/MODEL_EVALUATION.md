@@ -170,6 +170,85 @@ hardware:** *timing* information (pulse arrival or transit time) carries SBP sig
 single-site PPG shape does not. A second optical site (e.g. two MAX30102s, or ear + finger),
 giving a PPG-only pulse transit time, is a hardware option worth evaluating. ECG is not.
 
+## F. Finger vs earlobe PPG with continuous BP (Auricle, healthy cohort)
+
+`scripts/run_auricle.py` → `results/auricle_experiments.json`. Data: Auricle v1.0.0, healthy cohort
+session 1, **41 subjects** (HC_1_1 excluded: no CNAP mask), 8,458 labelled 10 s windows. Labels are the
+median beat-level **CNAP continuous finger-cuff** SBP/DBP inside each window. Only windows entirely
+inside CNAP-valid periods are used, and only windows where *both* sites pass SQI (so the site comparison
+uses identical windows). Five-fold CV grouped by subject (balanced by subject mean SBP). Unlike Guilin,
+BP varies **within** subjects (breath-hold, Valsalva, exercise, cold pressor): median within-subject
+SBP SD 12.7 mmHg, against a between-subject SD of 14.0 mmHg.
+
+**Signal quality by site (SQI pass rate):** ear 78.8 %, finger 85.7 % overall. During exercise
+the rates were ear 52.5 % and finger 64.7 %; during cold pressor, ear 73.2 % and finger 83.7 %. (In one early-inspected record (HC_10_1) the ear
+passed every cold-pressor and exercise window while the finger did not. The cohort-level data do **not** show a
+general ear advantage. In the Auricle setup the earlobe is the *less* reliable site.)
+
+### F1. Calibration-free, subject-independent (window MAE / subject-mean MAE / median within-session r)
+
+| Site | Model | SBP win MAE | SBP subj MAE | SBP tracking r | DBP win MAE | DBP subj MAE | DBP tracking r |
+|---|---|---:|---:|---:|---:|---:|---:|
+| — | Mean | 15.26 | 11.15 | — | 10.59 | 7.78 | — |
+| — | Demographics ridge | 15.79 | 11.74 | — | 10.34 | 7.51 | — |
+| Finger | HR-only ridge | 14.39 | 10.15 | 0.31 | 10.31 | 7.72 | 0.14 |
+| Finger | Ridge (PPG features) | **14.14** | **9.93** | **0.47** | 11.07 | 7.98 | 0.09 |
+| Finger | XGBoost | 14.98 | 10.71 | 0.43 | 11.99 | 8.70 | 0.16 |
+| Ear | HR-only ridge | 14.46 | 10.21 | 0.21 | 10.34 | 7.75 | 0.15 |
+| Ear | Ridge (PPG features) | 14.66 | 10.78 | 0.39 | 10.38 | 7.23 | 0.14 |
+| Ear | XGBoost | 17.54 | 14.43 | 0.34 | 11.42 | 8.12 | 0.16 |
+
+PPG morphology tracks **within-session SBP changes** better than heart rate alone (finger r 0.47 vs 0.31;
+ear r 0.39 vs 0.21). This is the first positive PPG→BP signal in this project. Absolute calibration-free
+errors remain about 14–15 mmHg, and DBP shows essentially no PPG signal.
+
+### F2. One-point personal calibration (first 3 rest windows ≈ 20 s of each session)
+
+Compared with the realistic baseline for a calibrated device, **carry-forward** (keep reporting the calibration value).
+ΔMAE = per-session MAE(model) − MAE(carry-forward), with a 95 % bootstrap CI over sessions.
+
+| Site | Model | SBP calibrated MAE | Carry-forward | Stressor windows (model vs carry) | ΔMAE [95 % CI] | Δ-tracking r |
+|---|---|---:|---:|---|---|---:|
+| Finger | HR-only | 14.98 | 15.17 | 16.63 vs 16.83 | −0.52 [−1.34, +0.30] | 0.19 |
+| Finger | Ridge | **14.01** | 15.17 | **14.33 vs 16.83** | **−1.50 [−2.80, −0.18]** | 0.37 |
+| Finger | XGBoost | 14.24 | 15.17 | 14.27 vs 16.83 | −1.49 [−3.22, +0.15] | 0.40 |
+| Ear | HR-only | 15.03 | 15.17 | 16.66 vs 16.83 | −0.29 [−0.97, +0.41] | 0.16 |
+| Ear | Ridge | **14.10** | 15.17 | **14.80 vs 16.83** | **−1.14 [−2.13, −0.18]** | 0.29 |
+| Ear | XGBoost | 13.98 | 15.17 | 14.76 vs 16.83 | −1.06 [−2.66, +0.60] | 0.40 |
+
+For DBP, calibrated models were **no better than carry-forward** at either site (e.g. ear ridge
+9.21 vs 9.01, ΔMAE +0.23 [−0.22, +0.73]; ear XGBoost significantly worse, +1.05 [+0.27, +1.84]).
+
+**Reading:** with per-user calibration, earlobe PPG gives a small but statistically reliable SBP
+improvement over carry-forward (about 1 mmHg), concentrated in BP-changing manoeuvres (about 2 mmHg). The
+remaining error (about 14 mmHg MAE) is roughly 3× what ISO 81060-2 would require. Note that CNAP itself is
+a calibrated finger-cuff estimate, not an arterial-line or auscultatory reference.
+
+### F3. Finger → ear transfer (train on finger PPG, test on earlobe PPG of held-out subjects)
+
+| Model | Adaptation | SBP win MAE | SBP bias | SBP tracking r | DBP win MAE | DBP bias |
+|---|---|---:|---:|---:|---:|---:|
+| Ridge | none | 15.72 | −3.80 | 0.08 | 10.65 | +1.87 |
+| Ridge | per-site standardisation | 16.29 | +0.91 | 0.10 | 10.57 | −0.29 |
+| XGBoost | none | 15.58 | −1.94 | 0.29 | 11.18 | +0.90 |
+| XGBoost | per-site standardisation | 16.45 | −0.03 | 0.12 | 11.71 | −1.12 |
+| *Ear → ear (reference)* | — | *14.66* | — | *0.39* | *10.38* | — |
+
+A finger-trained model **loses most of its tracking ability at the ear** (r 0.47 → 0.08–0.29). Unsupervised
+per-site standardisation removes the bias, but it does not restore tracking. Morphology differs between
+sites (`docs/figures/auricle_ear_vs_finger_beat.png`: slower earlobe upstroke, later peak, no diastolic
+shoulder), so **ear models must be trained on ear data.**
+
+### F4. Guilin (fingertip IR) → Auricle
+
+Guilin-trained models applied to Auricle were at mean-predictor level (SBP window MAE 14.4–15.1 vs 15.1).
+Tracking was r 0.26 at the finger and ≤ 0.18 at the ear, with an SBP bias of −4 mmHg at the ear.
+
+### F5. Cross-day calibration drift
+
+*In progress:* healthy-cohort session-2 recordings (a different day) are still downloading. This section is
+updated when `run_auricle.py` has session-2 data (E5: calibrate on session 1, evaluate on session 2).
+
 ## Interpretation
 
 1. **Single-site PPG morphology carries little SBP information in this cohort.** No PPG-only
@@ -183,7 +262,11 @@ giving a PPG-only pulse transit time, is a hardware option worth evaluating. ECG
    ρ = 0.45 with SBP in this cohort (`notebooks/01_ppg_exploration.ipynb`).
 4. **Window-level vs subject-level:** they are nearly identical here, because the error is
    dominated by between-subject offsets, not within-subject noise.
-5. **Model selection:** the reference inference bundle uses **ridge on PPG + demographics**.
+5. **Auricle (section F) adds the first positive evidence:** at the finger *and* the earlobe, PPG
+   morphology tracks within-subject SBP changes beyond heart rate, and with one-point calibration it beats
+   carry-forward for SBP by about 1–1.5 mmHg (statistically reliable, clinically small). It also shows that
+   finger-trained models do not transfer to the ear.
+6. **Model selection:** the reference inference bundle uses **ridge on PPG + demographics**.
    It is within 0.1 mmHg MAE of the best model, has a few kB of coefficients, and ports to C
    trivially. This was not chosen for R² (SVR has the highest R²). The choice is based on
    MAE parity, robustness and deployability.

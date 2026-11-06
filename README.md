@@ -21,7 +21,8 @@ high-altitude settings, built around the MAX30102 optical sensor.
 | ECG pulse-arrival-time study | 🧪 Auxiliary research only (no ECG on MAX30102) |
 | Inference API with quality-based rejection | ✅ Implemented (proposed interface) |
 | Tests + CI (ruff, pytest, Python 3.10–3.12) | ✅ Implemented |
-| Behind-ear validation | ❌ **Not done.** No data exists yet ([docs/DOMAIN_ADAPTATION.md](docs/DOMAIN_ADAPTATION.md)) |
+| Finger vs earlobe study (Auricle, 41 subjects) | ✅ Implemented ([MODEL_EVALUATION §F](docs/MODEL_EVALUATION.md)) |
+| Behind-ear validation | ❌ **Not done.** No behind-ear data exists yet ([docs/DOMAIN_ADAPTATION.md](docs/DOMAIN_ADAPTATION.md)) |
 | ESP32 / ONNX / TFLite deployment | ❌ Planned. Footprint measured only |
 | Clinical validation (ISO 81060-2 / IEEE 1708) | ❌ Not started |
 
@@ -45,7 +46,12 @@ high-altitude settings, built around the MAX30102 optical sensor.
 7. An auxiliary ECG experiment found that **pulse arrival time** (timing) carries SBP signal
    (r = −0.35) that single-site PPG shape lacks. A two-site optical *pulse transit time* design is
    worth evaluating. ECG is not available on the MAX30102.
-8. The realistic path forward is **per-user cuff calibration plus behind-ear data collection**.
+8. **Earlobe evidence (Auricle, 41 healthy subjects, simultaneous finger + earlobe PPG, continuous BP):**
+   PPG tracks within-session SBP changes beyond heart rate (ear r 0.39, finger r 0.47). With one-point
+   calibration, earlobe SBP error beat carry-forward by about 1.1 mmHg (95 % CI [−2.13, −0.18]), but absolute
+   MAE was still about 14 mmHg and DBP showed no benefit. **Finger-trained models lost most tracking at the
+   ear (r 0.47 → ≤ 0.29)**, so a behind-ear model needs behind-ear training data.
+9. The realistic path forward is **per-user cuff calibration plus behind-ear data collection**.
    It is not a bigger model on fingertip data.
 
 ## Installation
@@ -71,6 +77,12 @@ python -m rakshpulse.data.metadata
 python scripts/run_experiments.py     # feature models, channel ablation, external tests
 python scripts/run_cnn.py             # 1D CNN
 python scripts/run_ecg_aux.py         # auxiliary ECG/PAT study
+
+# Auricle finger vs earlobe (≈3 GB+ download, throttled; healthy cohort first)
+python -m rakshpulse.data.physionet auricle --via-zip --jobs 3
+python -m rakshpulse.data.build_auricle
+python scripts/run_auricle.py
+python scripts/visualize_auricle.py
 python scripts/compare_models.py      # paired bootstrap CIs
 python scripts/visualize_ppg.py       # figures in docs/figures/
 

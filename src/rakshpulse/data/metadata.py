@@ -21,9 +21,9 @@ def summarise(name: str) -> dict:
     out = {
         "windows": len(df),
         "subjects": len(subj),
-        "ir_sqi_pass": round(float(df["ir_sqi_ok"].mean()), 4),
-        "red_sqi_pass": round(float(df["red_sqi_ok"].mean()), 4),
     }
+    for col in [c for c in df.columns if c.endswith("_sqi_ok")]:  # ir/red, or ear/finger for Auricle
+        out[col.replace("_sqi_ok", "_sqi_pass")] = round(float(df[col].astype(bool).mean()), 4)
     if subj["sbp"].notna().any():
         for k in ("sbp", "dbp", "demo_age"):
             s = subj[k].dropna()

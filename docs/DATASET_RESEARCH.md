@@ -182,7 +182,8 @@ peak, so models trained on fingertip morphology must be expected to shift.
 **Ranking B: best for eventual RakshPulse hardware compatibility:**
 1. *RakshPulse's own behind-ear MAX30102 recordings with simultaneous validated cuff*
    (does not exist yet; this is the required next step)
-2. Auricle (earlobe PPG + CNAP + cuff, the only ear-site BP dataset found)
+2. Auricle (earlobe PPG + CNAP + cuff, the only ear-site BP dataset found). **Downloaded and analysed**:
+   finger-trained models do not transfer to the earlobe (MODEL_EVALUATION.md §F)
 3. Guilin dual-wave (same LED wavelengths class and raw-count format as MAX30102)
 4. Pulse Transit Time PPG (MAX30101 chip)
 
@@ -191,8 +192,8 @@ being evidence that the pipeline works at the ear.
 
 ## 13. Research limitations
 
-- Auricle (15.4 GB) and Pulse Transit Time PPG (2.9 GB) were identified but not downloaded in
-  this session because of time. Their download is scripted as future work, not claimed as done.
+- Auricle was downloaded in a follow-up session (healthy cohort first; see DATASET_ACQUISITION.md) and
+  analysed in MODEL_EVALUATION.md §F. Pulse Transit Time PPG (2.9 GB) was not downloaded.
 - The Guilin sensor site and LED wavelengths are **not stated by the dataset authors**. The
   "finger-contact, 660/940 nm" description comes from a third-party index and is unverified.
 - Dataset facts for CP-PPG, Four-wavelength PPG, Aurora-BP and the VitalDB licence come from

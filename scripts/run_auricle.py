@@ -109,7 +109,48 @@ def cv_predict(df, train_cols, test_cols, target, model, adapt=False):
     return out
 
 
+def tracking_figure() -> None:
+    """Calibrated finger vs ear SBP tracking for the session with the largest BP excursion."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    f = pd.read_csv(RES / "predictions" / "auricle_HC_finger_ridge_sbp.csv")
+    e = pd.read_csv(RES / "predictions" / "auricle_HC_ear_ridge_sbp.csv")
+    rid = f.groupby("record_id").sbp.agg(np.ptp).idxmax()
+    fig, ax = plt.subplots(figsize=(11, 4))
+    for d, name, col in ((f, "finger PPG", "C0"), (e, "earlobe PPG", "C3")):
+        g = d[d.record_id == rid].sort_values("t_start_s")
+        cal = g[g.activity == 0].iloc[:K_CAL]
+        ax.plot(
+            g.t_start_s,
+            g.pred - cal.pred.mean() + cal.sbp.mean(),
+            ".",
+            color=col,
+            ms=4,
+            label=f"{name} (ridge, 1-point calibrated)",
+        )
+    g = f[f.record_id == rid].sort_values("t_start_s")
+    ax.plot(g.t_start_s, g.sbp, "k-", lw=1.2, label="CNAP reference SBP")
+    for code, name in ((1, "breath-hold"), (2, "Valsalva"), (3, "exercise"), (4, "cold pressor")):
+        t = g.t_start_s[g.activity == code]
+        if len(t):
+            ax.axvspan(t.min(), t.max() + 10, alpha=0.08, color="grey")
+            ax.text(t.min(), ax.get_ylim()[1], name, fontsize=7, va="top")
+    ax.set_xlabel("time in session (s)")
+    ax.set_ylabel("SBP (mmHg)")
+    ax.set_title(f"Auricle {rid}: calibrated SBP tracking, finger vs earlobe (held-out subject)")
+    ax.legend(fontsize=8, loc="lower right")
+    fig.tight_layout()
+    fig.savefig(ROOT / "docs" / "figures" / "auricle_tracking_example.png", dpi=110)
+    plt.close(fig)
+
+
 def main() -> int:
+    if "--figure-only" in sys.argv:
+        tracking_figure()
+        return 0
     t0 = time.time()
     a = pd.read_csv(PROCESSED / "auricle_features.csv")
     out: dict = {"meta": {}, "E1": [], "E2": [], "E3": [], "E4": []}
@@ -141,6 +182,11 @@ def main() -> int:
                 ):
                     m = "ridge" if model.startswith("ridge_") else model
                     pdf = cv_predict(both, cols, cols, target, m)
+                    if model == "ridge":
+                        (RES / "predictions").mkdir(exist_ok=True)
+                        pdf.assign(session=both["session"].to_numpy()).to_csv(
+                            RES / "predictions" / f"auricle_{cohort}_{site}_ridge_{target}.csv", index=False
+                        )
                     r = {"cohort": cohort, "target": target, "site": site, "model": model, **summarise(pdf, target)}
                     out["E1"].append(r)
                     print(
@@ -218,6 +264,7 @@ def main() -> int:
                     flush=True,
                 )
     out["meta"]["runtime_s"] = round(time.time() - t0, 1)
+    tracking_figure()
     (RES / "auricle_experiments.json").write_text(json.dumps(out, indent=2, default=float))
     return 0
 
