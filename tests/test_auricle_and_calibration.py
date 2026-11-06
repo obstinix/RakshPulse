@@ -122,3 +122,14 @@ def test_http_range_file_reads_zip_member(tmp_path):
             assert zf.read("proj-1.0.0/data/X_1_1/X_1_1.dat") == payload
     finally:
         srv.shutdown()
+
+
+def test_cross_session_calibration():
+    from rakshpulse.evaluation.calibration import cross_session_errors
+
+    s1 = _session("a_1").assign(subject_id="a", session=1)
+    s2 = _session("a_2").assign(subject_id="a", session=2, sbp=lambda d: d.sbp + 10, pred=lambda d: d.pred + 10)
+    r = cross_session_errors(pd.concat([s1, s2]), "sbp", k_cal=3)
+    assert r["n_subjects"] == 1
+    assert r["calibrated_model_mae"] < 1e-9  # model tracks the +10 day-to-day shift
+    assert r["carry_forward_mae"] > 10

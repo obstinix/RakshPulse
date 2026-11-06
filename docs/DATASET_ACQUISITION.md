@@ -16,6 +16,29 @@ The last run passed with no errors (`data/metadata/validation_report.json`).
 Storage: about 650 MB of archives plus about 1.6 GB extracted. The downloader checks for
 free disk space of at least 3× the archive size before starting.
 
+## Auricle (PhysioNet, ODC-By 1.0), added in a follow-up session
+
+- **Why:** this is the only open dataset found with **ear-site PPG** (earlobe, Nonin, transmissive)
+  recorded *simultaneously* with finger PPG and continuous BP (CNAP finger-cuff, beat-level SBP/DBP)
+  under BP-changing stressors. It allows the finger→ear transfer and per-user calibration studies.
+- **Bandwidth constraint:** PhysioNet throttled this client to about 0.65 MB/s in aggregate. Downloading
+  the full 15.4 GB would have taken about 6.5 h.
+- **Method:** `python -m rakshpulse.data.physionet auricle --via-zip`. Individual records are pulled
+  as members of the official project ZIP via HTTP Range requests (deflate halves the transfer). Each
+  extracted file is verified against PhysioNet's `SHA256SUMS.txt` (and the ZIP CRC-32), then set read-only.
+- **Subset (scientifically motivated, in priority order):** (1) healthy cohort session 1, the closest
+  to the target users (healthy adults); (2) healthy session 2 (different day); (3) heart-failure
+  cohort. The analysis uses whatever was fully verified when it ran (count in
+  `results/auricle_experiments.json` → `meta`). Nothing unverified is used.
+- **Exclusions:** `HC_1_1` has no CNAP reliability-mask channel, so its BP labels cannot be screened for
+  calibration artefacts and the record is excluded. A few sessions (HC_38_2, HFC_108_1, HFC_124_1) have
+  no activity channel. They are kept, but they cannot provide rest-calibration windows.
+- Raw files stay in `data/raw/auricle/` exactly as published and are read directly (no extraction
+  copy). Interim per-record windows go to `data/interim/auricle/`.
+- Citation: *Auricle: A Multimodal Wearable Sensing Dataset for Cardiovascular and Hemodynamic
+  Assessment* (v1.0.0), PhysioNet (2026), doi:10.13026/swme-vp69, together with the standard PhysioNet
+  citation (Goldberger et al., Circulation 2000).
+
 ## How the downloader works (`src/rakshpulse/data/download.py`)
 
 - One declarative `DatasetSpec` per dataset, holding the landing page, DOI, version, licence,
@@ -29,7 +52,6 @@ free disk space of at least 3× the archive size before starting.
 
 | Dataset | Reason | How to obtain |
 |---|---|---|
-| Auricle (PhysioNet, ODC-By, 15.4 GB) | Too large to fetch and process within this session. **Highest-priority next download** (earlobe PPG + BP) | `wget -r -N -c -np https://physionet.org/files/auricle/1.0.0/` |
 | Pulse Transit Time PPG (PhysioNet, ODbL, 2.9 GB) | Only 22 subjects, BP only at activity start/end | `wget -r -N -c -np https://physionet.org/files/pulse-transit-time-ppg/1.1.0/` |
 | CardioWave-Portable (PhysioNet) | **Credentialed access**: requires a PhysioNet credentialed account, CITI training and a signed DUA | Apply at physionet.org. Not attempted |
 | MIMIC-III-Ext-PPG | Credentialed | As above |

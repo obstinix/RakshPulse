@@ -20,6 +20,7 @@ import io
 import json
 import shutil
 import sys
+import time
 import urllib.error
 import urllib.request
 import zipfile
@@ -171,9 +172,17 @@ class HttpRangeFile(io.RawIOBase):
     def __init__(self, url: str, block: int = 4 << 20):
         super().__init__()
         self.url, self.block, self.pos = url, block, 0
-        req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": USER_AGENT})
-        with urllib.request.urlopen(req, timeout=60) as r:
-            self.size = int(r.headers["Content-Length"])
+        for attempt in range(8):
+            try:
+                req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": USER_AGENT})
+                with urllib.request.urlopen(req, timeout=60) as r:
+                    self.size = int(r.headers["Content-Length"])
+                break
+            except OSError as e:  # includes HTTP 429/5xx; back off politely
+                print(f"  HEAD {url}: {e}; retry {attempt + 1}", file=sys.stderr)
+                time.sleep(10 * (attempt + 1))
+        else:
+            raise OSError(f"HEAD failed for {url}")
         self._buf_start, self._buf = 0, b""
 
     def seekable(self):
@@ -195,12 +204,13 @@ class HttpRangeFile(io.RawIOBase):
                 req = urllib.request.Request(
                     self.url, headers={"User-Agent": USER_AGENT, "Range": f"bytes={start}-{end}"}
                 )
-                with urllib.request.urlopen(req, timeout=120) as r:
+                with urllib.request.urlopen(req, timeout=45) as r:  # per-socket-op timeout
                     data = r.read()
                 if len(data) == end - start + 1:
                     return data
             except OSError as e:
                 print(f"  range {start}-{end}: {e}; retry {attempt + 1}", file=sys.stderr)
+                time.sleep(5 * (attempt + 1))
         raise OSError(f"failed to fetch bytes {start}-{end}")
 
     def read(self, n=-1):
@@ -263,9 +273,13 @@ def fetch_records_via_zip(key: str, records: list[str], jobs: int = 3) -> list[d
                 items.append((rel, manifest[rel]))
     done = []
     with ThreadPoolExecutor(max_workers=jobs) as ex:
-        futs = [ex.submit(fetch_member_from_zip, project, r, d, dest) for r, d in items]
-        for i, f in enumerate(futs, 1):
-            res = f.result()
+        futs = {ex.submit(fetch_member_from_zip, project, r, d, dest): r for r, d in items}
+        for i, f in enumerate(as_completed(futs), 1):
+            try:
+                res = f.result()
+            except Exception as e:  # report and continue; a rerun retries only missing files
+                print(f"[{i}/{len(items)}] FAILED {futs[f]}: {e}", flush=True)
+                continue
             done.append(res)
             print(f"[{i}/{len(items)}] {res['status']:22s} {res['file']}", flush=True)
             _record_provenance(project, dest, done, records)

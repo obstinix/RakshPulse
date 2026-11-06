@@ -27,7 +27,7 @@ from joblib import Parallel, delayed
 
 from ..features.feature_pipeline import PER_CHANNEL, extract_features
 from .build import PROCESSED
-from .dataset_loader import auricle_records, load_auricle_demographics, read_auricle
+from .dataset_loader import MissingChannelError, auricle_records, load_auricle_demographics, read_auricle
 from .download import DATA_ROOT
 
 INTERIM = DATA_ROOT / "interim" / "auricle"
@@ -50,7 +50,11 @@ def process_record(rid: str, demo: dict) -> pd.DataFrame:
     cache = INTERIM / f"{rid}.csv"
     if cache.exists():
         return pd.read_csv(cache)
-    rec = read_auricle(rid, demo=demo)
+    try:
+        rec = read_auricle(rid, demo=demo)
+    except MissingChannelError as exc:
+        print(f"[skip] {exc}")
+        return pd.DataFrame()
     fs = rec.fs
     win, step = int(WIN_S * fs), int(STEP_S * fs)
     rows = []

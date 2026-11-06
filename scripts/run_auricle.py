@@ -33,7 +33,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from run_experiments import IR  # noqa: E402
 
 from rakshpulse.data.build import PROCESSED  # noqa: E402
-from rakshpulse.evaluation.calibration import calibrated_errors, within_session_r  # noqa: E402
+from rakshpulse.evaluation.calibration import calibrated_errors, cross_session_errors, within_session_r  # noqa: E402
 from rakshpulse.evaluation.metrics import regression_metrics  # noqa: E402
 from rakshpulse.features.feature_pipeline import PER_CHANNEL  # noqa: E402
 from rakshpulse.models.baseline import DEMOGRAPHIC_FEATURES  # noqa: E402
@@ -135,10 +135,11 @@ def main() -> int:
                 for model, cols in (
                     ("mean", site_cols(site)),
                     ("ridge_demo_only", DEMOGRAPHIC_FEATURES),
+                    ("ridge_hr_only", [f"{site}_hr"]),
                     ("ridge", site_cols(site)),
                     ("xgboost", site_cols(site)),
                 ):
-                    m = "ridge" if model == "ridge_demo_only" else model
+                    m = "ridge" if model.startswith("ridge_") else model
                     pdf = cv_predict(both, cols, cols, target, m)
                     r = {"cohort": cohort, "target": target, "site": site, "model": model, **summarise(pdf, target)}
                     out["E1"].append(r)
@@ -147,15 +148,31 @@ def main() -> int:
                         f"subj MAE {r['subject_mae']:.2f} track r {r['within_session_r_median']:.2f}",
                         flush=True,
                     )
-                    if model in ("ridge", "xgboost"):
+                    if model in ("ridge", "xgboost", "ridge_hr_only"):
                         c = calibrated_errors(pdf.assign(activity=both["activity"].to_numpy()), target, K_CAL)
                         out["E4"].append({"cohort": cohort, "target": target, "site": site, "model": model, **c})
+                        x = cross_session_errors(
+                            pdf.assign(activity=both["activity"].to_numpy(), session=both["session"].to_numpy()),
+                            target,
+                            K_CAL,
+                        )
+                        if x.get("n_subjects"):
+                            out.setdefault("E5_cross_day", []).append(
+                                {"cohort": cohort, "target": target, "site": site, "model": model, **x}
+                            )
+                            print(
+                                f"[E5 {cohort}] {target} {site:6s} {model:8s} cross-day calibrated MAE "
+                                f"{x['calibrated_model_mae']:.2f} vs carry-forward {x['carry_forward_mae']:.2f} "
+                                f"(n={x['n_subjects']})",
+                                flush=True,
+                            )
                         print(
                             f"[E4 {cohort}] {target} {site:6s} {model:8s} "
                             f"calibrated MAE {c['calibrated_model_mae']:.2f} "
                             f"vs carry-forward {c['carry_forward_mae']:.2f}; stressors "
                             f"{c['stressor_calibrated_model_mae']:.2f} vs {c['stressor_carry_forward_mae']:.2f}; "
-                            f"Δ-tracking r {c['delta_tracking_r']:.2f}",
+                            f"Δ-tracking r {c['delta_tracking_r']:.2f}; session ΔMAE {c['session_mae_diff_mean']:+.2f} "
+                            f"CI [{c['session_mae_diff_ci95'][0]:+.2f}, {c['session_mae_diff_ci95'][1]:+.2f}]",
                             flush=True,
                         )
             # ---------- E2 finger -> ear transfer

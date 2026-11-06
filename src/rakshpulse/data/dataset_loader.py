@@ -221,11 +221,22 @@ def auricle_records(root: Path = AURICLE_DIR, cohorts: tuple[str, ...] = ("HC", 
     return recs
 
 
+class MissingChannelError(ValueError):
+    pass
+
+
 def read_auricle(record_id: str, root: Path = AURICLE_DIR, demo: dict | None = None) -> AuricleRecord:
     import wfdb
 
-    r = wfdb.rdrecord(str(root / "data" / record_id / record_id), channel_names=AURICLE_CHANNELS)
+    path = str(root / "data" / record_id / record_id)
+    available = set(wfdb.rdheader(path).sig_name)
+    if "CNAP_Annotations" not in available:
+        # Without the CNAP reliability mask, calibration periods cannot be excluded -> unusable labels
+        raise MissingChannelError(f"{record_id}: no CNAP_Annotations channel")
+    r = wfdb.rdrecord(path, channel_names=[c for c in AURICLE_CHANNELS if c in available])
     x = {n: r.p_signal[:, i] for i, n in enumerate(r.sig_name)}
+    if "Activity_Annotations" not in x:  # a few sessions have no activity labels
+        x["Activity_Annotations"] = np.full(r.sig_len, -1.0)
     cohort, num, _ = record_id.split("_")
     demo = demo if demo is not None else load_auricle_demographics(root)
     return AuricleRecord(
