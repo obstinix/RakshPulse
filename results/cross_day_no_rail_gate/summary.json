@@ -1,0 +1,22 @@
+{
+  "subjects": 42,
+  "subjects_with_both_sessions": 36,
+  "windows_by_session": {
+    "1": 8458,
+    "2": 7961
+  },
+  "k_cal_rest_windows": 3,
+  "n_boot": 2000,
+  "seed": 0,
+  "rail_gate": false,
+  "model_ranking": [
+    {
+      "model": "ridge",
+      "cross_day_mae_mean": 14.025,
+      "mean_rank": 1.0,
+      "worst_rank": 1.0,
+      "within_to_cross_day_gap": 2.052
+    }
+  ],
+  "runtime_s": 58.0
+}

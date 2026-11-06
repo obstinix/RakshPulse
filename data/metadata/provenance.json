@@ -68,8 +68,8 @@
     "license": "Open Data Commons Attribution License v1.0 (ODC-By)",
     "citation": "Auricle (v1.0.0), PhysioNet (2026), doi:10.13026/swme-vp69. Cite also Goldberger et al., PhysioNet, Circulation 101(23) (2000).",
     "method": "members extracted from the official project ZIP via HTTP Range; each verified against SHA256SUMS.txt",
-    "verified_data_files": 91,
-    "verified_bytes": 6700524308,
+    "verified_data_files": 161,
+    "verified_bytes": 12390799363,
     "requested_subset": [
       "HC_1_1",
       "HC_2_1",

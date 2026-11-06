@@ -1,0 +1,401 @@
+{
+  "1_session2_verified": {
+    "pass": true,
+    "detail": {
+      "hc_session2_listed": 37,
+      "verified": 37,
+      "not_ok": [],
+      "hc_session1_verified": "42/42",
+      "untrusted_labels": [
+        "HC_1_1"
+      ]
+    }
+  },
+  "2_subject_pairing": {
+    "pass": true,
+    "detail": {
+      "subjects_with_both_sessions": 36,
+      "demographic_mismatches": [],
+      "record_to_subject_mapping_consistent": true
+    }
+  },
+  "3_no_subject_leakage": {
+    "pass": true,
+    "detail": {
+      "subjects_in_folds": 42,
+      "fold_sizes": [
+        9,
+        9,
+        8,
+        8,
+        8
+      ],
+      "population_training_uses": "session-1 windows of other-fold subjects only (asserted in code)"
+    }
+  },
+  "4_calibration_rest_only_no_overlap": {
+    "pass": true,
+    "detail": {
+      "sessions_checked": 38,
+      "non_rest_calibration_windows": 0,
+      "overlapping_eval_windows": 0
+    }
+  },
+  "5_mask_and_clipping_exclusions": {
+    "pass": true,
+    "detail": {
+      "clipped_windows_marked_ok": 0,
+      "raw_resample_checked": 40,
+      "raw_mismatches": [],
+      "records_without_mask": [
+        "HC_1_1"
+      ],
+      "of_which_in_analysis_table": []
+    }
+  },
+  "10_metrics_reproduce_from_predictions": {
+    "pass": true,
+    "detail": [
+      {
+        "site": "ear",
+        "target": "sbp",
+        "mae_recomputed": 16.183112385022017,
+        "mae_saved": 16.183112385022017,
+        "carry_recomputed": 16.52527814381757,
+        "carry_saved": 16.52527814381757,
+        "ci_recomputed": [
+          13.533668574790276,
+          18.852492354866634
+        ],
+        "ci_saved": [
+          13.546521755611465,
+          19.00122767104401
+        ],
+        "n_subjects": 31
+      },
+      {
+        "site": "ear",
+        "target": "dbp",
+        "mae_recomputed": 12.789988218225279,
+        "mae_saved": 12.789988218225282,
+        "carry_recomputed": 11.595864269013568,
+        "carry_saved": 11.595864269013568,
+        "ci_recomputed": [
+          10.2647051669735,
+          15.809163321465277
+        ],
+        "ci_saved": [
+          10.13336388813548,
+          15.775271108057279
+        ],
+        "n_subjects": 31
+      },
+      {
+        "site": "finger",
+        "target": "sbp",
+        "mae_recomputed": 15.5423022586632,
+        "mae_saved": 15.5423022586632,
+        "carry_recomputed": 15.585718300157676,
+        "carry_saved": 15.585718300157676,
+        "ci_recomputed": [
+          13.0944962523556,
+          18.19916252674364
+        ],
+        "ci_saved": [
+          12.984688067341322,
+          18.22340381732736
+        ],
+        "n_subjects": 35
+      },
+      {
+        "site": "finger",
+        "target": "dbp",
+        "mae_recomputed": 11.71627333450651,
+        "mae_saved": 11.716273334506509,
+        "carry_recomputed": 11.409917690090408,
+        "carry_saved": 11.409917690090408,
+        "ci_recomputed": [
+          9.557805216608322,
+          14.127619315459366
+        ],
+        "ci_saved": [
+          9.592052990911187,
+          14.14992847992955
+        ],
+        "n_subjects": 35
+      }
+    ]
+  },
+  "6_subject_level_bootstrap_reproduces": {
+    "pass": true,
+    "detail": "independent subject-resampling CIs within Monte-Carlo error"
+  },
+  "7_paired_comparisons_reproduce": {
+    "pass": true,
+    "detail": {
+      "n_comparisons": 74,
+      "n_failed": 0
+    }
+  },
+  "8_identical_evaluation_subjects": {
+    "pass": true,
+    "detail": {
+      "comparisons_with_identical_sets": 68,
+      "comparisons_restricted_to_common_subjects": [
+        {
+          "comparison": "ear sbp cross_day: personal hr_shape vs carry-forward",
+          "n_a": 32,
+          "n_b": 31,
+          "n_common": 31,
+          "identical_subject_sets": false
+        },
+        {
+          "comparison": "ear dbp cross_day: personal hr_shape vs carry-forward",
+          "n_a": 32,
+          "n_b": 31,
+          "n_common": 31,
+          "identical_subject_sets": false
+        },
+        {
+          "comparison": "finger sbp cross_day: personal hr_shape vs carry-forward",
+          "n_a": 35,
+          "n_b": 35,
+          "n_common": 34,
+          "identical_subject_sets": false
+        },
+        {
+          "comparison": "finger dbp cross_day: personal hr_shape vs carry-forward",
+          "n_a": 35,
+          "n_b": 35,
+          "n_common": 34,
+          "identical_subject_sets": false
+        },
+        {
+          "comparison": "sbp cross_day: ear vs finger (offset hr_shape, each site's own windows)",
+          "n_a": 31,
+          "n_b": 35,
+          "n_common": 31,
+          "identical_subject_sets": false
+        },
+        {
+          "comparison": "dbp cross_day: ear vs finger (offset hr_shape, each site's own windows)",
+          "n_a": 31,
+          "n_b": 35,
+          "n_common": 31,
+          "identical_subject_sets": false
+        }
+      ],
+      "note": "paired statistics always use the intersection of subjects (by construction)"
+    }
+  },
+  "9_exclusions_accounted": {
+    "pass": true,
+    "detail": {
+      "auricle_HC_1": [
+        "session1 untrusted/missing (no CNAP mask)",
+        "ear: <3 SQI-passing session-1 rest windows (no cross-day calibration)",
+        "finger: <3 SQI-passing session-1 rest windows (no cross-day calibration)"
+      ],
+      "auricle_HC_10": [
+        "included"
+      ],
+      "auricle_HC_11": [
+        "included"
+      ],
+      "auricle_HC_12": [
+        "included"
+      ],
+      "auricle_HC_13": [
+        "no session-2 record in dataset"
+      ],
+      "auricle_HC_14": [
+        "included"
+      ],
+      "auricle_HC_15": [
+        "included"
+      ],
+      "auricle_HC_16": [
+        "no session-2 record in dataset"
+      ],
+      "auricle_HC_17": [
+        "included"
+      ],
+      "auricle_HC_18": [
+        "included"
+      ],
+      "auricle_HC_19": [
+        "included"
+      ],
+      "auricle_HC_2": [
+        "included"
+      ],
+      "auricle_HC_20": [
+        "included"
+      ],
+      "auricle_HC_21": [
+        "ear: <3 SQI-passing session-1 rest windows (no cross-day calibration)",
+        "finger: <3 SQI-passing session-1 rest windows (no cross-day calibration)"
+      ],
+      "auricle_HC_22": [
+        "included"
+      ],
+      "auricle_HC_23": [
+        "ear: <3 SQI-passing session-1 rest windows (no cross-day calibration)",
+        "ear: <5 SQI-passing session-2 windows"
+      ],
+      "auricle_HC_24": [
+        "included"
+      ],
+      "auricle_HC_25": [
+        "included"
+      ],
+      "auricle_HC_26": [
+        "included"
+      ],
+      "auricle_HC_27": [
+        "included"
+      ],
+      "auricle_HC_28": [
+        "included"
+      ],
+      "auricle_HC_29": [
+        "no session-2 record in dataset"
+      ],
+      "auricle_HC_3": [
+        "included"
+      ],
+      "auricle_HC_30": [
+        "included"
+      ],
+      "auricle_HC_31": [
+        "included"
+      ],
+      "auricle_HC_32": [
+        "no session-2 record in dataset"
+      ],
+      "auricle_HC_33": [
+        "no session-2 record in dataset"
+      ],
+      "auricle_HC_34": [
+        "included"
+      ],
+      "auricle_HC_35": [
+        "ear: <5 SQI-passing session-2 windows"
+      ],
+      "auricle_HC_36": [
+        "included"
+      ],
+      "auricle_HC_37": [
+        "included"
+      ],
+      "auricle_HC_38": [
+        "included"
+      ],
+      "auricle_HC_39": [
+        "included"
+      ],
+      "auricle_HC_4": [
+        "included"
+      ],
+      "auricle_HC_40": [
+        "included"
+      ],
+      "auricle_HC_41": [
+        "included"
+      ],
+      "auricle_HC_42": [
+        "included"
+      ],
+      "auricle_HC_5": [
+        "ear: <3 SQI-passing session-1 rest windows (no cross-day calibration)",
+        "ear: <5 SQI-passing session-2 windows"
+      ],
+      "auricle_HC_6": [
+        "ear: <5 SQI-passing session-2 windows"
+      ],
+      "auricle_HC_7": [
+        "included"
+      ],
+      "auricle_HC_8": [
+        "included"
+      ],
+      "auricle_HC_9": [
+        "included"
+      ]
+    }
+  },
+  "11_day_shift_statistics": {
+    "pass": true,
+    "detail": {
+      "ear_sbp": {
+        "n_subjects": 29,
+        "r": 0.08989442591654928,
+        "r_ci": [
+          -0.29992750867174306,
+          0.3714803633299285
+        ],
+        "slope": 0.016786171709076484,
+        "slope_ci": [
+          -0.04411909801857203,
+          0.08585826714146515
+        ],
+        "slope_ci_excludes_1": true,
+        "slope_ci_excludes_0": false,
+        "min_detectable_abs_r_80pct_power": 0.49986426325926314,
+        "interpretation": "prediction shift is significantly smaller than the true day shift (slope<1); independence NOT established (r CI includes moderate correlations)"
+      },
+      "ear_dbp": {
+        "n_subjects": 29,
+        "r": -0.1354081226369191,
+        "r_ci": [
+          -0.4599622944404753,
+          0.2303035910423684
+        ],
+        "slope": -0.03362313014024937,
+        "slope_ci": [
+          -0.15852007367895135,
+          0.047101202448923976
+        ],
+        "slope_ci_excludes_1": true,
+        "slope_ci_excludes_0": false,
+        "min_detectable_abs_r_80pct_power": 0.49986426325926314,
+        "interpretation": "prediction shift is significantly smaller than the true day shift (slope<1)"
+      },
+      "finger_sbp": {
+        "n_subjects": 33,
+        "r": -0.04456604921337681,
+        "r_ci": [
+          -0.4309794245150887,
+          0.397606384991463
+        ],
+        "slope": -0.011327472658960294,
+        "slope_ci": [
+          -0.10908905512319846,
+          0.10308001865892155
+        ],
+        "slope_ci_excludes_1": true,
+        "slope_ci_excludes_0": false,
+        "min_detectable_abs_r_80pct_power": 0.4708856618295644,
+        "interpretation": "prediction shift is significantly smaller than the true day shift (slope<1); independence NOT established (r CI includes moderate correlations)"
+      },
+      "finger_dbp": {
+        "n_subjects": 33,
+        "r": 0.11577337733661829,
+        "r_ci": [
+          -0.2748509573332037,
+          0.43518812160795795
+        ],
+        "slope": 0.023847496579340526,
+        "slope_ci": [
+          -0.06979686761298466,
+          0.08853750127776089
+        ],
+        "slope_ci_excludes_1": true,
+        "slope_ci_excludes_0": false,
+        "min_detectable_abs_r_80pct_power": 0.4708856618295644,
+        "interpretation": "prediction shift is significantly smaller than the true day shift (slope<1); independence NOT established (r CI includes moderate correlations)"
+      }
+    }
+  },
+  "hard_failures": []
+}

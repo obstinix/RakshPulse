@@ -1,0 +1,64 @@
+{
+  "subjects": 42,
+  "subjects_with_both_sessions": 36,
+  "windows_by_session": {
+    "1": 8458,
+    "2": 7961
+  },
+  "k_cal_rest_windows": 3,
+  "n_boot": 2000,
+  "seed": 0,
+  "rail_gate": true,
+  "model_ranking": [
+    {
+      "model": "svr",
+      "cross_day_mae_mean": 13.797,
+      "mean_rank": 2.25,
+      "worst_rank": 5.0,
+      "within_to_cross_day_gap": 1.81
+    },
+    {
+      "model": "elasticnet",
+      "cross_day_mae_mean": 13.733,
+      "mean_rank": 2.5,
+      "worst_rank": 4.0,
+      "within_to_cross_day_gap": 1.721
+    },
+    {
+      "model": "extra_trees",
+      "cross_day_mae_mean": 13.92,
+      "mean_rank": 3.25,
+      "worst_rank": 4.0,
+      "within_to_cross_day_gap": 1.744
+    },
+    {
+      "model": "ridge",
+      "cross_day_mae_mean": 14.058,
+      "mean_rank": 4.5,
+      "worst_rank": 7.0,
+      "within_to_cross_day_gap": 1.91
+    },
+    {
+      "model": "xgboost",
+      "cross_day_mae_mean": 14.504,
+      "mean_rank": 4.75,
+      "worst_rank": 6.0,
+      "within_to_cross_day_gap": 1.93
+    },
+    {
+      "model": "random_forest",
+      "cross_day_mae_mean": 14.543,
+      "mean_rank": 5.0,
+      "worst_rank": 6.0,
+      "within_to_cross_day_gap": 1.996
+    },
+    {
+      "model": "hist_gb",
+      "cross_day_mae_mean": 15.146,
+      "mean_rank": 5.75,
+      "worst_rank": 7.0,
+      "within_to_cross_day_gap": 2.027
+    }
+  ],
+  "runtime_s": 266.8
+}

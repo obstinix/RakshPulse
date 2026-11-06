@@ -1,0 +1,2 @@
+model,cross_day_mae_mean,mean_rank,worst_rank,within_to_cross_day_gap
+ridge,14.025470250487173,1.0,1.0,2.052046688396314

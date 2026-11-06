@@ -1,0 +1,148 @@
+{
+  "finger_windows_clipped_fraction_overall": 0.08136914550216214,
+  "ear_windows_clipped_fraction_overall": 0.0016444363237712407,
+  "subjects_with_any_clipped_finger_window": 29,
+  "subjects_with_over_25pct_clipped_finger_windows": 5,
+  "top_clipped_subjects": {
+    "auricle_HC_5": 0.443,
+    "auricle_HC_15": 0.337,
+    "auricle_HC_7": 0.316,
+    "auricle_HC_4": 0.296,
+    "auricle_HC_13": 0.261
+  },
+  "hr_shape_ridge_offset": [
+    {
+      "site": "ear",
+      "target": "sbp",
+      "scope": "cross_day",
+      "mae_gated": 16.183,
+      "mae_ungated": 16.183,
+      "mae_change": 0.0,
+      "within_subject_pearson_median_gated": 0.377,
+      "within_subject_pearson_median_ungated": 0.377,
+      "windows_removed": 0
+    },
+    {
+      "site": "ear",
+      "target": "sbp",
+      "scope": "within_day",
+      "mae_gated": 13.847,
+      "mae_ungated": 13.847,
+      "mae_change": 0.0,
+      "within_subject_pearson_median_gated": 0.411,
+      "within_subject_pearson_median_ungated": 0.411,
+      "windows_removed": 0
+    },
+    {
+      "site": "ear",
+      "target": "sbp",
+      "scope": "within_day_s2",
+      "mae_gated": 12.228,
+      "mae_ungated": 12.228,
+      "mae_change": 0.0,
+      "within_subject_pearson_median_gated": 0.412,
+      "within_subject_pearson_median_ungated": 0.412,
+      "windows_removed": 0
+    },
+    {
+      "site": "ear",
+      "target": "dbp",
+      "scope": "cross_day",
+      "mae_gated": 12.79,
+      "mae_ungated": 12.79,
+      "mae_change": 0.0,
+      "within_subject_pearson_median_gated": 0.125,
+      "within_subject_pearson_median_ungated": 0.125,
+      "windows_removed": 0
+    },
+    {
+      "site": "ear",
+      "target": "dbp",
+      "scope": "within_day",
+      "mae_gated": 9.45,
+      "mae_ungated": 9.45,
+      "mae_change": 0.0,
+      "within_subject_pearson_median_gated": 0.212,
+      "within_subject_pearson_median_ungated": 0.212,
+      "windows_removed": 0
+    },
+    {
+      "site": "ear",
+      "target": "dbp",
+      "scope": "within_day_s2",
+      "mae_gated": 9.0,
+      "mae_ungated": 9.0,
+      "mae_change": 0.0,
+      "within_subject_pearson_median_gated": 0.108,
+      "within_subject_pearson_median_ungated": 0.108,
+      "windows_removed": 0
+    },
+    {
+      "site": "finger",
+      "target": "sbp",
+      "scope": "cross_day",
+      "mae_gated": 15.542,
+      "mae_ungated": 15.396,
+      "mae_change": 0.147,
+      "within_subject_pearson_median_gated": 0.253,
+      "within_subject_pearson_median_ungated": 0.262,
+      "windows_removed": 283
+    },
+    {
+      "site": "finger",
+      "target": "sbp",
+      "scope": "within_day",
+      "mae_gated": 15.451,
+      "mae_ungated": 14.971,
+      "mae_change": 0.48,
+      "within_subject_pearson_median_gated": 0.297,
+      "within_subject_pearson_median_ungated": 0.328,
+      "windows_removed": 490
+    },
+    {
+      "site": "finger",
+      "target": "sbp",
+      "scope": "within_day_s2",
+      "mae_gated": 12.19,
+      "mae_ungated": 12.305,
+      "mae_change": -0.115,
+      "within_subject_pearson_median_gated": 0.241,
+      "within_subject_pearson_median_ungated": 0.276,
+      "windows_removed": 277
+    },
+    {
+      "site": "finger",
+      "target": "dbp",
+      "scope": "cross_day",
+      "mae_gated": 11.716,
+      "mae_ungated": 11.733,
+      "mae_change": -0.017,
+      "within_subject_pearson_median_gated": 0.064,
+      "within_subject_pearson_median_ungated": 0.043,
+      "windows_removed": 283
+    },
+    {
+      "site": "finger",
+      "target": "dbp",
+      "scope": "within_day",
+      "mae_gated": 9.842,
+      "mae_ungated": 9.625,
+      "mae_change": 0.217,
+      "within_subject_pearson_median_gated": 0.054,
+      "within_subject_pearson_median_ungated": 0.04,
+      "windows_removed": 490
+    },
+    {
+      "site": "finger",
+      "target": "dbp",
+      "scope": "within_day_s2",
+      "mae_gated": 9.355,
+      "mae_ungated": 9.605,
+      "mae_change": -0.251,
+      "within_subject_pearson_median_gated": 0.043,
+      "within_subject_pearson_median_ungated": 0.061,
+      "windows_removed": 277
+    }
+  ],
+  "finger_sbp_cross_day_per_subject_mae_change_vs_clipped_fraction_r": 0.07725872168223928
+}

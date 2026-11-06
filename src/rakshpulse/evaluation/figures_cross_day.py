@@ -138,7 +138,9 @@ def drift(store_dir: Path, m: pd.DataFrame, out: Path) -> Path:
             for mode in ("carry_forward", "offset", "linear"):
                 g = t[t["mode"] == mode]
                 data.append((g.yhat - g.y).groupby(g.subject_id).mean().to_numpy())
-                labels.append(f"{site}\n{MODE_LABEL[mode].split(' (')[0]}")
+                labels.append(
+                    f"{site}\n" + {"carry_forward": "carry-fwd", "offset": "offset", "linear": "linear"}[mode]
+                )
         ax.boxplot(data, tick_labels=labels, showfliers=True)
         for i, dd in enumerate(data, 1):
             ax.plot(
