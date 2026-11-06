@@ -33,6 +33,10 @@ free disk space of at least 3× the archive size before starting.
 - **Exclusions:** `HC_1_1` has no CNAP reliability-mask channel, so its BP labels cannot be screened for
   calibration artefacts and the record is excluded. A few sessions (HC_38_2, HFC_108_1, HFC_124_1) have
   no activity channel. They are kept, but they cannot provide rest-calibration windows.
+- **Final acquisition state (2026-11-07):** 79 records verified against SHA256SUMS (42 healthy session 1 and
+  37 healthy session 2), 0 corrupt, 0 malformed. 78 have trusted labels (HC_1_1 lacks the CNAP mask). The
+  heart-failure cohort was deliberately stopped after the healthy cohort completed: 0/28 records, 3 resumable
+  `.part` files. Manifest: `data/metadata/auricle_manifest.json`.
 - Raw files stay in `data/raw/auricle/` exactly as published and are read directly (no extraction
   copy). Interim per-record windows go to `data/interim/auricle/`.
 - Citation: *Auricle: A Multimodal Wearable Sensing Dataset for Cardiovascular and Hemodynamic

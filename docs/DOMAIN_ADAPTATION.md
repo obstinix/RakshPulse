@@ -41,6 +41,10 @@ reflective MAX30102, but it is the closest open evidence available. Full tables 
   one-point calibration, SBP MAE was 14.36 vs 15.41 mmHg for carry-forward (ΔMAE −1.19, 95 % CI [−2.08, −0.34]).
   There was no DBP benefit.
 
+- **Cross-day (36 subjects, two days):** ear pulse shape keeps tracking within-session SBP changes on day 2
+  (r 0.38) and adds information beyond heart rate (partial r 0.23 [0.17, 0.29]). It does **not** track day-to-day
+  resting-BP shifts, and a day-1 calibration offset changes by 9–12 mmHg by day 2 (RESEARCH_FINDINGS.md).
+
 **Consequence for RakshPulse:** a behind-ear model must be trained on behind-ear data with a calibration
 step. Reusing fingertip models, even with feature re-scaling, is not supported by the evidence.
 

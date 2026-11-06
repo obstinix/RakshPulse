@@ -254,10 +254,19 @@ removes the bias but does not restore tracking. Morphology differs between sites
 Guilin-trained models applied to Auricle were at mean-predictor level (SBP window MAE 14.4–15.1 vs 15.1).
 Tracking was r 0.26 at the finger and ≤ 0.18 at the ear, with an SBP bias of −4 mmHg at the ear.
 
-### F5. Cross-day calibration drift
+### F5. Cross-day validation (complete; audited)
 
-*In progress:* healthy-cohort session-2 recordings (a different day) are still downloading. This section is
-updated when `run_auricle.py` has session-2 data (E5: calibrate on session 1, evaluate on session 2).
+Full results, methods and interpretation are in **[RESEARCH_FINDINGS.md](RESEARCH_FINDINGS.md)**. Tables there are
+generated from `results/cross_day/` by `scripts/write_findings.py` after the independent audit
+(`scripts/audit_cross_day.py`, 11/11 checks passed) has run. Summary for 36 healthy subjects with both sessions
+(37 session-2 records verified):
+
+- Within a day, ear PPG tracks SBP changes (r 0.41) beyond heart rate (partial r 0.23 [0.17, 0.29]), and calibration
+  beats carry-forward by about 1 mmHg (CI excludes 0).
+- Across days, a day-1 calibration **does not** beat carry-forward for SBP, and is worse for ear DBP. The model does not
+  follow day-to-day resting-BP shifts (slope 0.02 [−0.04, 0.09]; CI excludes 1). Calibration offsets are unstable
+  across days (|change| 9–12 mmHg).
+- No model differs from ridge in a meaningful way. Rail-clipping removal changed MAEs by ≤ 0.5 mmHg.
 
 ## Interpretation
 

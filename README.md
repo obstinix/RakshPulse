@@ -22,6 +22,7 @@ high-altitude settings, built around the MAX30102 optical sensor.
 | Inference API with quality-based rejection | ✅ Implemented (proposed interface) |
 | Tests + CI (ruff, pytest, Python 3.10–3.12) | ✅ Implemented |
 | Finger vs earlobe study (Auricle, 41 subjects) | ✅ Implemented ([MODEL_EVALUATION §F](docs/MODEL_EVALUATION.md)) |
+| Cross-day calibration study (Auricle, 36 subjects × 2 days) | ✅ Completed and independently audited ([RESEARCH_FINDINGS](docs/RESEARCH_FINDINGS.md)) |
 | Behind-ear validation | ❌ **Not done.** No behind-ear data exists yet ([docs/DOMAIN_ADAPTATION.md](docs/DOMAIN_ADAPTATION.md)) |
 | ESP32 / ONNX / TFLite deployment | ❌ Planned. Footprint measured only |
 | Clinical validation (ISO 81060-2 / IEEE 1708) | ❌ Not started |
@@ -52,7 +53,12 @@ high-altitude settings, built around the MAX30102 optical sensor.
    calibration, earlobe SBP error beat carry-forward by about 1.2 mmHg (95 % CI [−2.08, −0.34]), but absolute
    MAE was still about 14 mmHg and DBP showed no benefit. **Finger-trained models lost most tracking at the
    ear (r 0.34 → ≤ 0.19)**, so a behind-ear model needs behind-ear training data.
-9. The realistic path forward is **per-user cuff calibration plus behind-ear data collection**.
+9. **Cross-day (36 subjects, two recording days, audited):** a day-1 calibration does **not** hold on day 2. The model
+   does not follow day-to-day resting-BP shifts (slope 0.02, 95 % CI [−0.04, 0.09]), calibration offsets drift by
+   9–12 mmHg, and day-2 SBP error with day-1 calibration (ear 16.2 mmHg MAE) is no better than reporting the
+   calibration value. Within a session, ear pulse shape does carry heart-rate-independent SBP trend information.
+   See [docs/RESEARCH_FINDINGS.md](docs/RESEARCH_FINDINGS.md).
+10. The realistic path forward is **per-user cuff calibration plus behind-ear data collection**.
    It is not a bigger model on fingertip data.
 
 ## Installation
@@ -84,6 +90,15 @@ python -m rakshpulse.data.physionet auricle --via-zip --jobs 3
 python -m rakshpulse.data.build_auricle
 python scripts/run_auricle.py
 python scripts/visualize_auricle.py
+python scripts/run_cross_day.py                                   # all models, 2,000 subject-bootstrap draws
+python scripts/run_cross_day.py --models ridge --no-rail-gate --tag _no_rail_gate
+python scripts/compare_rail_gate.py
+python -m rakshpulse.data.physionet auricle --verify               # acquisition manifest
+python scripts/audit_cross_day.py                                 # independent audit (must pass)
+python scripts/make_cross_day_figures.py && python scripts/write_findings.py
+
+# or everything in order:
+python scripts/reproduce.py
 python scripts/compare_models.py      # paired bootstrap CIs
 python scripts/visualize_ppg.py       # figures in docs/figures/
 
