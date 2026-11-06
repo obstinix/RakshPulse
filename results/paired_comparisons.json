@@ -1,0 +1,158 @@
+[
+  {
+    "comparison": "PPG-only best vs mean",
+    "target": "sbp",
+    "n_subjects": 148,
+    "mae_candidate": 11.41821729814684,
+    "mae_reference": 10.82553931999704,
+    "mae_diff": 0.5926779781497995,
+    "ci95": [
+      -0.1987235242286739,
+      1.4123621753337503
+    ],
+    "significant": false
+  },
+  {
+    "comparison": "PPG-only best vs mean",
+    "target": "dbp",
+    "n_subjects": 148,
+    "mae_candidate": 6.734471913930532,
+    "mae_reference": 7.589511277033761,
+    "mae_diff": -0.8550393631032277,
+    "ci95": [
+      -1.477656936542459,
+      -0.22354773330260433
+    ],
+    "significant": true
+  },
+  {
+    "comparison": "PPG-only ridge vs mean",
+    "target": "sbp",
+    "n_subjects": 148,
+    "mae_candidate": 11.219774061887955,
+    "mae_reference": 10.82553931999704,
+    "mae_diff": 0.3942347418909129,
+    "ci95": [
+      -0.287746773510168,
+      1.1002407361799955
+    ],
+    "significant": false
+  },
+  {
+    "comparison": "PPG-only ridge vs mean",
+    "target": "dbp",
+    "n_subjects": 148,
+    "mae_candidate": 6.762726999173154,
+    "mae_reference": 7.589511277033761,
+    "mae_diff": -0.8267842778606068,
+    "ci95": [
+      -1.4109077111548027,
+      -0.24149602565857536
+    ],
+    "significant": true
+  },
+  {
+    "comparison": "Demographics ridge vs mean",
+    "target": "sbp",
+    "n_subjects": 148,
+    "mae_candidate": 9.207981648520974,
+    "mae_reference": 10.826683638770605,
+    "mae_diff": -1.6187019902496305,
+    "ci95": [
+      -2.5218561331806,
+      -0.6971947928859931
+    ],
+    "significant": true
+  },
+  {
+    "comparison": "Demographics ridge vs mean",
+    "target": "dbp",
+    "n_subjects": 148,
+    "mae_candidate": 7.276624812138836,
+    "mae_reference": 7.587579278040079,
+    "mae_diff": -0.310954465901243,
+    "ci95": [
+      -0.641808841237739,
+      0.019245377118254914
+    ],
+    "significant": false
+  },
+  {
+    "comparison": "PPG+demo ridge vs demographics ridge",
+    "target": "sbp",
+    "n_subjects": 148,
+    "mae_candidate": 8.59045165725906,
+    "mae_reference": 9.207981648520974,
+    "mae_diff": -0.6175299912619159,
+    "ci95": [
+      -1.5257404035754976,
+      0.2967935483009605
+    ],
+    "significant": false
+  },
+  {
+    "comparison": "PPG+demo ridge vs demographics ridge",
+    "target": "dbp",
+    "n_subjects": 148,
+    "mae_candidate": 6.17781110596126,
+    "mae_reference": 7.276624812138836,
+    "mae_diff": -1.0988137061775751,
+    "ci95": [
+      -1.8191345264225205,
+      -0.30729917641574883
+    ],
+    "significant": true
+  },
+  {
+    "comparison": "PPG+demo SVR vs demographics ridge",
+    "target": "sbp",
+    "n_subjects": 148,
+    "mae_candidate": 8.631614579068295,
+    "mae_reference": 9.207981648520974,
+    "mae_diff": -0.5763670694526792,
+    "ci95": [
+      -1.4996987282908303,
+      0.3435084659393701
+    ],
+    "significant": false
+  },
+  {
+    "comparison": "PPG+demo SVR vs demographics ridge",
+    "target": "dbp",
+    "n_subjects": 148,
+    "mae_candidate": 6.092669640660633,
+    "mae_reference": 7.276624812138836,
+    "mae_diff": -1.1839551714782033,
+    "ci95": [
+      -1.8474310503522469,
+      -0.5310199274655253
+    ],
+    "significant": true
+  },
+  {
+    "comparison": "CNN red+IR vs mean",
+    "target": "sbp",
+    "n_subjects": 148,
+    "mae_candidate": 10.90874552899432,
+    "mae_reference": 10.82553931999704,
+    "mae_diff": 0.08320620899728053,
+    "ci95": [
+      -0.7271437824234901,
+      0.8916720011249242
+    ],
+    "significant": false
+  },
+  {
+    "comparison": "CNN red+IR vs mean",
+    "target": "dbp",
+    "n_subjects": 148,
+    "mae_candidate": 7.349434263141297,
+    "mae_reference": 7.589511277033761,
+    "mae_diff": -0.24007701389246355,
+    "ci95": [
+      -0.8866406432691228,
+      0.4096285900818819
+    ],
+    "significant": false
+  }
+]

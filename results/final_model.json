@@ -1,0 +1,28 @@
+{
+  "bundle": "models/rakshpulse_bp_v0.joblib",
+  "version": "0.1.0-ppg_ir_red+demo-ridge",
+  "size_bytes": 5711,
+  "n_features": 84,
+  "validation": {
+    "sbp": {
+      "mae": 8.59045165725906,
+      "sd_error": 11.263175293647011,
+      "mean_error": 0.7132435309010908,
+      "n_subjects": 148
+    },
+    "dbp": {
+      "mae": 6.17781110596126,
+      "sd_error": 8.31896871794997,
+      "mean_error": 0.4040428739891448,
+      "n_subjects": 148
+    }
+  },
+  "demo_prediction_30s_record": {
+    "accepted": true,
+    "sbp": 126.5714275481918,
+    "dbp": 79.82258017695688,
+    "windows": 5
+  },
+  "latency_30s_record_ms_desktop_cpu": 235.7,
+  "n_parameters": 170
+}

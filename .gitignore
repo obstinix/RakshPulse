@@ -25,3 +25,6 @@ models/*
 # Secrets
 .env
 *.token
+
+# Per-window experiment predictions (regenerable, contain per-subject derived data)
+results/predictions/

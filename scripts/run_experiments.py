@@ -85,7 +85,35 @@ def evaluate(pred_df: pd.DataFrame, target: str) -> dict:
     }
 
 
+def make_figures(log: dict) -> None:
+    """Bland-Altman / scatter / error histograms for the best *non-baseline* model per feature set."""
+    A = pd.DataFrame(log["A_model_comparison"])
+    for f in FIG.glob("bland_altman_*.png"):
+        f.unlink()
+    for f in list(FIG.glob("pred_vs_true_*.png")) + list(FIG.glob("error_hist_*.png")):
+        f.unlink()
+    for fs_name, tag in (("ppg_ir_red", "ppg"), ("ppg_ir_red+demo", "ppg_demo")):
+        for target in TARGETS:
+            sub = A[(A.feature_set == fs_name) & (A.target == target) & (A.model != "mean")].sort_values("subj_mae")
+            best = sub.iloc[0]
+            pdf = pd.read_csv(RES / "predictions" / f"A_{fs_name}_{best.model}_{target}.csv")
+            s = subject_level(pdf, target)
+            name = f"{tag}_{target}_{best.model}"
+            plots.bland_altman(s.y, s.pred, FIG / f"bland_altman_{name}.png", f"{target.upper()} ({tag}, {best.model})")
+            plots.pred_vs_true(s.y, s.pred, FIG / f"pred_vs_true_{name}.png", target.upper())
+            mean_pdf = pd.read_csv(RES / "predictions" / f"A_ppg_ir_red_mean_{target}.csv")
+            sm = subject_level(mean_pdf, target)
+            plots.error_hist(
+                {f"{best.model} ({tag})": s.pred - s.y, "mean baseline": sm.pred - sm.y},
+                FIG / f"error_hist_{name}.png",
+                target.upper(),
+            )
+
+
 def main() -> int:
+    if "--figures-only" in sys.argv:
+        make_figures(json.loads((RES / "feature_experiments.json").read_text()))
+        return 0
     RES.mkdir(exist_ok=True)
     (RES / "predictions").mkdir(exist_ok=True)
     g = pd.read_csv(PROCESSED / "guilin_dualwave_features.csv")
@@ -213,22 +241,7 @@ def main() -> int:
     log["meta"] = {"runtime_s": round(time.time() - t0, 1), "outer_folds": 5, "inner_folds": 3, "seeds": [0, 1, 2]}
     (RES / "feature_experiments.json").write_text(json.dumps(log, indent=2, default=float))
 
-    # ---------------- figures for the best PPG-only model per target
-    A = pd.DataFrame(log["A_model_comparison"])
-    for target in TARGETS:
-        sub = A[(A.feature_set == "ppg_ir_red") & (A.target == target)].sort_values("subj_mae")
-        best = sub.iloc[0]
-        pdf = pd.read_csv(RES / "predictions" / f"A_ppg_ir_red_{best.model}_{target}.csv")
-        s = subject_level(pdf, target)
-        plots.bland_altman(s.y, s.pred, FIG / f"bland_altman_{target}_{best.model}.png", target.upper())
-        plots.pred_vs_true(s.y, s.pred, FIG / f"pred_vs_true_{target}_{best.model}.png", target.upper())
-        mean_pdf = pd.read_csv(RES / "predictions" / f"A_ppg_ir_red_mean_{target}.csv")
-        sm = subject_level(mean_pdf, target)
-        plots.error_hist(
-            {f"{best.model} (PPG)": s.pred - s.y, "mean baseline": sm.pred - sm.y},
-            FIG / f"error_hist_{target}.png",
-            target.upper(),
-        )
+    make_figures(log)
     print(f"done in {time.time() - t0:.0f}s")
     return 0
 
