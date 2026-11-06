@@ -33,6 +33,23 @@ from .download import DATA_ROOT
 INTERIM = DATA_ROOT / "interim" / "auricle"
 WIN_S, STEP_S = 10.0, 5.0
 SBP_OK, DBP_OK = (60.0, 250.0), (30.0, 150.0)
+# The BIOPAC amplifier saturates at ±10 V. In the healthy cohort 11 % of finger windows (0.2 % of ear windows)
+# contain rail-clipped samples, which flatten pulse peaks/troughs and corrupt morphology features. The
+# generic flatline check cannot see this because Auricle PPG carries no optical DC. Windows with more than
+# 1 % of samples on the rail are therefore rejected.
+RAIL_V = 9.99
+MAX_RAIL_FRACTION = 0.01
+
+
+def apply_rail_gate(df: pd.DataFrame) -> pd.DataFrame:
+    """Mark windows with > MAX_RAIL_FRACTION rail-clipped samples as SQI failures (idempotent)."""
+    for site in ("ear", "finger"):
+        clipped = df[f"{site}_sat_fraction"] > MAX_RAIL_FRACTION
+        reasons = df[f"{site}_sqi_reasons"].fillna("").astype(str)
+        add = clipped & ~reasons.str.contains("clipped_at_rail")
+        df.loc[add, f"{site}_sqi_reasons"] = (reasons[add] + "|clipped_at_rail").str.strip("|")
+        df[f"{site}_sqi_ok"] = df[f"{site}_sqi_ok"].astype(bool) & ~clipped
+    return df
 
 
 def _site_features(sig: np.ndarray, fs: float, site: str) -> dict:
@@ -42,7 +59,7 @@ def _site_features(sig: np.ndarray, fs: float, site: str) -> dict:
     out[f"{site}_sqi_ok"] = s.acceptable
     out[f"{site}_sqi_reasons"] = "|".join(s.reasons)
     out[f"{site}_sqi_template_corr"] = s.template_corr
-    out[f"{site}_sat_fraction"] = float(np.mean(np.abs(sig) >= 9.99))  # ±10 V amplifier rail
+    out[f"{site}_sat_fraction"] = float(np.mean(np.abs(sig) >= RAIL_V))  # ±10 V amplifier rail
     return out
 
 
@@ -93,7 +110,7 @@ def build(jobs: int = 6) -> pd.DataFrame:
     demo = load_auricle_demographics()
     recs = auricle_records()
     dfs = Parallel(n_jobs=jobs)(delayed(process_record)(r, demo) for r in recs)
-    df = pd.concat([d for d in dfs if len(d)], ignore_index=True)
+    df = apply_rail_gate(pd.concat([d for d in dfs if len(d)], ignore_index=True))
     PROCESSED.mkdir(parents=True, exist_ok=True)
     df.to_csv(PROCESSED / "auricle_features.csv", index=False)
     print(

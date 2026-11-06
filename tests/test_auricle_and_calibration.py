@@ -353,3 +353,23 @@ def test_shape_features_are_hr_invariant_by_construction():
     )
     add_normalised_shape(df, "e")
     assert np.allclose(df["e_w50_n"], 1.0)  # duration-scaled widths become identical
+
+
+def test_rail_gate_rejects_clipped_windows_only():
+    from rakshpulse.data.build_auricle import apply_rail_gate
+
+    df = pd.DataFrame(
+        {
+            "ear_sat_fraction": [0.0, 0.005, 0.2],
+            "finger_sat_fraction": [0.02, 0.0, 0.0],
+            "ear_sqi_ok": [True, True, True],
+            "finger_sqi_ok": [True, True, False],
+            "ear_sqi_reasons": ["", "", ""],
+            "finger_sqi_reasons": ["", "", "too_few_beats"],
+        }
+    )
+    out = apply_rail_gate(df.copy())
+    assert out.ear_sqi_ok.tolist() == [True, True, False]
+    assert out.finger_sqi_ok.tolist() == [False, True, False]
+    assert out.finger_sqi_reasons[0] == "clipped_at_rail" and out.finger_sqi_reasons[2] == "too_few_beats"
+    assert apply_rail_gate(out.copy()).finger_sqi_reasons[0] == "clipped_at_rail"  # idempotent
