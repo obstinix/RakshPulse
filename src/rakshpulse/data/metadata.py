@@ -27,9 +27,18 @@ def summarise(name: str) -> dict:
     if subj["sbp"].notna().any():
         for k in ("sbp", "dbp", "demo_age"):
             s = subj[k].dropna()
-            out[k] = {q: round(float(v), 1) for q, v in
-                      {"min": s.min(), "p25": s.quantile(.25), "median": s.median(),
-                       "p75": s.quantile(.75), "max": s.max(), "mean": s.mean(), "sd": s.std()}.items()}
+            out[k] = {
+                q: round(float(v), 1)
+                for q, v in {
+                    "min": s.min(),
+                    "p25": s.quantile(0.25),
+                    "median": s.median(),
+                    "p75": s.quantile(0.75),
+                    "max": s.max(),
+                    "mean": s.mean(),
+                    "sd": s.std(),
+                }.items()
+            }
         out["hypertensive_sbp_ge_140"] = int((subj["sbp"] >= 140).sum())
         out["hypotensive_sbp_lt_90"] = int((subj["sbp"] < 90).sum())
         out["male_fraction"] = round(float(subj["demo_sex"].mean()), 3)

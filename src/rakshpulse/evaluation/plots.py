@@ -40,8 +40,9 @@ def plot_window(raw: dict[str, np.ndarray], fs_raw: float, processed: dict, path
         axes[1, j].plot(t, z, lw=0.9, color=IR_COLOR if c == "ir" else RED_COLOR)
         axes[1, j].plot(t[pk], z[pk], "kx", ms=5)
         s = processed[c].sqi
-        axes[1, j].set_title(f"{c.upper()} 0.5–10 Hz, z-scored | SQI {'OK' if s.acceptable else 'REJECT'} "
-                             f"(tmpl r={s.template_corr:.2f})")
+        axes[1, j].set_title(
+            f"{c.upper()} 0.5–10 Hz, z-scored | SQI {'OK' if s.acceptable else 'REJECT'} (tmpl r={s.template_corr:.2f})"
+        )
         axes[1, j].set_xlabel("time (s)")
     fig.suptitle(title)
     return _save(fig, path)

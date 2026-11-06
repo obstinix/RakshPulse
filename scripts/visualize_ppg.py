@@ -20,7 +20,6 @@ from rakshpulse.data.build import PROCESSED  # noqa: E402
 from rakshpulse.data.dataset_loader import iter_foggia, iter_guilin, iter_ppg_bp  # noqa: E402
 from rakshpulse.evaluation import plots  # noqa: E402
 from rakshpulse.features.feature_pipeline import extract_features  # noqa: E402
-from rakshpulse.preprocessing.segmentation import sliding_windows  # noqa: E402
 
 FIG = ROOT / "docs" / "figures"
 
@@ -40,14 +39,18 @@ def main() -> int:
             b = a + int(10 * rec.fs)
             raw = {c: rec.channels[c][a:b] for c in ("ir", "red")}
             _, proc = extract_features(raw, rec.fs)
-            plots.plot_window(raw, rec.fs, proc, FIG / f"guilin_window_{tag}.png",
-                              f"Guilin {rec.record_id} t={t0:.0f}s ({tag})")
+            plots.plot_window(
+                raw, rec.fs, proc, FIG / f"guilin_window_{tag}.png", f"Guilin {rec.record_id} t={t0:.0f}s ({tag})"
+            )
         if not wanted:
             break
 
     # 2. mean beats by dataset (IR channel)
-    groups: dict[str, list] = {"Guilin (finger?, 18–36 y)": [], "Foggia (fingertip, 18–86 y)": [],
-                               "PPG-BP (fingertip, 20–89 y)": []}
+    groups: dict[str, list] = {
+        "Guilin (finger?, 18–36 y)": [],
+        "Foggia (fingertip, 18–86 y)": [],
+        "PPG-BP (fingertip, 20–89 y)": [],
+    }
     sbp_groups: dict[str, list] = {}
     rng = np.random.default_rng(0)
     g_recs = list(iter_guilin())
@@ -69,8 +72,11 @@ def main() -> int:
             groups["PPG-BP (fingertip, 20–89 y)"].append(proc["ir"].beats)
     plots.plot_mean_beats(groups, FIG / "mean_beat_by_dataset.png", "IR ensemble beat by dataset (mean ± SD)")
     order = sorted(sbp_groups, key=lambda k: ("<" not in k, "≥" in k))
-    plots.plot_mean_beats({k: sbp_groups[k] for k in order}, FIG / "mean_beat_by_sbp_tertile.png",
-                          "Guilin IR ensemble beat by SBP tertile")
+    plots.plot_mean_beats(
+        {k: sbp_groups[k] for k in order},
+        FIG / "mean_beat_by_sbp_tertile.png",
+        "Guilin IR ensemble beat by SBP tertile",
+    )
 
     # 3. SQI by state
     un = pd.read_csv(PROCESSED / "guilin_unlabelled_features.csv")

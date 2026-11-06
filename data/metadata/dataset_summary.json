@@ -38,8 +38,8 @@
   "guilin_dualwave": {
     "windows": 4934,
     "subjects": 148,
-    "ir_sqi_pass": 0.9682,
-    "red_sqi_pass": 0.9453,
+    "ir_sqi_pass": 0.9662,
+    "red_sqi_pass": 0.9335,
     "sbp": {
       "min": 84.0,
       "p25": 105.0,
@@ -74,8 +74,8 @@
   "guilin_unlabelled": {
     "windows": 9849,
     "subjects": 148,
-    "ir_sqi_pass": 0.9668,
-    "red_sqi_pass": 0.9472
+    "ir_sqi_pass": 0.9547,
+    "red_sqi_pass": 0.9304
   },
   "ppg_bp": {
     "windows": 657,

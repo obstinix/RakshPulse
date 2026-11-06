@@ -113,8 +113,10 @@ def aggregate_beats(beats: list[np.ndarray], fs: float) -> dict[str, float]:
     if not beats:
         return dict.fromkeys(BEAT_FEATURES, np.nan)
     rows = [beat_features(b, fs) for b in beats]
-    return {k: float(np.nanmedian([r[k] for r in rows])) if any(np.isfinite(r[k]) for r in rows) else np.nan
-            for k in BEAT_FEATURES}
+    return {
+        k: float(np.nanmedian([r[k] for r in rows])) if any(np.isfinite(r[k]) for r in rows) else np.nan
+        for k in BEAT_FEATURES
+    }
 
 
 def mean_beat(beats: list[np.ndarray], n: int = 100) -> np.ndarray:
