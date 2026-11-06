@@ -1,0 +1,71 @@
+"""Personal-calibration evaluation and BP-change tracking metrics.
+
+Calibration protocol (one-point offset, as used by commercial cuffless devices):
+for each session, the first ``k_cal`` valid **rest** windows serve as the cuff calibration.
+Their reference BP mean is the calibration value. The model's mean prediction on the same
+windows defines an offset that is applied to every later prediction. Evaluation windows
+start ≥ ``gap_s`` after the last calibration window, so overlapping windows cannot leak.
+
+The fair baseline for any calibrated device is **carry-forward**: keep reporting the
+calibration value. A calibrated model is only useful if it beats carry-forward, especially
+during BP-changing manoeuvres (ESH 2023 cuffless validation recommendations).
+"""
+
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
+
+STRESSORS = (1, 2, 3, 4)  # breath-hold, Valsalva, exercise, cold pressor (Auricle codes)
+
+
+def within_session_r(d: pd.DataFrame, target: str, min_windows: int = 10, min_sd: float = 2.0) -> float:
+    rs = []
+    for _, g in d.groupby("record_id"):
+        if len(g) >= min_windows and g[target].std() > min_sd and g["pred"].std() > 0:
+            rs.append(np.corrcoef(g[target], g["pred"])[0, 1])
+    return float(np.median(rs)) if rs else float("nan")
+
+
+def calibrated_errors(d: pd.DataFrame, target: str, k_cal: int = 3, gap_s: float = 10.0) -> dict:
+    """``d`` needs columns record_id, t_start_s, activity, <target>, pred."""
+    em, ec, sm, sc, dt, dp = [], [], [], [], [], []
+    n_sessions = 0
+    for _, g in d.groupby("record_id"):
+        g = g.sort_values("t_start_s")
+        rest = g[g["activity"] == 0]
+        if len(rest) < k_cal:
+            continue
+        cal = rest.iloc[:k_cal]
+        ev = g[g["t_start_s"] > cal["t_start_s"].max() + gap_s]
+        if len(ev) < 5:
+            continue
+        n_sessions += 1
+        ref = cal[target].mean()
+        offset = ref - cal["pred"].mean()
+        e_model = (ev["pred"] + offset - ev[target]).to_numpy()
+        e_carry = (ref - ev[target]).to_numpy()
+        st = ev["activity"].isin(STRESSORS).to_numpy()
+        em.append(e_model)
+        ec.append(e_carry)
+        sm.append(e_model[st])
+        sc.append(e_carry[st])
+        dt.append((ev[target] - ref).to_numpy())
+        dp.append((ev["pred"] - cal["pred"].mean()).to_numpy())
+    if not n_sessions:
+        return {"n_sessions": 0}
+    cat = np.concatenate
+    em, ec, sm, sc, dt, dp = (cat(x) for x in (em, ec, sm, sc, dt, dp))
+    return {
+        "n_sessions": n_sessions,
+        "n_windows": int(em.size),
+        "calibrated_model_mae": float(np.abs(em).mean()),
+        "carry_forward_mae": float(np.abs(ec).mean()),
+        "calibrated_model_me": float(em.mean()),
+        "calibrated_model_sd": float(em.std(ddof=1)),
+        "carry_forward_sd": float(ec.std(ddof=1)),
+        "stressor_windows": int(sm.size),
+        "stressor_calibrated_model_mae": float(np.abs(sm).mean()) if sm.size else float("nan"),
+        "stressor_carry_forward_mae": float(np.abs(sc).mean()) if sc.size else float("nan"),
+        "delta_tracking_r": float(np.corrcoef(dt, dp)[0, 1]) if dp.std() > 0 and dt.std() > 0 else float("nan"),
+    }

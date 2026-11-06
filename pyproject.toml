@@ -17,6 +17,7 @@ dependencies = [
   "matplotlib>=3.8",
   "joblib>=1.3",
   "openpyxl>=3.1",
+  "wfdb>=4.1",
 ]
 
 [project.optional-dependencies]
@@ -41,3 +42,4 @@ pythonpath = ["tests"]
 [tool.ruff.lint.per-file-ignores]
 # dataset URLs, titles and citations are kept verbatim on one line
 "src/rakshpulse/data/download.py" = ["E501"]
+"src/rakshpulse/data/physionet.py" = ["E501"]

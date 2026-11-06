@@ -165,4 +165,82 @@ def iter_ppg_bp(root: Path = PPGBP_DIR) -> Iterator[Record]:
             )
 
 
+# --------------------------------------------------------------------------------------
+# Auricle (PhysioNet auricle 1.0.0): simultaneous finger + EARLOBE PPG (Nonin, transmissive),
+# continuous finger-cuff CNAP BP (beat-level SBP/DBP), 1 kHz, healthy + heart-failure cohorts
+# --------------------------------------------------------------------------------------
+AURICLE_DIR = DATA_ROOT / "raw" / "auricle"  # read directly from the read-only raw files
+AURICLE_FS = 1000.0
+AURICLE_CHANNELS = ["PPG_Ear", "PPG_Finger", "Systolic_BP", "Diastolic_BP", "CNAP_Annotations", "Activity_Annotations"]
+AURICLE_ACTIVITIES = {0: "rest", 1: "breath_hold", 2: "valsalva", 3: "exercise", 4: "cold_pressor", 9: "not_applicable"}
+
+
+@dataclass
+class AuricleRecord:
+    record_id: str  # e.g. HC_10_1
+    subject_id: str  # e.g. auricle_HC_10 (sessions of one person share it)
+    cohort: str  # "HC" healthy or "HFC" heart failure
+    fs: float
+    ear: np.ndarray
+    finger: np.ndarray
+    sbp: np.ndarray  # beat-level CNAP systolic BP, sample-and-hold (mmHg)
+    dbp: np.ndarray
+    cnap_valid: np.ndarray  # True where CNAP data are reliable (mask == 1)
+    activity: np.ndarray  # integer activity code per sample
+    demographics: dict[str, float] = field(default_factory=dict)
+
+
+def load_auricle_demographics(root: Path = AURICLE_DIR) -> dict[str, dict]:
+    out = {}
+    with (root / "demographics.csv").open(newline="", encoding="utf-8-sig") as fh:
+        for row in csv.DictReader(fh):
+
+            def num(k, row=row):
+                try:
+                    return float(row[k])
+                except (TypeError, ValueError):
+                    return np.nan
+
+            out[row["ID"].strip()] = {
+                "age": num("Age"),
+                "sex": _sex_code(row.get("Gender", "")),
+                "height_cm": num("Height (cm)"),
+                "weight_kg": num("Weight (kg)"),
+            }
+    return out
+
+
+def auricle_records(root: Path = AURICLE_DIR, cohorts: tuple[str, ...] = ("HC", "HFC")) -> list[str]:
+    """Records whose .dat and .hea are fully downloaded (verified files only; no .part)."""
+    recs = []
+    for line in (root / "RECORDS").read_text().split():
+        rid = line.split("/")[0]
+        d = root / "data" / rid
+        if rid.split("_")[0] in cohorts and (d / f"{rid}.dat").exists() and (d / f"{rid}.hea").exists():
+            recs.append(rid)
+    return recs
+
+
+def read_auricle(record_id: str, root: Path = AURICLE_DIR, demo: dict | None = None) -> AuricleRecord:
+    import wfdb
+
+    r = wfdb.rdrecord(str(root / "data" / record_id / record_id), channel_names=AURICLE_CHANNELS)
+    x = {n: r.p_signal[:, i] for i, n in enumerate(r.sig_name)}
+    cohort, num, _ = record_id.split("_")
+    demo = demo if demo is not None else load_auricle_demographics(root)
+    return AuricleRecord(
+        record_id=record_id,
+        subject_id=f"auricle_{cohort}_{num}",
+        cohort=cohort,
+        fs=float(r.fs),
+        ear=x["PPG_Ear"],
+        finger=x["PPG_Finger"],
+        sbp=x["Systolic_BP"],
+        dbp=x["Diastolic_BP"],
+        cnap_valid=np.round(x["CNAP_Annotations"]).astype(int) == 1,
+        activity=np.round(x["Activity_Annotations"]).astype(int),
+        demographics=demo.get(f"{cohort}_{num}", {}),
+    )
+
+
 LOADERS = {"guilin_dualwave": iter_guilin, "foggia_multiwave": iter_foggia, "ppg_bp": iter_ppg_bp}
