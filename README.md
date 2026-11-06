@@ -1,0 +1,147 @@
+# RakshPulse ML
+
+Research pipeline for **cuffless blood-pressure estimation from red/IR PPG**. It supports
+RakshPulse, a proposed behind-the-ear BP monitor for military personnel in field and
+high-altitude settings, built around the MAX30102 optical sensor.
+
+> **Not a medical device.** Nothing here is clinically validated, and nothing has been tested
+> on behind-ear MAX30102 recordings. Every result below comes from public **fingertip-type**
+> datasets. Read [Current limitations](#current-limitations) before using any number.
+
+## Status at a glance
+
+| Component | Status |
+|---|---|
+| Requirements extracted from project PDFs | ✅ Implemented ([docs/PROJECT_REQUIREMENTS.md](docs/PROJECT_REQUIREMENTS.md)) |
+| Dataset survey (16 datasets, weighted scoring) | ✅ Implemented ([docs/DATASET_RESEARCH.md](docs/DATASET_RESEARCH.md)) |
+| Dataset download, checksums, provenance, validation | ✅ Implemented (3 datasets, ≈650 MB) |
+| Preprocessing + signal-quality gate + features | ✅ Implemented and unit-tested |
+| Baseline and advanced models, subject-wise nested CV | ✅ Implemented. Results below |
+| 1D CNN (raw waveform) | ✅ Experimental |
+| ECG pulse-arrival-time study | 🧪 Auxiliary research only (no ECG on MAX30102) |
+| Inference API with quality-based rejection | ✅ Implemented (proposed interface) |
+| Tests + CI (ruff, pytest, Python 3.10–3.12) | ✅ Implemented |
+| Behind-ear validation | ❌ **Not done.** No data exists yet ([docs/DOMAIN_ADAPTATION.md](docs/DOMAIN_ADAPTATION.md)) |
+| ESP32 / ONNX / TFLite deployment | ❌ Planned. Footprint measured only |
+| Clinical validation (ISO 81060-2 / IEEE 1708) | ❌ Not started |
+
+## Key findings (honest summary)
+
+1. **No public dataset has behind-ear PPG with BP labels.** This is a research gap. RakshPulse
+   must collect its own reference-labelled MAX30102 recordings.
+2. On 148 healthy young adults (Guilin dual-wavelength dataset, subject-independent 5-fold
+   nested CV), **PPG-only models did not beat the predict-the-mean baseline for SBP**
+   (best MAE 11.1 vs 10.8 mmHg). For DBP they did slightly better (6.7 vs 7.6 mmHg, r ≈ 0.4).
+3. Most of the predictable SBP variance came from **demographics** (sex, height, weight). In a
+   paired subject-level bootstrap, adding PPG to demographics improved **DBP** reliably
+   (6.18 vs 7.28 mmHg MAE, 95 % CI of the difference [−1.82, −0.31]). For **SBP** there was no
+   detectable gain (8.59 vs 9.21, CI [−1.53, +0.30]). Bland–Altman limits of agreement are about
+   ±22 mmHg for SBP.
+4. **Red + IR gave no benefit over IR or red alone** on this data.
+5. All models **regress to the mean**: the 5 hypertensive subjects (SBP ≥ 140) were
+   underestimated by about 32–36 mmHg. A screening device built on these models would miss hypertension.
+6. **Models trained on young adults failed on older external cohorts** (Foggia, PPG-BP), with
+   −7 to −15 mmHg bias. Population-level, calibration-free BP from PPG did not generalise.
+7. An auxiliary ECG experiment found that **pulse arrival time** (timing) carries SBP signal
+   (r = −0.35) that single-site PPG shape lacks. A two-site optical *pulse transit time* design is
+   worth evaluating. ECG is not available on the MAX30102.
+8. The realistic path forward is **per-user cuff calibration plus behind-ear data collection**.
+   It is not a bigger model on fingertip data.
+
+## Installation
+
+```bash
+git clone https://github.com/obstinix/RakshPulse.git && cd RakshPulse
+python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -e ".[dev]"                                 # core + pytest + ruff
+pip install torch --index-url https://download.pytorch.org/whl/cpu   # optional, for the CNN
+```
+
+## Reproduce everything
+
+```bash
+# 1. data (≈650 MB download, ≈1.6 GB extracted); see data/README.md
+python -m rakshpulse.data.download guilin_dualwave foggia_multiwave ppg_bp
+python scripts/extract_datasets.py
+python -m rakshpulse.data.dataset_validator
+python -m rakshpulse.data.build guilin_dualwave foggia_multiwave ppg_bp guilin_unlabelled
+python -m rakshpulse.data.metadata
+
+# 2. experiments (≈10 min on an 8-core CPU)
+python scripts/run_experiments.py     # feature models, channel ablation, external tests
+python scripts/run_cnn.py             # 1D CNN
+python scripts/run_ecg_aux.py         # auxiliary ECG/PAT study
+python scripts/compare_models.py      # paired bootstrap CIs
+python scripts/visualize_ppg.py       # figures in docs/figures/
+
+# 3. reference inference bundle
+python scripts/train_final.py --feature-set ppg_ir_red+demo --model ridge
+
+# 4. tests
+pytest
+```
+
+All random seeds are fixed (CV seeds 0, 1, 2; model seeds 0). Results are written to `results/`.
+
+## Pipeline
+
+1. **Preprocessing** ([docs/DATA_PREPROCESSING.md](docs/DATA_PREPROCESSING.md)): DC removal →
+   anti-aliased resampling to 100 Hz → Hampel despike → 0.5–10 Hz zero-phase Butterworth →
+   orientation → per-window z-score → 10 s windows → beat segmentation (adaptive peaks,
+   intersecting-tangent feet).
+2. **Signal-quality gate:** beat count, HR plausibility, RR regularity, template correlation,
+   cardiac-band power, ADC flatline. Failing windows are rejected, never repaired.
+3. **Features:** about 80 per window (morphology, APG, HRV, spectral, red/IR cross-channel).
+4. **Models** ([docs/MODEL_ARCHITECTURE.md](docs/MODEL_ARCHITECTURE.md)): mean and demographics
+   baselines, linear, ridge, SVR, random forest, XGBoost, and a 1D CNN of 16.4k parameters.
+5. **Evaluation** ([docs/MODEL_EVALUATION.md](docs/MODEL_EVALUATION.md)): subject-independent
+   nested CV, subject-level metrics (MAE, RMSE, R², bias, SD, Bland–Altman, per-BP-range),
+   external datasets, paired bootstrap.
+
+## Inference
+
+```python
+from rakshpulse.inference.predictor import BPPredictor
+
+predictor = BPPredictor.from_file("models/rakshpulse_bp_v0.joblib")
+result = predictor.predict(red_signal=red, ir_signal=ir, sampling_rate=100,
+                           demographics={"age": 25, "sex": 1, "height_cm": 175, "weight_kg": 70})
+if result.accepted:
+    print(result.systolic_bp, result.diastolic_bp, result.uncertainty)
+else:
+    print("re-measure:", result.rejection_reasons)
+```
+
+It rejects the measurement (no BP returned) when signal quality is insufficient, a required
+channel is missing, or the recording is shorter than 10 s. See
+[docs/HARDWARE_INTEGRATION.md](docs/HARDWARE_INTEGRATION.md).
+
+## Current limitations
+
+- **Site mismatch:** the training data is fingertip-type PPG. Behind-ear performance is unknown.
+- **Labels:** one oscillometric cuff reading per subject. Windows are pseudo-replicates, so the
+  effective sample size is 148.
+- **Population:** healthy adults aged 18–36 with a narrow BP range (SBP IQR 105–124) and few
+  hypertensive subjects. That is not enough to show BP *tracking*.
+- **Generalisation:** external tests show large bias in older cohorts.
+- **Motion:** no accelerometer in the data or on the MAX30102. Motion robustness is untested.
+- **Standards:** ISO 81060-2 / BHS statistics are reported for orientation only. Compliance is
+  **not** claimed. See [docs/MODEL_EVALUATION.md](docs/MODEL_EVALUATION.md#validation-requirements-before-any-real-world-use).
+
+## Repository layout
+
+```
+src/rakshpulse/{data,preprocessing,features,models,evaluation,inference}
+scripts/      reproducible experiment entry points
+tests/        pytest suite (synthetic fixtures; no dataset needed)
+notebooks/    01_ppg_exploration.ipynb
+docs/         requirements, dataset research, preprocessing, models, evaluation, domain adaptation, hardware
+data/         git-ignored datasets + committed provenance/metadata
+results/      metrics JSON (committed) and per-window predictions (git-ignored)
+```
+
+## Data licences and attribution
+
+Guilin dual-wave (CC BY 4.0), Foggia multiwavelength (CC BY 4.0) and PPG-BP (CC0). Required
+citations are in [docs/DATASET_ACQUISITION.md](docs/DATASET_ACQUISITION.md). Code is released
+under CC0 1.0 (see LICENSE).
