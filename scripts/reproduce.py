@@ -42,6 +42,7 @@ STAGES: list[tuple[str, list[str]]] = [
         "cross_day_no_rail_gate",
         [PY, "scripts/run_cross_day.py", "--models", "ridge", "--no-rail-gate", "--tag", "_no_rail_gate"],
     ),
+    ("rail_gate_comparison", [PY, "scripts/compare_rail_gate.py"]),
     ("figures_auricle", [PY, "scripts/visualize_auricle.py"]),
     ("figures_cross_day", [PY, "scripts/make_cross_day_figures.py"]),
 ]

@@ -55,6 +55,60 @@ def evaluate_table(t: pd.DataFrame, n_boot: int) -> dict:
     return m
 
 
+def _corr_ci(x: np.ndarray, y: np.ndarray, n_boot: int) -> list[float]:
+    rng = np.random.default_rng(SEED)
+    idx = rng.integers(0, x.size, (n_boot, x.size))
+    rs = [np.corrcoef(x[i], y[i])[0, 1] for i in idx if np.std(x[i]) > 0 and np.std(y[i]) > 0]
+    return np.percentile(rs, [2.5, 97.5]).tolist()
+
+
+def day_effects(p: pd.DataFrame, target: str, n_boot: int) -> dict:
+    """Per-subject analysis of what calibration carries across days.
+
+    * rest_shift: day-2 minus day-1 median reference BP at rest (the true day-to-day change);
+    * pred_shift: the same for the population prediction (does the model see the change?);
+    * offset_d1 / offset_d2: per-subject calibration offset (reference - prediction at rest) on each day.
+    Day-2 error of the offset-calibrated model at rest equals pred_shift - rest_shift, so the stability of
+    the offset is exactly what determines cross-day absolute accuracy.
+    """
+    rows = []
+    for sid, g in p.groupby("subject_id"):
+        r1 = g[(g.session == 1) & (g.activity == 0)]
+        r2 = g[(g.session == 2) & (g.activity == 0)]
+        if len(r1) < K_CAL or len(r2) < K_CAL:
+            continue
+        rows.append(
+            {
+                "subject_id": sid,
+                "rest_shift": r2[target].median() - r1[target].median(),
+                "pred_shift": r2.pred.median() - r1.pred.median(),
+                "offset_d1": (r1[target] - r1.pred).median(),
+                "offset_d2": (r2[target] - r2.pred).median(),
+            }
+        )
+    t = pd.DataFrame(rows)
+    if len(t) < 5:
+        return {"n_subjects": len(t)}
+    x, y = t.rest_shift.to_numpy(), t.pred_shift.to_numpy()
+    o1, o2 = t.offset_d1.to_numpy(), t.offset_d2.to_numpy()
+    resid = y - x
+    return {
+        "n_subjects": len(t),
+        "rest_shift_mean": float(x.mean()),
+        "rest_shift_sd": float(x.std(ddof=1)),
+        "rest_shift_abs_mean": float(np.abs(x).mean()),
+        "r_pred_shift_vs_rest_shift": float(np.corrcoef(x, y)[0, 1]),
+        "r_pred_shift_vs_rest_shift_ci": _corr_ci(x, y, n_boot),
+        "slope_pred_shift_on_rest_shift": float(np.polyfit(x, y, 1)[0]),
+        "offset_day1_day2_r": float(np.corrcoef(o1, o2)[0, 1]),
+        "offset_day1_day2_r_ci": _corr_ci(o1, o2, n_boot),
+        "offset_change_abs_mean": float(np.abs(o2 - o1).mean()),
+        "offset_change_sd": float(np.std(o2 - o1, ddof=1)),
+        "rest_error_after_offset_abs_mean": float(np.abs(resid).mean()),
+        "rest_error_carry_forward_abs_mean": float(np.abs(x).mean()),
+    }
+
+
 def run(quick: bool = False, models_arg: str | None = None, rail_gate: bool = True, tag: str = "") -> None:
     global OUT
     OUT = ROOT / "results" / f"cross_day{tag}"
@@ -293,6 +347,19 @@ def run(quick: bool = False, models_arg: str | None = None, rail_gate: bool = Tr
             inv["cross_day_offset_mae_by_activity"] = (
                 (g.yhat - g.y).abs().groupby(g.activity).mean().round(2).rename(str).to_dict()
             )
+        for target in TARGETS:
+            inv[f"{target}_day_effects"] = day_effects(
+                pd.read_csv(PRED / f"cross_day{tag}_{site}_{target}_hr_shape_ridge.csv.gz"), target, n_boot
+            )
+            key_u = (site, target, "hr_shape", "ridge", "cross_day", "uncalibrated")
+            key_c = (site, target, "hr_shape", "ridge", "cross_day", "carry_forward")
+            key_o = (site, target, "hr_shape", "ridge", "cross_day", "offset")
+            if key_u in store and key_c in store:
+                # absolute estimation without calibration vs the trivial baselines
+                inv[f"{target}_uncalibrated_vs_carry_forward"] = st.paired_subject_diff(
+                    store[key_u], store[key_c], n_boot
+                )
+                inv[f"{target}_offset_vs_uncalibrated"] = st.paired_subject_diff(store[key_o], store[key_u], n_boot)
         invest[site] = inv
     summary["runtime_s"] = round(time.time() - t0, 1)
     (OUT / "summary.json").write_text(json.dumps(summary, indent=2, default=float))
