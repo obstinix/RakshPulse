@@ -62,6 +62,14 @@ def _corr_ci(x: np.ndarray, y: np.ndarray, n_boot: int) -> list[float]:
     return np.percentile(rs, [2.5, 97.5]).tolist()
 
 
+def _slope_ci(x: np.ndarray, y: np.ndarray, n_boot: int) -> list[float]:
+    """Subject-bootstrap CI of the OLS slope of y on x (1 = model follows the true day shift fully)."""
+    rng = np.random.default_rng(SEED)
+    idx = rng.integers(0, x.size, (n_boot, x.size))
+    sl = [np.polyfit(x[i], y[i], 1)[0] for i in idx if np.std(x[i]) > 0]
+    return np.percentile(sl, [2.5, 97.5]).tolist()
+
+
 def day_effects(p: pd.DataFrame, target: str, n_boot: int) -> dict:
     """Per-subject analysis of what calibration carries across days.
 
@@ -100,6 +108,7 @@ def day_effects(p: pd.DataFrame, target: str, n_boot: int) -> dict:
         "r_pred_shift_vs_rest_shift": float(np.corrcoef(x, y)[0, 1]),
         "r_pred_shift_vs_rest_shift_ci": _corr_ci(x, y, n_boot),
         "slope_pred_shift_on_rest_shift": float(np.polyfit(x, y, 1)[0]),
+        "slope_pred_shift_on_rest_shift_ci": _slope_ci(x, y, n_boot),
         "offset_day1_day2_r": float(np.corrcoef(o1, o2)[0, 1]),
         "offset_day1_day2_r_ci": _corr_ci(o1, o2, n_boot),
         "offset_change_abs_mean": float(np.abs(o2 - o1).mean()),
