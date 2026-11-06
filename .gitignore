@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
+build/
+dist/
+
+# Data: never commit raw/extracted/derived datasets
+data/raw/*
+data/extracted/*
+data/interim/*
+data/processed/*
+!data/**/.gitkeep
+
+# Trained model binaries (regenerable; small reference model is whitelisted explicitly)
+models/*
+!models/.gitkeep
+
+# Project source PDFs (third-party/team documents, not redistributed)
+*.pdf
+
+# Secrets
+.env
+*.token

@@ -1,0 +1,42 @@
+{
+  "ppg_bp": {
+    "key": "ppg_bp",
+    "title": "PPG-BP Database (Guilin People's Hospital, Liang et al. 2018)",
+    "landing_page": "https://doi.org/10.6084/m9.figshare.5459299.v5",
+    "doi": "10.6084/m9.figshare.5459299.v5",
+    "version": "figshare v5 (2022-09-22)",
+    "license": "CC0 1.0",
+    "citation": "Liang Y, Chen Z, Liu G, Elgendi M. A new, short-recorded photoplethysmogram dataset for blood pressure monitoring in China. Sci Data 5, 180020 (2018). doi:10.1038/sdata.2018.20",
+    "files": [
+      {
+        "dataset": "ppg_bp",
+        "file": "data/raw/ppg_bp/PPG-BP Database.zip",
+        "url": "https://ndownloader.figshare.com/files/9441097",
+        "size_bytes": 1510347,
+        "md5": "3b8eae44f45799aeb3c5f55af8589828",
+        "verified": true,
+        "downloaded_utc": "2026-11-06T13:57:25+00:00"
+      }
+    ]
+  },
+  "foggia_multiwave": {
+    "key": "foggia_multiwave",
+    "title": "A Multiwavelength Photoplethysmography Dataset with Blood Pressure and Heart Rate Reference Measurements (MAX86150, fingertip)",
+    "landing_page": "https://data.mendeley.com/datasets/gs7jvwtcgt/1",
+    "doi": "10.17632/gs7jvwtcgt.1",
+    "version": "1 (2025-06-19)",
+    "license": "CC BY 4.0",
+    "citation": "Data in Brief (2025), PMC12682042. Mendeley Data doi:10.17632/gs7jvwtcgt.1",
+    "files": [
+      {
+        "dataset": "foggia_multiwave",
+        "file": "data/raw/foggia_multiwave/PPG_DATASET.rar",
+        "url": "https://data.mendeley.com/public-files/datasets/gs7jvwtcgt/files/b9dc7bce-1001-4e3e-8aa7-3ca114db5909/file_downloaded",
+        "size_bytes": 1958773,
+        "sha256": "f11da47b6e5031cee5adee7fa6b12244aab40e218bd7ae6b6d8ac69f86e404a3",
+        "verified": true,
+        "downloaded_utc": "2026-11-06T13:57:28+00:00"
+      }
+    ]
+  }
+}
