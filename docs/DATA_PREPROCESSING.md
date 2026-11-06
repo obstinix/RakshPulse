@@ -50,6 +50,22 @@ bugs, which were fixed **before** the reported experiments were rerun:
 2. A fixed 220-bpm refractory distance let a prominent diastolic wave count as a beat at
    50 bpm. Replaced by an autocorrelation-estimated period (distance = 0.6 × period).
 
+### Auricle-specific quality handling
+
+- **CNAP reliability mask:** a window gets a BP label only if the CNAP mask is 1 for all of its 10 s.
+  This excludes the uncalibrated start of every session and the ~5 s auto-calibration gaps that occur
+  about every 35 s. Records without the mask (HC_1_1) are excluded.
+- **Amplifier rail clipping (added after a defect was found):** the BIOPAC front end saturates at ±10 V.
+  In the healthy cohort, 11 % of finger windows and 0.2 % of ear windows contained rail-clipped samples. The
+  flatline check above runs only on DC-carrying optical data, so it missed them, and 705 clipped finger
+  windows had been accepted. Windows with more than 1 % of samples on the rail are now rejected
+  (`build_auricle.apply_rail_gate`, reason `clipped_at_rail`). Clipping flattens the systolic peak and
+  diastolic trough, which are exactly the morphology the features describe.
+- **Site-specific rejection profile:** at both sites most rejections are low template correlation
+  (ear 61 %, finger 56 % of rejected windows), followed by irregular intervals. Ear rejections
+  concentrate in exercise (46 % of exercise windows fail template correlation, against 17 % at rest),
+  which is consistent with motion coupling at the earlobe clip.
+
 ## Features (per channel, prefixed `ir_` / `red_`)
 
 - **Morphology** (median over accepted beats, amplitude-normalised beat): beat, systolic and
