@@ -273,3 +273,20 @@ def calibration_drift(t: pd.DataFrame) -> dict[str, float]:
         "drift_sd": float(b.std(ddof=1)) if len(b) > 1 else float("nan"),
         "drift_p90_abs": float(np.percentile(b.abs(), 90)),
     }
+
+
+def fast_subject_cis(t: pd.DataFrame, n_boot: int = 2000, seed: int = 0) -> dict[str, list[float]]:
+    """Vectorised subject-bootstrap 95 % CIs for MAE, bias and median within-subject Pearson r."""
+    rng = np.random.default_rng(seed)
+    e = t.yhat - t.y
+    g = pd.DataFrame({"s": t.subject_id, "ae": e.abs(), "e": e}).groupby("s")
+    sae, se, n = g.ae.sum().to_numpy(), g.e.sum().to_numpy(), g.size().to_numpy()
+    rs = np.asarray(_within_r(t, lambda a, b: stats.pearsonr(a, b)[0]))
+    idx = rng.integers(0, len(n), (n_boot, len(n)))
+    mae = sae[idx].sum(1) / n[idx].sum(1)
+    bias = se[idx].sum(1) / n[idx].sum(1)
+    out = {"mae_ci": np.percentile(mae, [2.5, 97.5]).tolist(), "bias_ci": np.percentile(bias, [2.5, 97.5]).tolist()}
+    if rs.size:
+        ridx = rng.integers(0, rs.size, (n_boot, rs.size))
+        out["within_pearson_ci"] = np.percentile(np.median(rs[ridx], 1), [2.5, 97.5]).tolist()
+    return out
