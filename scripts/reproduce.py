@@ -46,6 +46,7 @@ STAGES: list[tuple[str, list[str]]] = [
     ("audit", [PY, "scripts/audit_cross_day.py"]),
     ("figures_auricle", [PY, "scripts/visualize_auricle.py"]),
     ("figures_cross_day", [PY, "scripts/make_cross_day_figures.py"]),
+    ("findings_tables", [PY, "scripts/write_findings.py"]),
 ]
 
 
