@@ -38,5 +38,25 @@
         "downloaded_utc": "2026-11-06T13:57:28+00:00"
       }
     ]
+  },
+  "guilin_dualwave": {
+    "key": "guilin_dualwave",
+    "title": "A dataset of simultaneous collected ECG and PPG signals (dual-wavelength red/IR PPG + lead-I ECG + cuff BP)",
+    "landing_page": "https://data.mendeley.com/datasets/pz2zzr8vhm/1",
+    "doi": "10.17632/pz2zzr8vhm.1",
+    "version": "1 (published 2026-03-03)",
+    "license": "CC BY 4.0",
+    "citation": "Li, Shiyong (2026). A dataset of simultaneous collected ECG and PPG signals. Mendeley Data, V1. doi:10.17632/pz2zzr8vhm.1",
+    "files": [
+      {
+        "dataset": "guilin_dualwave",
+        "file": "data/raw/guilin_dualwave/A dataset of simultaneous collected ECG and PPG signals.zip",
+        "url": "https://data.mendeley.com/public-files/datasets/pz2zzr8vhm/files/01fe8a7c-175b-4a54-b5f0-4633ba63bb3d/file_downloaded",
+        "size_bytes": 645718569,
+        "sha256": "6a98ba2e702a6ab2eb98944f856abff644491442c4c5bb006df09a54fc1e4dfd",
+        "verified": true,
+        "downloaded_utc": "2026-11-06T14:02:09+00:00"
+      }
+    ]
   }
 }

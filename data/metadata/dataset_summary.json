@@ -1,0 +1,116 @@
+{
+  "foggia_multiwave": {
+    "windows": 127,
+    "subjects": 127,
+    "ir_sqi_pass": 1.0,
+    "red_sqi_pass": 1.0,
+    "sbp": {
+      "min": 91.0,
+      "p25": 109.0,
+      "median": 121.0,
+      "p75": 132.5,
+      "max": 174.0,
+      "mean": 122.2,
+      "sd": 15.8
+    },
+    "dbp": {
+      "min": 55.0,
+      "p25": 66.5,
+      "median": 73.0,
+      "p75": 80.5,
+      "max": 99.0,
+      "mean": 73.9,
+      "sd": 9.7
+    },
+    "demo_age": {
+      "min": 18.0,
+      "p25": 26.0,
+      "median": 33.0,
+      "p75": 57.5,
+      "max": 86.0,
+      "mean": 41.0,
+      "sd": 18.1
+    },
+    "hypertensive_sbp_ge_140": 17,
+    "hypotensive_sbp_lt_90": 0,
+    "male_fraction": 0.496
+  },
+  "guilin_dualwave": {
+    "windows": 4934,
+    "subjects": 148,
+    "ir_sqi_pass": 0.9682,
+    "red_sqi_pass": 0.9453,
+    "sbp": {
+      "min": 84.0,
+      "p25": 105.0,
+      "median": 114.5,
+      "p75": 124.0,
+      "max": 162.0,
+      "mean": 114.7,
+      "sd": 13.6
+    },
+    "dbp": {
+      "min": 52.0,
+      "p25": 61.0,
+      "median": 67.0,
+      "p75": 75.0,
+      "max": 95.0,
+      "mean": 68.0,
+      "sd": 9.2
+    },
+    "demo_age": {
+      "min": 18.0,
+      "p25": 22.0,
+      "median": 24.0,
+      "p75": 24.0,
+      "max": 36.0,
+      "mean": 23.3,
+      "sd": 2.2
+    },
+    "hypertensive_sbp_ge_140": 5,
+    "hypotensive_sbp_lt_90": 2,
+    "male_fraction": 0.574
+  },
+  "guilin_unlabelled": {
+    "windows": 9849,
+    "subjects": 148,
+    "ir_sqi_pass": 0.9668,
+    "red_sqi_pass": 0.9472
+  },
+  "ppg_bp": {
+    "windows": 657,
+    "subjects": 219,
+    "ir_sqi_pass": 0.0015,
+    "red_sqi_pass": 0.0,
+    "sbp": {
+      "min": 80.0,
+      "p25": 113.5,
+      "median": 126.0,
+      "p75": 139.0,
+      "max": 182.0,
+      "mean": 127.9,
+      "sd": 20.4
+    },
+    "dbp": {
+      "min": 42.0,
+      "p25": 64.0,
+      "median": 70.0,
+      "p75": 78.0,
+      "max": 107.0,
+      "mean": 71.8,
+      "sd": 11.1
+    },
+    "demo_age": {
+      "min": 21.0,
+      "p25": 48.0,
+      "median": 58.0,
+      "p75": 67.5,
+      "max": 86.0,
+      "mean": 57.2,
+      "sd": 15.9
+    },
+    "hypertensive_sbp_ge_140": 54,
+    "hypotensive_sbp_lt_90": 4,
+    "male_fraction": 0.475
+  }
+}
