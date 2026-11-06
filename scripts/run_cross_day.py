@@ -37,9 +37,13 @@ SEED = 0
 log = logging.getLogger("cross_day")
 
 
-def load() -> pd.DataFrame:
+def load(rail_gate: bool = True) -> pd.DataFrame:
     a = pd.read_csv(PROCESSED / "auricle_features.csv")
     a = a[a.cohort == "HC"].reset_index(drop=True)
+    if not rail_gate:  # ablation: undo only the rail-clipping rejection
+        for s in SITES:
+            only_rail = a[f"{s}_sqi_reasons"].fillna("") == "clipped_at_rail"
+            a[f"{s}_sqi_ok"] = a[f"{s}_sqi_ok"].astype(bool) | only_rail
     for s in SITES:
         st.add_normalised_shape(a, s)
     return a
@@ -51,12 +55,14 @@ def evaluate_table(t: pd.DataFrame, n_boot: int) -> dict:
     return m
 
 
-def run(quick: bool = False) -> None:
+def run(quick: bool = False, models_arg: str | None = None, rail_gate: bool = True, tag: str = "") -> None:
+    global OUT
+    OUT = ROOT / "results" / f"cross_day{tag}"
     t0 = time.time()
     n_boot = 500 if quick else 2000
     OUT.mkdir(parents=True, exist_ok=True)
     PRED.mkdir(parents=True, exist_ok=True)
-    a = load()
+    a = load(rail_gate)
     both_sessions = a.groupby("subject_id").session.nunique()
     summary = {
         "subjects": int(a.subject_id.nunique()),
@@ -65,6 +71,7 @@ def run(quick: bool = False) -> None:
         "k_cal_rest_windows": K_CAL,
         "n_boot": n_boot,
         "seed": SEED,
+        "rail_gate": rail_gate,
     }
     log.info("data: %s", summary)
     fold_of = st.subject_folds(a.subject_id, a.sbp, n=5)
@@ -102,7 +109,7 @@ def run(quick: bool = False) -> None:
                     }
                 )
 
-    models = ("ridge",) if quick else EXTENDED_MODELS
+    models = tuple(models_arg.split(",")) if models_arg else (("ridge",) if quick else EXTENDED_MODELS)
     for site in SITES:
         d = a[a[f"{site}_sqi_ok"].astype(bool)].reset_index(drop=True)
         s1 = d[d.session == 1].reset_index(drop=True)
@@ -116,7 +123,7 @@ def run(quick: bool = False) -> None:
                     t = st.calibrate(dd, target, K_CAL).table
                     record(site, target, fset, model, t)
                     dd[["subject_id", "session", "t_start_s", "activity", target, "pred"]].to_csv(
-                        PRED / f"cross_day_{site}_{target}_{fset}_{model}.csv.gz", index=False
+                        PRED / f"cross_day{tag}_{site}_{target}_{fset}_{model}.csv.gz", index=False
                     )
                     log.info("%s %s %-10s %-13s done (%.0fs)", site, target, fset, model, time.time() - t0)
                 if fset in ("hr_only", "hr_shape"):
@@ -205,7 +212,33 @@ def run(quick: bool = False) -> None:
             ("ear", target, "hr_shape", "ridge", "cross_day", "offset"),
             ("finger", target, "hr_shape", "ridge", "cross_day", "offset"),
         )
+    for site in SITES:  # every population model vs ridge, same features, cross-day offset calibration
+        for target in TARGETS:
+            for mod in models:
+                if mod != "ridge":
+                    pair(
+                        f"{site} {target} cross_day: {mod} vs ridge (offset hr_shape)",
+                        (site, target, "hr_shape", mod, "cross_day", "offset"),
+                        (site, target, "hr_shape", "ridge", "cross_day", "offset"),
+                    )
     pd.DataFrame(paired_rows).to_csv(OUT / "paired_tests.csv", index=False)
+
+    # ---- generalisability ranking: cross-day error, its CI, and the within->cross-day gap, not correlation
+    pop = metrics[(metrics.feature_set == "hr_shape") & (metrics["mode"] == "offset") & metrics.model.isin(models)]
+    if len(pop):
+        cd = pop[pop.scope == "cross_day"].set_index(["model", "site", "target"]).mae
+        wd = pop[pop.scope == "within_day"].set_index(["model", "site", "target"]).mae
+        rank = cd.groupby(["site", "target"]).rank()
+        table = pd.DataFrame(
+            {
+                "cross_day_mae_mean": cd.groupby("model").mean(),
+                "mean_rank": rank.groupby("model").mean(),
+                "worst_rank": rank.groupby("model").max(),
+                "within_to_cross_day_gap": (cd - wd).groupby("model").mean(),
+            }
+        ).sort_values("mean_rank")
+        table.to_csv(OUT / "model_ranking.csv")
+        summary["model_ranking"] = table.round(3).reset_index().to_dict("records")
 
     # ---- investigations
     for site in SITES:
@@ -219,7 +252,7 @@ def run(quick: bool = False) -> None:
         ]
         inv["within_session_r_sbp_vs_hr_median"] = float(np.median(r_hr))
         # (2) partial correlation: does the shape prediction explain BP beyond HR, within sessions?
-        p = pd.read_csv(PRED / f"cross_day_{site}_sbp_shape_only_ridge.csv.gz")
+        p = pd.read_csv(PRED / f"cross_day{tag}_{site}_sbp_shape_only_ridge.csv.gz")
         p = p.merge(d[["subject_id", "session", "t_start_s", f"{site}_hr"]], on=["subject_id", "session", "t_start_s"])
         part = []
         for _, g in p.groupby(["subject_id", "session"]):
@@ -238,7 +271,7 @@ def run(quick: bool = False) -> None:
             )
             inv["partial_r_median_ci"] = np.percentile(boot, [2.5, 97.5]).tolist()
         # (3) subject dominance in calibration-free predictions
-        q = pd.read_csv(PRED / f"cross_day_{site}_sbp_hr_shape_ridge.csv.gz")
+        q = pd.read_csv(PRED / f"cross_day{tag}_{site}_sbp_hr_shape_ridge.csv.gz")
         between = q.groupby("subject_id").pred.mean().var()
         inv["uncalibrated_prediction_between_subject_variance_fraction"] = float(between / q.pred.var())
         sm = q.groupby("subject_id")[["sbp", "pred"]].mean()
@@ -269,4 +302,12 @@ def run(quick: bool = False) -> None:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    run(quick="--quick" in sys.argv)
+    import argparse
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--quick", action="store_true", help="ridge only, 500 bootstrap draws")
+    ap.add_argument("--models", help="comma-separated population models (default: all registered)")
+    ap.add_argument("--no-rail-gate", action="store_true", help="ablation: keep rail-clipped windows")
+    ap.add_argument("--tag", default="", help="suffix for output directory / prediction files")
+    a = ap.parse_args()
+    run(a.quick, a.models, not a.no_rail_gate, a.tag)

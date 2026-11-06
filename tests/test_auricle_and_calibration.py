@@ -246,17 +246,6 @@ def test_http_range_file_reads_zip_member(tmp_path):
         srv.shutdown()
 
 
-def test_cross_session_calibration():
-    from rakshpulse.evaluation.calibration import cross_session_errors
-
-    s1 = _session("a_1").assign(subject_id="a", session=1)
-    s2 = _session("a_2").assign(subject_id="a", session=2, sbp=lambda d: d.sbp + 10, pred=lambda d: d.pred + 10)
-    r = cross_session_errors(pd.concat([s1, s2]), "sbp", k_cal=3)
-    assert r["n_subjects"] == 1
-    assert r["calibrated_model_mae"] < 1e-9  # model tracks the +10 day-to-day shift
-    assert r["carry_forward_mae"] > 10
-
-
 # ------------------------------------------------------------------ cross-day study module
 def _study_frame(n_subj=8, seed=0):
     """Two sessions per subject. BP = subject offset + 0.8*stressor effect; 'x' tracks the stressor."""
@@ -318,7 +307,7 @@ def test_calibration_modes_and_personal_models():
     d["pred"] = 110 + 20 * d["x"]  # population model with wrong absolute level but right tracking
     t = calibrate(d, "sbp", k_cal=3).table
     assert set(t["mode"]) == {"carry_forward", "offset", "uncalibrated", "linear"}
-    assert set(t.scope) == {"within_day", "cross_day"}
+    assert set(t.scope) == {"within_day", "cross_day", "within_day_s2"}
     cd = t[t.scope == "cross_day"]
     off, carry = cd[cd["mode"] == "offset"], cd[cd["mode"] == "carry_forward"]
     assert point_metrics(off)["mae"] < point_metrics(carry)["mae"]

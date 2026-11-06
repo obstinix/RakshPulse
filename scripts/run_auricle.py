@@ -33,7 +33,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from run_experiments import IR  # noqa: E402
 
 from rakshpulse.data.build import PROCESSED  # noqa: E402
-from rakshpulse.evaluation.calibration import calibrated_errors, cross_session_errors, within_session_r  # noqa: E402
+from rakshpulse.evaluation.calibration import calibrated_errors, within_session_r  # noqa: E402
 from rakshpulse.evaluation.metrics import regression_metrics  # noqa: E402
 from rakshpulse.features.feature_pipeline import PER_CHANNEL  # noqa: E402
 from rakshpulse.models.baseline import DEMOGRAPHIC_FEATURES  # noqa: E402
@@ -198,21 +198,6 @@ def main() -> int:
                     if model in ("ridge", "xgboost", "ridge_hr_only"):
                         c = calibrated_errors(pdf.assign(activity=both["activity"].to_numpy()), target, K_CAL)
                         out["E4"].append({"cohort": cohort, "target": target, "site": site, "model": model, **c})
-                        x = cross_session_errors(
-                            pdf.assign(activity=both["activity"].to_numpy(), session=both["session"].to_numpy()),
-                            target,
-                            K_CAL,
-                        )
-                        if x.get("n_subjects"):
-                            out.setdefault("E5_cross_day", []).append(
-                                {"cohort": cohort, "target": target, "site": site, "model": model, **x}
-                            )
-                            print(
-                                f"[E5 {cohort}] {target} {site:6s} {model:8s} cross-day calibrated MAE "
-                                f"{x['calibrated_model_mae']:.2f} vs carry-forward {x['carry_forward_mae']:.2f} "
-                                f"(n={x['n_subjects']})",
-                                flush=True,
-                            )
                         print(
                             f"[E4 {cohort}] {target} {site:6s} {model:8s} "
                             f"calibrated MAE {c['calibrated_model_mae']:.2f} "

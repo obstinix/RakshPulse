@@ -10,8 +10,10 @@ Design (all splits by **subject**; no window of a test subject is ever used for 
     - ``offset``: population prediction + one-point offset from those K rest windows;
     - ``linear``: per-subject linear map y = a + b·pred fitted on *all* session-1 windows;
     - ``uncalibrated``: raw population prediction.
-  Evaluation windows: *within-day* = session-1 windows ≥ ``gap_s`` after the last calibration window;
-  *cross-day* = all session-2 windows (a different day). ``linear`` uses all of session 1, so it is only
+  Evaluation windows: *within_day* = session-1 windows ≥ ``gap_s`` after the last calibration window;
+  *within_day_s2* = the same protocol applied to session 2 with its own rest calibration (day-1 vs day-2
+  comparison); *cross_day* = all session-2 windows with the session-1 calibration (a different day).
+  ``linear`` uses all of session 1, so it is only
   evaluated cross-day.
 * **Personal models:** a ridge model per subject trained only on that subject's session 1, then
   evaluated on session 2 (no population data at all).
@@ -156,17 +158,25 @@ def calibrate(d: pd.DataFrame, target: str, k_cal: int = 3, gap_s: float = 10.0)
         if len(s1) >= 10 and s1.pred.std() > 0:
             b, a = np.polyfit(s1.pred, s1[target], 1)
             lin = (a, b)
-        for scope, ev in scopes.items():
+        jobs = [(scope, ev, ref, pref, lin) for scope, ev in scopes.items()]
+        # day-2 within-day: calibrate on day 2's own first rest windows (to compare day 1 vs day 2 like for like)
+        rest2 = s2.sort_values("t_start_s")
+        rest2 = rest2[rest2.activity == 0]
+        if len(rest2) >= k_cal:
+            cal2 = rest2.iloc[:k_cal]
+            ev2 = s2[s2.t_start_s > cal2.t_start_s.max() + gap_s]
+            jobs.append(("within_day_s2", ev2, cal2[target].mean(), cal2.pred.mean(), None))
+        for scope, ev, r_, p_, lin_ in jobs:
             if len(ev) < 5:
                 continue
             base = {"subject_id": sid, "scope": scope, "y": ev[target].to_numpy(), "activity": ev.activity.to_numpy()}
             modes = {
-                "carry_forward": np.full(len(ev), ref),
-                "offset": ev.pred.to_numpy() + ref - pref,
+                "carry_forward": np.full(len(ev), r_),
+                "offset": ev.pred.to_numpy() + r_ - p_,
                 "uncalibrated": ev.pred.to_numpy(),
             }
-            if lin is not None and scope == "cross_day":
-                modes["linear"] = lin[0] + lin[1] * ev.pred.to_numpy()
+            if lin_ is not None and scope == "cross_day":
+                modes["linear"] = lin_[0] + lin_[1] * ev.pred.to_numpy()
             for mode, yhat in modes.items():
                 out.append(pd.DataFrame({**base, "mode": mode, "yhat": yhat}))
     return CalibratedOutputs(pd.concat(out, ignore_index=True) if out else pd.DataFrame())
