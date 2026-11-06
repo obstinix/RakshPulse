@@ -42,8 +42,9 @@ def pat_features(ecg: np.ndarray, ppg_raw: np.ndarray, fs: float) -> dict[str, f
         return out
     feet = detect_feet(x, pk) / fs
     dx = np.gradient(x)
-    slopes = np.array([f + np.argmax(dx[int(f * fs) : p]) / fs if p > int(f * fs) else np.nan
-                       for f, p in zip(feet, pk, strict=True)])
+    slopes = np.array(
+        [f + np.argmax(dx[int(f * fs) : p]) / fs if p > int(f * fs) else np.nan for f, p in zip(feet, pk, strict=True)]
+    )
     pf, ps = [], []
     for f, s_ in zip(feet, slopes, strict=True):
         prior = rp[rp < f]

@@ -56,11 +56,20 @@ def main() -> int:
                 pdf, _ = nested_cv(base, feats, target, model, seed=0, splits=splits_from_map(base, fmap))
                 ev = evaluate(pdf, target)["subject"]
                 out.append({"feature_set": name, "model": model, "target": target, **ev})
-                print(f"[ECG-aux] {name:28s} {model:8s} {target}: MAE {ev['mae']:.2f} r {ev['pearson_r']:.2f}", flush=True)
+                print(
+                    f"[ECG-aux] {name:28s} {model:8s} {target}: MAE {ev['mae']:.2f} r {ev['pearson_r']:.2f}", flush=True
+                )
     corr = base.groupby("subject_id")[["pat_foot_ms", "sbp", "dbp"]].median().corr().loc["pat_foot_ms"].to_dict()
     (ROOT / "results" / "ecg_aux_experiments.json").write_text(
-        json.dumps({"runs": out, "subject_level_corr_pat_foot": corr,
-                    "pat_availability": float(g["pat_foot_ms"].notna().mean())}, indent=2, default=float)
+        json.dumps(
+            {
+                "runs": out,
+                "subject_level_corr_pat_foot": corr,
+                "pat_availability": float(g["pat_foot_ms"].notna().mean()),
+            },
+            indent=2,
+            default=float,
+        )
     )
     return 0
 
