@@ -46,6 +46,10 @@ class PhysioNetProject:
     def base(self) -> str:
         return f"https://physionet.org/files/{self.slug}/{self.version}/"
 
+    @property
+    def zip(self) -> str:
+        return f"https://physionet.org/content/{self.slug}/get-zip/{self.version}/"
+
 
 PROJECTS = {
     "auricle": PhysioNetProject(
@@ -234,7 +238,7 @@ class HttpRangeFile(io.RawIOBase):
 
 
 def zip_url(project: PhysioNetProject) -> str:
-    return f"https://physionet.org/content/{project.slug}/get-zip/{project.version}/"
+    return project.zip
 
 
 def fetch_member_from_zip(project: PhysioNetProject, rel: str, digest: str, dest: Path) -> dict:
@@ -321,13 +325,85 @@ def priority_records(key: str) -> list[str]:
     return sorted(recs, key=rank)
 
 
+REQUIRED_CHANNELS = {"PPG_Ear", "PPG_Finger", "Systolic_BP", "Diastolic_BP"}
+ANNOTATION_CHANNELS = {"CNAP_Annotations", "Activity_Annotations"}
+
+
+def verify_project(key: str, repair: bool = False) -> dict:
+    """Re-hash every manifest-listed record file and validate the channel mapping.
+
+    Writes ``data/metadata/<key>_manifest.json`` (committed: hashes and channel facts only, no data).
+    A record is ``trusted`` only if both files match SHA256SUMS, all required signal channels exist and
+    the CNAP reliability mask exists. ``repair=True`` deletes files whose hash mismatches so that the
+    next download run re-fetches them. Corrupt files are never kept silently.
+    """
+    import wfdb
+
+    project = PROJECTS[key]
+    dest = DATA_ROOT / "raw" / key
+    manifest = read_manifest(project, dest)
+    records = [r.split("/")[0] for r in (dest / "RECORDS").read_text().split()]
+    rows = []
+    for rid in records:
+        row: dict = {"record": rid, "cohort": rid.split("_")[0], "session": int(rid.split("_")[2])}
+        status = "ok"
+        for ext in (".hea", ".dat"):
+            rel = f"data/{rid}/{rid}{ext}"
+            p = dest / rel
+            if not p.exists():
+                status = "partial" if p.with_name(p.name + ".part").exists() else "missing"
+                row[ext[1:]] = status
+                continue
+            if sha256(p) != manifest[rel]:
+                row[ext[1:]] = "sha256_mismatch"
+                status = "corrupt"
+                if repair:
+                    p.chmod(0o644)
+                    p.unlink()
+            else:
+                row[ext[1:]] = "verified"
+        if status == "ok":
+            h = wfdb.rdheader(str(dest / "data" / rid / rid))
+            names = set(h.sig_name)
+            row.update(
+                fs=h.fs,
+                duration_s=round(h.sig_len / h.fs, 1),
+                n_channels=len(names),
+                missing_required=sorted(REQUIRED_CHANNELS - names),
+                missing_annotations=sorted(ANNOTATION_CHANNELS - names),
+            )
+            if row["missing_required"]:
+                status = "malformed"
+        row["status"] = status
+        row["trusted_labels"] = status == "ok" and "CNAP_Annotations" not in row.get("missing_annotations", [])
+        rows.append(row)
+    summary = {
+        "project": key,
+        "version": project.version,
+        "checked_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+        "n_records": len(rows),
+        "status_counts": {s: sum(r["status"] == s for r in rows) for s in sorted({r["status"] for r in rows})},
+        "trusted_records": sum(r["trusted_labels"] for r in rows),
+        "records": rows,
+    }
+    out = DATA_ROOT / "metadata" / f"{key}_manifest.json"
+    out.write_text(json.dumps(summary, indent=2) + "\n")
+    return summary
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("project", choices=sorted(PROJECTS))
     ap.add_argument("--records", nargs="*")
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--via-zip", action="store_true", help="fetch records as members of the project ZIP")
+    ap.add_argument("--verify", action="store_true", help="re-hash all files and write the acquisition manifest")
+    ap.add_argument("--repair", action="store_true", help="with --verify: delete corrupt files for re-download")
     a = ap.parse_args(argv)
+    if a.verify:
+        s = verify_project(a.project, a.repair)
+        print(json.dumps({k: v for k, v in s.items() if k != "records"}, indent=2))
+        return 0 if not s["status_counts"].get("corrupt") and not s["status_counts"].get("malformed") else 1
     if a.via_zip:
         fetch_records_via_zip(a.project, a.records or priority_records(a.project), a.jobs)
     else:

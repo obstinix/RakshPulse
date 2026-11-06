@@ -8,9 +8,9 @@ mostly overfit the validation folds.
 from __future__ import annotations
 
 from sklearn.dummy import DummyRegressor
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import ExtraTreesRegressor, HistGradientBoostingRegressor, RandomForestRegressor
 from sklearn.impute import SimpleImputer
-from sklearn.linear_model import LinearRegression, Ridge
+from sklearn.linear_model import ElasticNet, LinearRegression, Ridge
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR
@@ -34,6 +34,14 @@ def make_model(name: str, seed: int = 0) -> tuple[Pipeline, dict]:
         return _pipe(LinearRegression()), {}
     if name == "ridge":
         return _pipe(Ridge()), {"model__alpha": [1.0, 10.0, 100.0, 1000.0]}
+    if name == "elasticnet":
+        return _pipe(ElasticNet(max_iter=20_000)), {"model__alpha": [0.1, 1.0, 3.0], "model__l1_ratio": [0.2, 0.8]}
+    if name == "extra_trees":
+        et = ExtraTreesRegressor(n_estimators=300, min_samples_leaf=10, max_features=0.5, n_jobs=-1, random_state=seed)
+        return _pipe(et, scale=False), {"model__min_samples_leaf": [10, 40]}
+    if name == "hist_gb":
+        hgb = HistGradientBoostingRegressor(max_iter=300, learning_rate=0.05, l2_regularization=1.0, random_state=seed)
+        return _pipe(hgb, scale=False), {"model__max_depth": [3, None], "model__min_samples_leaf": [20, 80]}
     if name == "svr":
         return _pipe(SVR(kernel="rbf")), {"model__C": [1.0, 10.0, 30.0], "model__epsilon": [1.0, 3.0]}
     if name == "random_forest":
@@ -49,6 +57,7 @@ def make_model(name: str, seed: int = 0) -> tuple[Pipeline, dict]:
 
 
 FEATURE_MODELS = ("mean", "linear", "ridge", "svr", "random_forest", "xgboost")
+EXTENDED_MODELS = ("ridge", "elasticnet", "svr", "random_forest", "extra_trees", "hist_gb", "xgboost")
 
 # keep RandomForestRegressor importable from here for type checks
 __all__ = ["make_model", "FEATURE_MODELS", "RandomForestRegressor"]

@@ -107,6 +107,128 @@ class _RangeHandler(http.server.SimpleHTTPRequestHandler):
         return io.BytesIO(body if self.command == "GET" else b"")
 
 
+def _serve(directory):
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), partial(_RangeHandler, directory=str(directory)))
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv
+
+
+def _local_project(port):
+    from dataclasses import dataclass
+
+    from rakshpulse.data.physionet import PhysioNetProject
+
+    @dataclass(frozen=True)
+    class Local(PhysioNetProject):
+        @property
+        def base(self):
+            return f"http://127.0.0.1:{port}/files/"
+
+        @property
+        def zip(self):
+            return f"http://127.0.0.1:{port}/p.zip"
+
+    return Local("t", "t", "1", "t", "doi", "lic", "cite", 1)
+
+
+def test_interrupted_download_resumes_from_part(tmp_path):
+    import hashlib
+
+    from rakshpulse.data.physionet import fetch_file
+
+    (tmp_path / "srv" / "files" / "data").mkdir(parents=True)
+    payload = np.random.default_rng(1).bytes(200_000)
+    (tmp_path / "srv" / "files" / "data" / "x.dat").write_bytes(payload)
+    dest = tmp_path / "dest"
+    (dest / "data").mkdir(parents=True)
+    (dest / "data" / "x.dat.part").write_bytes(payload[:77_777])  # simulated interruption
+    srv = _serve(tmp_path / "srv")
+    try:
+        res = fetch_file(_local_project(srv.server_port), "data/x.dat", hashlib.sha256(payload).hexdigest(), dest)
+    finally:
+        srv.shutdown()
+    assert res["status"] == "downloaded"
+    assert (dest / "data" / "x.dat").read_bytes() == payload
+    assert not (dest / "data" / "x.dat.part").exists()
+
+
+def test_checksum_mismatch_is_rejected_and_part_removed(tmp_path):
+    from rakshpulse.data.physionet import fetch_file
+
+    (tmp_path / "srv" / "files").mkdir(parents=True)
+    (tmp_path / "srv" / "files" / "y.dat").write_bytes(b"tampered content")
+    srv = _serve(tmp_path / "srv")
+    try:
+        with pytest.raises(RuntimeError, match="sha256 mismatch"):
+            fetch_file(_local_project(srv.server_port), "y.dat", "0" * 64, tmp_path / "d")
+    finally:
+        srv.shutdown()
+    assert not (tmp_path / "d" / "y.dat").exists() and not (tmp_path / "d" / "y.dat.part").exists()
+
+
+def test_zip_member_fetch_verifies_sha256(tmp_path):
+    import hashlib
+
+    from rakshpulse.data.physionet import fetch_member_from_zip
+
+    payload = np.random.default_rng(2).bytes(150_000)
+    (tmp_path / "srv").mkdir()
+    with zipfile.ZipFile(tmp_path / "srv" / "p.zip", "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("proj-1/data/R_1_1/R_1_1.dat", payload)
+    srv = _serve(tmp_path / "srv")
+    try:
+        proj = _local_project(srv.server_port)
+        good = fetch_member_from_zip(proj, "data/R_1_1/R_1_1.dat", hashlib.sha256(payload).hexdigest(), tmp_path / "d")
+        assert good["status"].startswith("downloaded")
+        again = fetch_member_from_zip(proj, "data/R_1_1/R_1_1.dat", hashlib.sha256(payload).hexdigest(), tmp_path / "d")
+        assert again["status"] == "present"  # verified files are never re-downloaded
+        with pytest.raises(RuntimeError):
+            fetch_member_from_zip(proj, "data/R_1_1/R_1_1.dat", "f" * 64, tmp_path / "e")
+    finally:
+        srv.shutdown()
+
+
+def test_verify_project_flags_corrupt_missing_and_mask(tmp_path, monkeypatch):
+    import hashlib
+    import json
+
+    from rakshpulse.data import physionet as pn
+
+    root = tmp_path / "raw" / "t"
+    good = {}
+    for rid, chans in (
+        ("HC_1_1", ["PPG_Ear", "PPG_Finger", "Systolic_BP", "Diastolic_BP"]),
+        ("HC_2_1", ["PPG_Ear", "PPG_Finger", "Systolic_BP", "Diastolic_BP", "CNAP_Annotations"]),
+    ):
+        d = root / "data" / rid
+        d.mkdir(parents=True)
+        wfdb.wrsamp(
+            rid,
+            fs=1000,
+            units=["mV"] * len(chans),
+            sig_name=chans,
+            p_signal=np.zeros((100, len(chans))),
+            fmt=["16"] * len(chans),
+            write_dir=str(d),
+        )
+        for ext in (".hea", ".dat"):
+            good[f"data/{rid}/{rid}{ext}"] = hashlib.sha256((d / f"{rid}{ext}").read_bytes()).hexdigest()
+    good["data/HC_3_1/HC_3_1.hea"] = "a" * 64  # listed but never downloaded
+    good["data/HC_3_1/HC_3_1.dat"] = "b" * 64
+    (root / "SHA256SUMS.txt").write_text("\n".join(f"{h} {r}" for r, h in good.items()) + "\n")
+    (root / "RECORDS").write_text("HC_1_1/HC_1_1\nHC_2_1/HC_2_1\nHC_3_1/HC_3_1\n")
+    (tmp_path / "metadata").mkdir()
+    monkeypatch.setattr(pn, "DATA_ROOT", tmp_path)
+    monkeypatch.setitem(pn.PROJECTS, "t", pn.PhysioNetProject("t", "t", "1", "t", "d", "l", "c", 1))
+    (root / "data" / "HC_2_1" / "HC_2_1.dat").write_bytes(b"corrupted")  # break one file
+    s = pn.verify_project("t")
+    by = {r["record"]: r for r in s["records"]}
+    assert by["HC_1_1"]["status"] == "ok" and by["HC_1_1"]["trusted_labels"] is False  # no CNAP mask
+    assert by["HC_2_1"]["status"] == "corrupt"
+    assert by["HC_3_1"]["status"] == "missing"
+    assert json.loads((tmp_path / "metadata" / "t_manifest.json").read_text())["trusted_records"] == 0
+
+
 def test_http_range_file_reads_zip_member(tmp_path):
     from rakshpulse.data.physionet import HttpRangeFile
 
@@ -133,3 +255,101 @@ def test_cross_session_calibration():
     assert r["n_subjects"] == 1
     assert r["calibrated_model_mae"] < 1e-9  # model tracks the +10 day-to-day shift
     assert r["carry_forward_mae"] > 10
+
+
+# ------------------------------------------------------------------ cross-day study module
+def _study_frame(n_subj=8, seed=0):
+    """Two sessions per subject. BP = subject offset + 0.8*stressor effect; 'x' tracks the stressor."""
+    rng = np.random.default_rng(seed)
+    rows = []
+    for s in range(n_subj):
+        off = 100 + 4 * s
+        for sess in (1, 2):
+            for w in range(40):
+                act = 2 if 15 <= w < 25 else 0
+                eff = 20.0 if act else 0.0
+                rows.append(
+                    {
+                        "subject_id": f"s{s}",
+                        "session": sess,
+                        "t_start_s": 5.0 * w,
+                        "activity": act,
+                        "sbp": off + eff + rng.normal(0, 1),
+                        "x": eff / 20 + rng.normal(0, 0.05),
+                        "hr": 70 + rng.normal(0, 3),
+                    }
+                )
+    return pd.DataFrame(rows)
+
+
+def test_subject_folds_are_disjoint_and_balanced():
+    from rakshpulse.evaluation.auricle_study import subject_folds
+
+    d = _study_frame(10)
+    f = subject_folds(d.subject_id, d.sbp, n=5)
+    assert len(f) == 10 and sorted(pd.Series(f).value_counts()) == [2] * 5
+
+
+def test_population_predictions_no_leakage_and_learn():
+    from rakshpulse.evaluation.auricle_study import population_predictions, subject_folds
+
+    d = _study_frame(10)
+    fold = subject_folds(d.subject_id, d.sbp, n=5)
+    pred = population_predictions(d[d.session == 1].reset_index(drop=True), d, ["x"], "sbp", "ridge", fold)
+    assert np.isfinite(pred).all()
+    within = (
+        pd.DataFrame({"s": d.subject_id, "y": d.sbp, "p": pred})
+        .groupby("s")
+        .apply(lambda g: np.corrcoef(g.y, g.p)[0, 1], include_groups=False)
+    )
+    assert within.median() > 0.9  # tracks within-subject changes
+
+
+def test_calibration_modes_and_personal_models():
+    from rakshpulse.evaluation.auricle_study import (
+        calibrate,
+        calibration_drift,
+        paired_subject_diff,
+        personal_model_predictions,
+        point_metrics,
+    )
+
+    d = _study_frame(6)
+    d["pred"] = 110 + 20 * d["x"]  # population model with wrong absolute level but right tracking
+    t = calibrate(d, "sbp", k_cal=3).table
+    assert set(t["mode"]) == {"carry_forward", "offset", "uncalibrated", "linear"}
+    assert set(t.scope) == {"within_day", "cross_day"}
+    cd = t[t.scope == "cross_day"]
+    off, carry = cd[cd["mode"] == "offset"], cd[cd["mode"] == "carry_forward"]
+    assert point_metrics(off)["mae"] < point_metrics(carry)["mae"]
+    diff, lo, hi = paired_subject_diff(off, carry)
+    assert hi < 0  # offset calibration significantly better than carry-forward
+    assert abs(calibration_drift(off)["drift_mean"]) < 2
+    pm = personal_model_predictions(d, ["x", "hr"], "sbp")
+    assert pm.subject_id.nunique() == 6 and point_metrics(pm)["mae"] < 5
+
+
+def test_subject_bootstrap_ci_contains_estimate():
+    from rakshpulse.evaluation.auricle_study import subject_bootstrap
+
+    t = pd.DataFrame(
+        {
+            "subject_id": np.repeat(list("abcdefgh"), 5),
+            "y": np.arange(40.0),
+            "yhat": np.arange(40.0) + np.repeat(np.arange(8.0), 5),
+        }
+    )
+    est, lo, hi = subject_bootstrap(t, lambda x: (x.yhat - x.y).mean(), n_boot=500)
+    assert lo <= est <= hi and est == pytest.approx(3.5)
+
+
+def test_shape_features_are_hr_invariant_by_construction():
+    from rakshpulse.evaluation.auricle_study import SHAPE_FEATURES, add_normalised_shape
+
+    assert not any(f in SHAPE_FEATURES for f in ("hr", "beat_T", "f0", "sdnn", "w50"))
+    df = pd.DataFrame(
+        {f"e_{k}": [0.5, 1.0] for k in ("w10", "w25", "w50", "w75", "w90", "t_max_slope", "t_apg_b", "max_slope")}
+        | {"e_beat_T": [0.5, 1.0]}
+    )
+    add_normalised_shape(df, "e")
+    assert np.allclose(df["e_w50_n"], 1.0)  # duration-scaled widths become identical
