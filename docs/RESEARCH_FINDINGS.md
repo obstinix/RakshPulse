@@ -334,3 +334,230 @@ actual behind-ear MAX30102 hardware against an ISO 81060-2/IEEE 1708-compliant r
 - Session-2 analyses exclude subjects without ≥ 3 SQI-passing rest windows in session 1 (per-subject reasons in
   `results/cross_day/audit.json` check 9).
 - The heart-failure cohort was not analysed (download stopped at 0/28 records, with 3 resumable partial files).
+
+---
+
+## Population model and personalisation (standardised dataset `data/auricle/`)
+
+**Question:** can a population model give a usable first estimate for a new person, and does personal calibration
+(and adaptive updating as new reference readings arrive) give better BP tracking than simply using those reference
+readings?
+
+**Setup** (`scripts/run_personalization.py`; engine in `src/rakshpulse/personalization/`):
+- Population models are trained on session-1 windows of training subjects only (5 subject-grouped folds), with
+  HR + pulse-shape features. They are evaluated uncalibrated on the held-out subjects' session 1 and session 2.
+- Strategy comparison: every strategy is evaluated on the **same** day-2 windows (after the first three day-2 rest
+  references). "baseline" strategies use only the reference readings (no PPG) via `BaselineTracker`. "pop+…"
+  strategies apply `PersonalizationEngine` to the ridge population prediction. Personal models are ridge or
+  ElasticNet fitted to the subject's own day-1 features and labels.
+- Adaptive experiment: within each session a reference reading arrives every 2 minutes (nearest labelled
+  window). Each method predicts the following windows using only past references.
+- All CIs come from 2,000 subject-level bootstrap draws. Paired tests use per-subject MAE differences.
+
+<!-- BEGIN PERSONALIZATION -->
+
+### P1. Population models on unseen subjects (uncalibrated; HR + shape features)
+
+| Site | Target | Model | MAE S1 | 95% CI | MAE S2 | 95% CI | Within-subj r (S1) | n subj (S1) |
+|---|---|---|---|---|---|---|---|---|
+| ear | SBP | mean | 15.25 | [13.25, 17.30] | 15.72 | [12.92, 18.96] | — | 39 |
+| ear | DBP | mean | 10.71 | [8.84, 12.53] | 9.90 | [7.80, 12.64] | — | 39 |
+| ear | SBP | ridge | 15.04 | [12.99, 17.25] | 15.19 | [12.64, 18.01] | 0.37 | 39 |
+| ear | DBP | ridge | 11.04 | [9.03, 13.02] | 9.89 | [8.02, 12.37] | 0.18 | 39 |
+| ear | SBP | elasticnet | 14.92 | [12.93, 17.09] | 15.16 | [12.41, 18.32] | 0.35 | 39 |
+| ear | DBP | elasticnet | 10.96 | [8.94, 12.87] | 9.97 | [7.98, 12.58] | 0.18 | 39 |
+| ear | SBP | svr | 15.47 | [13.26, 17.93] | 15.70 | [12.93, 18.79] | 0.34 | 39 |
+| ear | DBP | svr | 11.20 | [9.26, 13.16] | 10.00 | [8.02, 12.75] | 0.18 | 39 |
+| ear | SBP | random_forest | 16.15 | [13.94, 18.58] | 15.85 | [13.15, 19.00] | 0.31 | 39 |
+| ear | DBP | random_forest | 11.34 | [9.46, 13.25] | 10.64 | [8.75, 13.18] | 0.16 | 39 |
+| ear | SBP | extra_trees | 15.58 | [13.40, 17.89] | 15.36 | [12.66, 18.48] | 0.39 | 39 |
+| ear | DBP | extra_trees | 11.06 | [9.14, 12.97] | 10.13 | [8.19, 12.71] | 0.18 | 39 |
+| ear | SBP | hist_gb | 16.37 | [14.07, 18.85] | 16.11 | [13.36, 19.42] | 0.31 | 39 |
+| ear | DBP | hist_gb | 11.84 | [9.95, 13.82] | 11.29 | [9.49, 13.83] | 0.15 | 39 |
+| ear | SBP | xgboost | 15.91 | [13.69, 18.30] | 15.60 | [12.90, 18.75] | 0.36 | 39 |
+| ear | DBP | xgboost | 11.55 | [9.68, 13.45] | 10.64 | [8.84, 13.18] | 0.13 | 39 |
+| ear | SBP | lightgbm | 16.49 | [14.25, 18.96] | 16.27 | [13.50, 19.50] | 0.38 | 39 |
+| ear | DBP | lightgbm | 11.78 | [9.93, 13.70] | 11.28 | [9.42, 13.76] | 0.14 | 39 |
+| finger | SBP | mean | 15.88 | [13.82, 18.27] | 15.67 | [13.12, 18.47] | — | 41 |
+| finger | DBP | mean | 10.88 | [9.39, 12.55] | 9.99 | [8.04, 12.35] | — | 41 |
+| finger | SBP | ridge | 15.50 | [13.35, 17.95] | 16.07 | [13.28, 19.18] | 0.25 | 41 |
+| finger | DBP | ridge | 11.45 | [9.77, 13.39] | 10.28 | [8.31, 12.50] | 0.06 | 41 |
+| finger | SBP | elasticnet | 15.40 | [13.28, 17.91] | 15.60 | [12.82, 18.80] | 0.28 | 41 |
+| finger | DBP | elasticnet | 11.03 | [9.47, 12.86] | 10.00 | [8.03, 12.29] | 0.05 | 41 |
+| finger | SBP | svr | 15.45 | [13.22, 17.96] | 15.30 | [12.67, 18.20] | 0.42 | 41 |
+| finger | DBP | svr | 12.09 | [10.13, 14.17] | 10.34 | [8.42, 12.39] | 0.15 | 41 |
+| finger | SBP | random_forest | 15.81 | [13.69, 18.26] | 15.62 | [13.51, 17.91] | 0.38 | 41 |
+| finger | DBP | random_forest | 12.06 | [10.19, 14.16] | 11.33 | [9.61, 13.20] | 0.16 | 41 |
+| finger | SBP | extra_trees | 15.80 | [13.69, 18.28] | 15.48 | [12.95, 18.25] | 0.34 | 41 |
+| finger | DBP | extra_trees | 11.71 | [9.90, 13.74] | 10.51 | [8.78, 12.43] | 0.14 | 41 |
+| finger | SBP | hist_gb | 16.03 | [13.99, 18.39] | 16.22 | [13.81, 18.64] | 0.38 | 41 |
+| finger | DBP | hist_gb | 12.46 | [10.62, 14.43] | 12.52 | [10.28, 15.02] | 0.17 | 41 |
+| finger | SBP | xgboost | 15.82 | [13.69, 18.33] | 15.93 | [13.35, 18.68] | 0.35 | 41 |
+| finger | DBP | xgboost | 12.29 | [10.41, 14.31] | 11.45 | [9.72, 13.36] | 0.12 | 41 |
+| finger | SBP | lightgbm | 15.90 | [13.83, 18.25] | 16.02 | [13.79, 18.31] | 0.38 | 41 |
+| finger | DBP | lightgbm | 12.43 | [10.55, 14.47] | 12.01 | [10.08, 14.05] | 0.15 | 41 |
+
+Paired tests of each model against the training-mean predictor: 64 tests, 0 significantly better, 13 significantly worse (hist_gb, lightgbm, random_forest, xgboost).
+
+### P2. Cross-day strategies (common day-2 evaluation set)
+
+| Site | Target | Strategy | Information used | MAE | 95% CI | RMSE | Bias | SD err | Pearson | Spearman | Within-subj r | n subj |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| ear | SBP | population | none | 15.44 | [12.58, 18.50] | 19.59 | -3.60 | 19.26 | 0.37 | 0.32 | 0.41 | 29 |
+| ear | SBP | pop+S1cal | S1 refs | 16.46 | [13.54, 19.62] | 20.60 | -0.66 | 20.59 | 0.48 | 0.43 | 0.41 | 29 |
+| ear | SBP | pop+S1cal+S2update | S1+S2 refs | 12.04 | [10.07, 14.35] | 16.00 | 0.08 | 16.00 | 0.66 | 0.66 | 0.41 | 29 |
+| ear | SBP | pop+S2cal | S1+S2 refs | 12.23 | [10.27, 14.51] | 16.18 | 0.13 | 16.18 | 0.65 | 0.65 | 0.41 | 29 |
+| ear | SBP | pop+S1linear | S1 refs | 14.54 | [11.71, 17.48] | 18.84 | -4.70 | 18.25 | 0.51 | 0.49 | 0.41 | 29 |
+| ear | SBP | personal_ridge | S1 features+labels | 15.13 | [12.17, 18.61] | 20.32 | -3.96 | 19.93 | 0.47 | 0.45 | 0.30 | 29 |
+| ear | SBP | personal_elasticnet | S1 features+labels | 13.88 | [11.12, 17.04] | 18.65 | -3.97 | 18.23 | 0.53 | 0.51 | 0.35 | 29 |
+| ear | SBP | baseline_S1 | S1 refs | 17.50 | [14.24, 21.06] | 22.36 | 1.55 | 22.31 | 0.35 | 0.30 | — | 29 |
+| ear | SBP | baseline_S1+S2 | S1+S2 refs | 13.13 | [11.12, 15.49] | 17.40 | 1.43 | 17.34 | 0.57 | 0.58 | — | 29 |
+| ear | DBP | population | none | 9.98 | [7.82, 12.81] | 13.19 | -1.87 | 13.06 | 0.30 | 0.23 | 0.11 | 29 |
+| ear | DBP | pop+S1cal | S1 refs | 12.74 | [9.96, 15.73] | 16.09 | -3.62 | 15.68 | 0.38 | 0.38 | 0.11 | 29 |
+| ear | DBP | pop+S1cal+S2update | S1+S2 refs | 8.88 | [7.24, 10.84] | 11.63 | -2.97 | 11.25 | 0.58 | 0.51 | 0.11 | 29 |
+| ear | DBP | pop+S2cal | S1+S2 refs | 9.00 | [7.33, 10.94] | 11.77 | -2.93 | 11.40 | 0.57 | 0.50 | 0.11 | 29 |
+| ear | DBP | pop+S1linear | S1 refs | 11.02 | [8.45, 14.30] | 14.53 | -1.96 | 14.40 | 0.34 | 0.43 | 0.11 | 29 |
+| ear | DBP | personal_ridge | S1 features+labels | 12.32 | [9.40, 16.02] | 16.58 | -2.64 | 16.37 | 0.29 | 0.41 | 0.25 | 29 |
+| ear | DBP | personal_elasticnet | S1 features+labels | 11.06 | [8.54, 14.16] | 14.73 | -2.42 | 14.53 | 0.36 | 0.46 | 0.31 | 29 |
+| ear | DBP | baseline_S1 | S1 refs | 11.45 | [8.79, 14.51] | 14.85 | -2.18 | 14.69 | 0.37 | 0.39 | — | 29 |
+| ear | DBP | baseline_S1+S2 | S1+S2 refs | 8.68 | [6.87, 10.93] | 11.55 | -2.62 | 11.25 | 0.57 | 0.49 | — | 29 |
+| finger | SBP | population | none | 16.30 | [13.10, 20.11] | 20.79 | -1.80 | 20.72 | 0.16 | 0.16 | 0.24 | 33 |
+| finger | SBP | pop+S1cal | S1 refs | 15.68 | [12.98, 18.66] | 20.08 | 1.01 | 20.06 | 0.47 | 0.46 | 0.24 | 33 |
+| finger | SBP | pop+S1cal+S2update | S1+S2 refs | 12.05 | [10.17, 14.09] | 15.86 | 0.36 | 15.86 | 0.66 | 0.67 | 0.24 | 33 |
+| finger | SBP | pop+S2cal | S1+S2 refs | 12.19 | [10.28, 14.27] | 16.04 | 0.32 | 16.04 | 0.66 | 0.66 | 0.24 | 33 |
+| finger | SBP | pop+S1linear | S1 refs | 14.08 | [11.93, 16.38] | 18.39 | -2.39 | 18.23 | 0.49 | 0.48 | 0.22 | 33 |
+| finger | SBP | personal_ridge | S1 features+labels | 13.96 | [11.39, 16.57] | 18.95 | -2.00 | 18.85 | 0.51 | 0.54 | 0.32 | 33 |
+| finger | SBP | personal_elasticnet | S1 features+labels | 13.70 | [11.17, 16.31] | 18.44 | -2.21 | 18.31 | 0.51 | 0.53 | 0.37 | 33 |
+| finger | SBP | baseline_S1 | S1 refs | 15.80 | [12.92, 18.85] | 20.50 | 0.74 | 20.49 | 0.44 | 0.41 | — | 33 |
+| finger | SBP | baseline_S1+S2 | S1+S2 refs | 12.09 | [10.39, 13.95] | 16.23 | 1.07 | 16.19 | 0.63 | 0.63 | — | 33 |
+| finger | DBP | population | none | 10.32 | [8.18, 12.89] | 13.54 | -0.66 | 13.52 | 0.16 | 0.09 | 0.04 | 33 |
+| finger | DBP | pop+S1cal | S1 refs | 11.51 | [9.09, 13.98] | 14.64 | -2.14 | 14.48 | 0.39 | 0.37 | 0.04 | 33 |
+| finger | DBP | pop+S1cal+S2update | S1+S2 refs | 9.12 | [7.57, 10.71] | 11.86 | -2.57 | 11.58 | 0.54 | 0.49 | 0.04 | 33 |
+| finger | DBP | pop+S2cal | S1+S2 refs | 9.35 | [7.80, 10.97] | 12.08 | -2.60 | 11.80 | 0.53 | 0.47 | 0.04 | 33 |
+| finger | DBP | pop+S1linear | S1 refs | 10.41 | [8.13, 13.10] | 14.01 | -0.77 | 13.99 | 0.32 | 0.40 | 0.02 | 33 |
+| finger | DBP | personal_ridge | S1 features+labels | 12.55 | [9.29, 16.03] | 17.87 | 0.96 | 17.84 | 0.20 | 0.34 | 0.23 | 33 |
+| finger | DBP | personal_elasticnet | S1 features+labels | 11.65 | [8.76, 14.64] | 16.02 | 0.77 | 16.01 | 0.24 | 0.36 | 0.21 | 33 |
+| finger | DBP | baseline_S1 | S1 refs | 11.19 | [8.59, 13.86] | 14.59 | -1.94 | 14.46 | 0.36 | 0.36 | — | 33 |
+| finger | DBP | baseline_S1+S2 | S1+S2 refs | 8.51 | [6.84, 10.40] | 11.50 | -2.39 | 11.25 | 0.56 | 0.50 | — | 33 |
+
+### P3. Paired subject-level comparisons (Δ = MAE(a) − MAE(b); negative favours a)
+
+| site | target | comparison | mae_diff | ci_low | ci_high | significant |
+|---|---|---|---|---|---|---|
+| ear | sbp | pop+S1cal vs baseline_S1 | -1.08 | -2.49 | 0.23 | False |
+| ear | sbp | pop+S1cal+S2update vs baseline_S1+S2 | -0.98 | -2.08 | 0.09 | False |
+| ear | sbp | pop+S2cal vs baseline_S1+S2 | -0.83 | -2.01 | 0.33 | False |
+| ear | sbp | pop+S1cal+S2update vs pop+S1cal | -4.82 | -7.84 | -2.13 | True |
+| ear | sbp | pop+S1linear vs pop+S1cal | -1.95 | -5.09 | 1.29 | False |
+| ear | sbp | personal_ridge vs baseline_S1 | -2.22 | -6.3 | 2.01 | False |
+| ear | sbp | personal_elasticnet vs baseline_S1 | -3.6 | -7.63 | 0.52 | False |
+| ear | sbp | population vs baseline_S1 | -2.57 | -6.53 | 1.18 | False |
+| ear | sbp | personal_elasticnet vs personal_ridge | -1.38 | -2.08 | -0.78 | True |
+| ear | dbp | pop+S1cal vs baseline_S1 | 1.13 | 0.22 | 2.07 | True |
+| ear | dbp | pop+S1cal+S2update vs baseline_S1+S2 | 0.17 | -0.74 | 1.08 | False |
+| ear | dbp | pop+S2cal vs baseline_S1+S2 | 0.29 | -0.79 | 1.38 | False |
+| ear | dbp | pop+S1cal+S2update vs pop+S1cal | -3.73 | -6.47 | -1.33 | True |
+| ear | dbp | pop+S1linear vs pop+S1cal | -1.58 | -3.84 | 0.62 | False |
+| ear | dbp | personal_ridge vs baseline_S1 | 1.06 | -1.79 | 4.24 | False |
+| ear | dbp | personal_elasticnet vs baseline_S1 | -0.29 | -2.78 | 2.32 | False |
+| ear | dbp | population vs baseline_S1 | -1.55 | -4.38 | 1.1 | False |
+| ear | dbp | personal_elasticnet vs personal_ridge | -1.35 | -2.39 | -0.55 | True |
+| ear | sbp | adaptive S1: rolling3_reference vs last_reference | 0.25 | -0.38 | 0.89 | False |
+| ear | sbp | adaptive S1: engine_offset vs last_reference | -0.32 | -1.08 | 0.48 | False |
+| ear | sbp | adaptive S1: engine_linear vs last_reference | -0.03 | -0.87 | 0.88 | False |
+| ear | sbp | adaptive S1: population vs last_reference | 5.14 | 2.83 | 7.48 | True |
+| ear | sbp | adaptive S2: rolling3_reference vs last_reference | 0.17 | -0.48 | 0.89 | False |
+| ear | sbp | adaptive S2: engine_offset vs last_reference | 0.15 | -0.97 | 1.31 | False |
+| ear | sbp | adaptive S2: engine_linear vs last_reference | 0.41 | -0.81 | 1.67 | False |
+| ear | sbp | adaptive S2: population vs last_reference | 6.45 | 3.89 | 9.23 | True |
+| finger | sbp | pop+S1cal vs baseline_S1 | -0.26 | -1.75 | 1.22 | False |
+| finger | sbp | pop+S1cal+S2update vs baseline_S1+S2 | 0.18 | -0.95 | 1.43 | False |
+| finger | sbp | pop+S2cal vs baseline_S1+S2 | 0.29 | -0.94 | 1.61 | False |
+| finger | sbp | pop+S1cal+S2update vs pop+S1cal | -4.02 | -7.02 | -1.36 | True |
+| finger | sbp | pop+S1linear vs pop+S1cal | -2.28 | -5.13 | 0.27 | False |
+| finger | sbp | personal_ridge vs baseline_S1 | -2.56 | -5.91 | 0.64 | False |
+| finger | sbp | personal_elasticnet vs baseline_S1 | -2.87 | -6.1 | 0.34 | False |
+| finger | sbp | population vs baseline_S1 | -0.69 | -4.66 | 3.46 | False |
+| finger | sbp | personal_elasticnet vs personal_ridge | -0.31 | -0.74 | 0.14 | False |
+| finger | dbp | pop+S1cal vs baseline_S1 | 0.43 | -0.34 | 1.24 | False |
+| finger | dbp | pop+S1cal+S2update vs baseline_S1+S2 | 0.78 | -0.26 | 1.81 | False |
+| finger | dbp | pop+S2cal vs baseline_S1+S2 | 1.01 | -0.11 | 2.14 | False |
+| finger | dbp | pop+S1cal+S2update vs pop+S1cal | -2.24 | -4.59 | -0.12 | True |
+| finger | dbp | pop+S1linear vs pop+S1cal | -0.95 | -3.32 | 1.15 | False |
+| finger | dbp | personal_ridge vs baseline_S1 | 0.78 | -2.13 | 3.67 | False |
+| finger | dbp | personal_elasticnet vs baseline_S1 | 0.14 | -2.54 | 2.86 | False |
+| finger | dbp | population vs baseline_S1 | -0.72 | -3.53 | 1.76 | False |
+| finger | dbp | personal_elasticnet vs personal_ridge | -0.64 | -1.28 | -0.14 | True |
+| finger | sbp | adaptive S1: rolling3_reference vs last_reference | 0.62 | -0.05 | 1.35 | False |
+| finger | sbp | adaptive S1: engine_offset vs last_reference | 0.83 | 0.09 | 1.58 | True |
+| finger | sbp | adaptive S1: engine_linear vs last_reference | 1.13 | 0.33 | 1.99 | True |
+| finger | sbp | adaptive S1: population vs last_reference | 5.65 | 3.5 | 8.15 | True |
+| finger | sbp | adaptive S2: rolling3_reference vs last_reference | 0.26 | -0.4 | 0.95 | False |
+| finger | sbp | adaptive S2: engine_offset vs last_reference | 1.17 | 0.22 | 2.06 | True |
+| finger | sbp | adaptive S2: engine_linear vs last_reference | 1.3 | 0.27 | 2.25 | True |
+| finger | sbp | adaptive S2: population vs last_reference | 7.51 | 4.88 | 10.34 | True |
+
+### P4. Adaptive within-day tracking (a reference every 2 min; strictly causal; SBP)
+
+| Site | Session | Method | MAE | 95% CI | n subj |
+|---|---|---|---|---|---|
+| ear | 1 | last_reference | 9.81 | [8.85, 10.75] | 39 |
+| ear | 1 | rolling3_reference | 10.02 | [9.02, 11.00] | 39 |
+| ear | 1 | engine_offset | 9.46 | [8.52, 10.45] | 39 |
+| ear | 1 | engine_linear | 9.74 | [8.75, 10.80] | 39 |
+| ear | 1 | population | 14.91 | [12.89, 17.09] | 39 |
+| ear | 2 | last_reference | 9.05 | [8.04, 10.19] | 33 |
+| ear | 2 | rolling3_reference | 9.17 | [8.14, 10.29] | 33 |
+| ear | 2 | engine_offset | 9.07 | [8.06, 10.12] | 33 |
+| ear | 2 | engine_linear | 9.39 | [8.23, 10.62] | 33 |
+| ear | 2 | population | 15.22 | [12.63, 18.05] | 33 |
+| finger | 1 | last_reference | 9.65 | [8.67, 10.66] | 41 |
+| finger | 1 | rolling3_reference | 9.86 | [8.83, 10.99] | 41 |
+| finger | 1 | engine_offset | 10.26 | [9.29, 11.40] | 41 |
+| finger | 1 | engine_linear | 10.51 | [9.44, 11.78] | 41 |
+| finger | 1 | population | 15.53 | [13.29, 18.08] | 41 |
+| finger | 2 | last_reference | 8.68 | [7.83, 9.73] | 37 |
+| finger | 2 | rolling3_reference | 8.93 | [7.99, 9.90] | 37 |
+| finger | 2 | engine_offset | 9.67 | [8.77, 10.61] | 37 |
+| finger | 2 | engine_linear | 9.89 | [8.84, 11.00] | 37 |
+| finger | 2 | population | 16.04 | [13.19, 19.17] | 37 |
+
+### P5. Drift monitor (first day-2 reference vs the day-1 calibration)
+
+| Site | Subjects | Recalibration recommended | Day-2 MAE if recommended | Day-2 MAE otherwise | r(abs first residual, day-2 MAE) |
+|---|---|---|---|---|---|
+| ear | 29 | 3 | 22.28 | 16.21 | 0.55 |
+| finger | 33 | 5 | 20.26 | 15.97 | 0.50 |
+
+### P6. Baseline tracking (day-2 resting SBP vs the day-1 personal reference baseline)
+
+| Site | Subjects | Median day-1 references | Mean shift (mmHg) | SD of shift | % subjects with abs(z) > 2 |
+|---|---|---|---|---|---|
+| ear | 29 | 116.00 | 4.66 | 15.38 | 13.79 |
+| finger | 33 | 112.00 | 3.10 | 16.40 | 21.21 |
+
+<!-- END PERSONALIZATION -->
+
+### Interpretation
+
+1. **The population model gives no usable first estimate for a new person.** On unseen subjects no model was
+   better than predicting the training-mean BP. All significant differences were tree ensembles doing *worse*.
+   The PPG features learned here do not identify a person's absolute BP.
+2. **Personal calibration helps only through the reference readings it contains.** Adding day-2 references to a
+   day-1 calibration reduced SBP error by about 4–5 mmHg, but a PPG-free tracker of the same references did
+   statistically as well. With references every 2 min within a day, the engine never beat "repeat the last
+   reference" (it was worse at the finger). Under these conditions the PPG signal adds no measurable value on top
+   of the cuff readings themselves.
+3. **Personal feature models** (fitted on one day, applied to the next) were not better than the day-1 baseline.
+   ElasticNet beat personal Ridge (stronger regularisation suits about 100–250 correlated windows per subject).
+4. **Drift detection needs references.** The first day-2 residual against the day-1 calibration correlates with the
+   eventual day-2 error (r ≈ 0.5). The engine therefore uses residuals plus calibration age to recommend
+   recalibration. PPG alone cannot indicate a stale calibration.
+5. **Baseline tracking** shows how much a person's resting BP moves between days relative to their own day-1 spread.
+   This is the variability any calibration must absorb.
+
+**What can and cannot be claimed.** Two recording days per person, in a laboratory, with CNAP references, support
+statements about within-day and next-day behaviour only. They do not support claims about long-term
+personalisation, weeks of drift, or behind-ear MAX30102 hardware. The engine is implemented and unit-tested for
+long-horizon use (decay, rollback, persistence), but long-term performance is **untested**.
+

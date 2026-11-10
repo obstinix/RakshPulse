@@ -23,6 +23,9 @@ high-altitude settings, built around the MAX30102 optical sensor.
 | Tests + CI (ruff, pytest, Python 3.10–3.12) | ✅ Implemented |
 | Finger vs earlobe study (Auricle, 41 subjects) | ✅ Implemented ([MODEL_EVALUATION §F](docs/MODEL_EVALUATION.md)) |
 | Cross-day calibration study (Auricle, 36 subjects × 2 days) | ✅ Completed and independently audited ([RESEARCH_FINDINGS](docs/RESEARCH_FINDINGS.md)) |
+| Standardised Auricle dataset (CSV tables + NPZ waveforms, 30,841 windows) | ✅ Built, validated (19 checks), published ([data/README.md](data/README.md)) |
+| Population model, personalisation engine, baseline tracker, adaptive calibration | ✅ Implemented, tested, evaluated ([RESEARCH_FINDINGS](docs/RESEARCH_FINDINGS.md#population-model-and-personalisation-standardised-dataset-dataauricle)) |
+| Real-time estimation interface (ear PPG + optional calibration state) | ✅ Implemented (hardware-independent; research use) |
 | Behind-ear validation | ❌ **Not done.** No behind-ear data exists yet ([docs/DOMAIN_ADAPTATION.md](docs/DOMAIN_ADAPTATION.md)) |
 | ESP32 / ONNX / TFLite deployment | ❌ Planned. Footprint measured only |
 | Clinical validation (ISO 81060-2 / IEEE 1708) | ❌ Not started |
@@ -58,7 +61,12 @@ high-altitude settings, built around the MAX30102 optical sensor.
    9–12 mmHg, and day-2 SBP error with day-1 calibration (ear 16.2 mmHg MAE) is no better than reporting the
    calibration value. Within a session, ear pulse shape does carry heart-rate-independent SBP trend information.
    See [docs/RESEARCH_FINDINGS.md](docs/RESEARCH_FINDINGS.md).
-10. The realistic path forward is **per-user cuff calibration plus behind-ear data collection**.
+10. **Population vs personalisation (standardised dataset):** on unseen subjects no population model beat predicting
+    the training-mean BP (0 of 64 paired tests better). Personal calibration improves day-2 errors only through
+    new cuff readings: a PPG-free tracker of the same readings did statistically as well, and with a reading
+    every 2 min the PPG engine never beat "repeat the last reading". PPG added no measurable value beyond the
+    references in these data.
+11. The realistic path forward is **per-user cuff calibration plus behind-ear data collection**.
    It is not a bigger model on fingertip data.
 
 ## Installation
@@ -99,6 +107,11 @@ python scripts/make_cross_day_figures.py && python scripts/write_findings.py
 
 # or everything in order:
 python scripts/reproduce.py
+
+# standardised dataset + personalisation
+python -m rakshpulse.data build && python -m rakshpulse.data validate && python -m rakshpulse.data summary
+python scripts/run_personalization.py
+python -m rakshpulse.data.release fetch waveforms   # or fetch the published NPZ instead of building
 python scripts/compare_models.py      # paired bootstrap CIs
 python scripts/visualize_ppg.py       # figures in docs/figures/
 
@@ -144,6 +157,27 @@ It rejects the measurement (no BP returned) when signal quality is insufficient,
 channel is missing, or the recording is shorter than 10 s. See
 [docs/HARDWARE_INTEGRATION.md](docs/HARDWARE_INTEGRATION.md).
 
+## Personalised, real-time estimation
+
+```python
+from rakshpulse.inference.realtime import RealtimeEstimator
+from rakshpulse.personalization import BaselineTracker, PersonalizationEngine, RefPoint
+
+est = RealtimeEstimator.from_file("models/auricle_population_ear_ridge.joblib")   # ear PPG, ridge, HR + shape
+first = est.estimate(ear_ppg=ear, sampling_rate=1000, timestamp=t0)               # population estimate
+engine = PersonalizationEngine("user-1")                                           # one engine per user
+engine.calibrate([RefPoint(t0, first.population_sbp, first.population_dbp, cuff_sbp, cuff_dbp)])
+baseline = BaselineTracker("user-1"); baseline.add(t0, cuff_sbp, cuff_dbp)
+later = est.estimate(ear_ppg=ear2, sampling_rate=1000, timestamp=t1, engine=engine, baseline=baseline)
+later.sbp, later.dbp, later.estimate_type          # "personalised"
+later.recalibration_recommended, later.recalibration_reasons
+engine.update(RefPoint(t2, p_sbp, p_dbp, cuff2_sbp, cuff2_dbp))   # adaptive update; engine.rollback() undoes it
+engine.save("state/user-1.json")
+```
+
+Poor or invalid signals return `accepted=False` and no BP. The uncertainty fields are research validation
+errors, not clinical confidence intervals.
+
 ## Current limitations
 
 - **Site mismatch:** the training data is fingertip-type PPG. Behind-ear performance is unknown.
@@ -159,17 +193,19 @@ channel is missing, or the recording is shorter than 10 s. See
 ## Repository layout
 
 ```
-src/rakshpulse/{data,preprocessing,features,models,evaluation,inference}
+src/rakshpulse/{data,preprocessing,features,models,evaluation,inference,personalization}
 scripts/      reproducible experiment entry points
 tests/        pytest suite (synthetic fixtures; no dataset needed)
 notebooks/    01_ppg_exploration.ipynb
 docs/         requirements, dataset research, preprocessing, models, evaluation, domain adaptation, hardware
-data/         git-ignored datasets + committed provenance/metadata
-results/      metrics JSON (committed) and per-window predictions (git-ignored)
+data/auricle/ populated Auricle CSV dataset (waveform NPZ + raw WFDB on GitHub Releases)
+data/         other raw data git-ignored; provenance/manifests committed
+results/      metrics CSV/JSON (committed); large per-window prediction caches git-ignored
 ```
 
 ## Data licences and attribution
 
-Guilin dual-wave (CC BY 4.0), Foggia multiwavelength (CC BY 4.0) and PPG-BP (CC0). Required
+Guilin dual-wave (CC BY 4.0), Foggia multiwavelength (CC BY 4.0), PPG-BP (CC0) and Auricle (ODC-By 1.0;
+redistributed with attribution on this repository's Releases). Required
 citations are in [docs/DATASET_ACQUISITION.md](docs/DATASET_ACQUISITION.md). Code is released
 under CC0 1.0 (see LICENSE).

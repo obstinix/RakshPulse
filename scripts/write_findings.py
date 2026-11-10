@@ -15,6 +15,8 @@ ROOT = Path(__file__).resolve().parents[1]
 RES = ROOT / "results" / "cross_day"
 DOC = ROOT / "docs" / "RESEARCH_FINDINGS.md"
 B, E = "<!-- BEGIN AUTO -->", "<!-- END AUTO -->"
+BP_, EP_ = "<!-- BEGIN PERSONALIZATION -->", "<!-- END PERSONALIZATION -->"
+PERS = ROOT / "results" / "personalization"
 
 
 def ci(s) -> str:
@@ -33,6 +35,187 @@ def table(df: pd.DataFrame) -> str:
     head = "| " + " | ".join(df.columns) + " |"
     sep = "|" + "|".join("---" for _ in df.columns) + "|"
     return "\n".join([head, sep] + ["| " + " | ".join(map(str, r)) + " |" for r in df.to_numpy()])
+
+
+def personalization_block() -> str:
+    """Tables for the population + personalisation experiments (results/personalization/)."""
+    pop = pd.read_csv(PERS / "population_models.csv")
+    pop["session"] = pop.evaluated_on.str.extract(r"session (\d)")[0]
+    strat = pd.read_csv(PERS / "cross_day_strategies.csv")
+    pair = pd.read_csv(PERS / "paired_comparisons.csv")
+    ad = pd.read_csv(PERS / "adaptive_within_day.csv")
+    dr = pd.read_csv(PERS / "drift_monitor.csv")
+    bl = pd.read_csv(PERS / "baseline_tracking.csv")
+    out = ["### P1. Population models on unseen subjects (uncalibrated; HR + shape features)", ""]
+    rows = []
+    for (site, target, model), g in pop.groupby(["site", "target", "model"], sort=False):
+        r1, r2 = g[g.session == "1"].iloc[0], g[g.session == "2"].iloc[0]
+        rows.append(
+            [
+                site,
+                target.upper(),
+                model,
+                f2(r1.mae),
+                ci(r1.mae_ci),
+                f2(r2.mae),
+                ci(r2.mae_ci),
+                f2(r1.within_subject_pearson_median),
+                int(r1.n_subjects),
+            ]
+        )
+    out += [
+        table(
+            pd.DataFrame(
+                rows,
+                columns=[
+                    "Site",
+                    "Target",
+                    "Model",
+                    "MAE S1",
+                    "95% CI",
+                    "MAE S2",
+                    "95% CI",
+                    "Within-subj r (S1)",
+                    "n subj (S1)",
+                ],
+            )
+        ),
+        "",
+    ]
+    vm = pair[pair.comparison.str.contains("vs mean")]
+    better = vm[vm.significant & (vm.mae_diff < 0)]
+    worse = vm[vm.significant & (vm.mae_diff > 0)]
+    worse_models = sorted(set(worse.comparison.str.extract(r"population (\w+) vs")[0]))
+    out += [
+        f"Paired tests of each model against the training-mean predictor: {len(vm)} tests, "
+        f"{len(better)} significantly better, {len(worse)} significantly worse ({', '.join(worse_models)}).",
+        "",
+    ]
+    out += ["### P2. Cross-day strategies (common day-2 evaluation set)", ""]
+    rows = [
+        [
+            r.site,
+            r.target.upper(),
+            r.method,
+            r.information,
+            f2(r.mae),
+            ci(r.mae_ci),
+            f2(r.rmse),
+            f2(r.bias),
+            f2(r.sd_error),
+            f2(r.pooled_pearson),
+            f2(r.pooled_spearman),
+            f2(r.within_subject_pearson_median),
+            int(r.n_subjects),
+        ]
+        for r in strat.itertuples()
+    ]
+    out += [
+        table(
+            pd.DataFrame(
+                rows,
+                columns=[
+                    "Site",
+                    "Target",
+                    "Strategy",
+                    "Information used",
+                    "MAE",
+                    "95% CI",
+                    "RMSE",
+                    "Bias",
+                    "SD err",
+                    "Pearson",
+                    "Spearman",
+                    "Within-subj r",
+                    "n subj",
+                ],
+            )
+        ),
+        "",
+    ]
+    keep = pair[~pair.comparison.str.contains("vs mean")]
+    out += [
+        "### P3. Paired subject-level comparisons (Δ = MAE(a) − MAE(b); negative favours a)",
+        "",
+        table(keep[["site", "target", "comparison", "mae_diff", "ci_low", "ci_high", "significant"]].round(2)),
+        "",
+    ]
+    rows = [[r.site, int(r.session), r.method, f2(r.mae), ci(r.mae_ci), int(r.n_subjects)] for r in ad.itertuples()]
+    out += [
+        "### P4. Adaptive within-day tracking (a reference every 2 min; strictly causal; SBP)",
+        "",
+        table(pd.DataFrame(rows, columns=["Site", "Session", "Method", "MAE", "95% CI", "n subj"])),
+        "",
+    ]
+    rows = []
+    for site, g in dr.groupby("site"):
+        rec = g[g.recommended]
+        rows.append(
+            [
+                site,
+                len(g),
+                len(rec),
+                f2(rec.day2_mae_with_day1_cal.mean()),
+                f2(g[~g.recommended].day2_mae_with_day1_cal.mean()),
+                f2(g.first_day2_residual_sbp.abs().corr(g.day2_mae_with_day1_cal)),
+            ]
+        )
+    out += [
+        "### P5. Drift monitor (first day-2 reference vs the day-1 calibration)",
+        "",
+        table(
+            pd.DataFrame(
+                rows,
+                columns=[
+                    "Site",
+                    "Subjects",
+                    "Recalibration recommended",
+                    "Day-2 MAE if recommended",
+                    "Day-2 MAE otherwise",
+                    "r(abs first residual, day-2 MAE)",
+                ],
+            )
+        ),
+        "",
+    ]
+    rows = []
+    for site, g in bl.groupby("site"):
+        rows.append(
+            [
+                site,
+                len(g),
+                f2(g.n_day1_refs.median()),
+                f2(g.sbp_minus_baseline.mean()),
+                f2(g.sbp_minus_baseline.std()),
+                f2((g.sbp_z.abs() > 2).mean() * 100),
+            ]
+        )
+    out += [
+        "### P6. Baseline tracking (day-2 resting SBP vs the day-1 personal reference baseline)",
+        "",
+        table(
+            pd.DataFrame(
+                rows,
+                columns=[
+                    "Site",
+                    "Subjects",
+                    "Median day-1 references",
+                    "Mean shift (mmHg)",
+                    "SD of shift",
+                    "% subjects with abs(z) > 2",
+                ],
+            )
+        ),
+        "",
+    ]
+    return "\n".join(out)
+
+
+def _replace_block(text: str, begin: str, end: str, body: str) -> str:
+    if begin not in text:
+        text = text.rstrip() + f"\n\n{begin}\n{end}\n"
+    a, b = text.index(begin) + len(begin), text.index(end)
+    return text[:a] + "\n\n" + body + "\n" + text[b:]
 
 
 def main() -> int:
@@ -331,7 +514,10 @@ def main() -> int:
     auto = "\n".join(out)
     text = DOC.read_text(encoding="utf-8") if DOC.exists() else f"# Research Findings\n\n{B}\n{E}\n"
     a, b = text.index(B) + len(B), text.index(E)
-    DOC.write_text(text[:a] + "\n\n" + auto + "\n" + text[b:], encoding="utf-8")
+    text = text[:a] + "\n\n" + auto + "\n" + text[b:]
+    if (PERS / "population_models.csv").exists():
+        text = _replace_block(text, BP_, EP_, personalization_block())
+    DOC.write_text(text, encoding="utf-8")
     print(f"wrote {DOC.relative_to(ROOT)} ({len(auto)} chars of tables)")
     return 0
 

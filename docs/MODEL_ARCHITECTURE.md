@@ -75,3 +75,32 @@ that beats the baseline in a way worth deploying. Porting format work should fol
 that has shown value on behind-ear data. When that happens: export ridge as plain C
 coefficients (no runtime needed), and the CNN via `torch.onnx.export` →
 onnxruntime / TFLite (int8) for ESP32-S3.
+
+## Population model + personalisation (Auricle, ear PPG)
+
+```
+ear PPG ─► 10 s windows ─► SQI gate ─► HR + pulse-shape features ─► population ridge ─► population SBP/DBP
+                                                                                  │
+            user's reference readings (cuff) ─► PersonalizationEngine (per user) ─┴─► personalised SBP/DBP
+                                              └─► BaselineTracker (per user) ─────────► deviation from own baseline
+```
+
+- **Population model** (`models/auricle_population_ear_ridge.joblib`): ridge on 28 ear features (HR + 27
+  HR-invariant shape descriptors), trained on all session-1 healthy-cohort windows that pass ear SQI. Ridge was chosen
+  before the run (no model beat it earlier). On unseen subjects it is **no better than the population mean**
+  (RESEARCH_FINDINGS §P1). It exists so the pipeline has an initial estimate and something to calibrate. It is not
+  a meaningful absolute-BP estimator.
+- **PersonalizationEngine** (`src/rakshpulse/personalization/engine.py`): personal = a + b·population.
+  - `offset` (b = 1) needs only one reading.
+  - `linear` uses a ridge-shrunk slope (towards 1), only with ≥ 4 readings spanning ≥ 10 mmHg.
+  - Updates are recency-weighted (half-life 6 h by default) and use trusted reference pairs only, in time order.
+    Each update first records the prequential residual (error of the calibration in force).
+  - Updates that jump more than 25 mmHg or push the slope out of [0.25, 2] are flagged unstable. Every version
+    can be rolled back. State is saved as JSON per user.
+  - Recalibration is recommended when the calibration is older than 12 h, recent residuals exceed 12 mmHg,
+    or the last update was unstable.
+- **BaselineTracker** (`baseline.py`): mean, median, SD, rolling 5/10/20 means, trend per day and deviation of the
+  user's own reference readings. The ACC/AHA category is a lookup for a single reading and is never applied to the
+  history.
+- **RealtimeEstimator** (`src/rakshpulse/inference/realtime.py`): hardware-independent. Accepts ear PPG (required),
+  finger PPG (quality-reported only), sampling rate, timestamp, and optional engine and baseline.

@@ -59,3 +59,13 @@ Errors and rejections:
    TFLite Micro or ESP-DL on ESP32-S3. About 16k parameters fit in internal SRAM.
 4. Verify bit-exactness against the Python pipeline on recorded MAX30102 files before trusting
    any on-device number.
+
+## Personalised interface (Auricle-trained, ear PPG)
+
+`RealtimeEstimator.estimate(ear_ppg, sampling_rate, finger_ppg=None, timestamp=None, engine=None, baseline=None)`
+returns the population estimate, the personalised estimate (if a calibrated `PersonalizationEngine` is given),
+signal-quality counts per site, calibration status, deviation from the user's own baseline, and a recalibration
+recommendation with reasons. It returns no BP when ear SQI fails in more than half of the 10 s windows. The device
+side is responsible for collecting trusted reference readings (validated cuff) and passing them to
+`engine.update(...)`. The engine never treats PPG alone as evidence that a calibration is valid. The Auricle-trained
+bundle comes from earlobe Nonin PPG, not behind-ear MAX30102 data. Retraining on device data is required.
