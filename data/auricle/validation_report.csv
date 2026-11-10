@@ -1,0 +1,20 @@
+check,status,detail
+recordings_sha256_match_manifest,PASS,79/79 verified
+raw_files_unchanged_since_build,PASS,all .dat hashes match recordings.csv
+sampling_frequency_1000hz,PASS,[1000.0]
+required_channels_present,PASS,"PPG_Ear, PPG_Finger, Systolic_BP, Diastolic_BP in all"
+cnap_mask_missing_records_flagged,PASS,records without mask: ['HC_1_1']; none of their windows carry labels
+activity_annotations_missing_flagged,PASS,"records without activity channel: ['HC_1_1', 'HC_38_2']"
+bp_labels_physiological,PASS,16419 labelled windows
+labels_only_where_cnap_valid,PASS,"labels blank outside CNAP-valid, plausible windows"
+window_ids_unique,PASS,30841 windows
+window_geometry,PASS,all windows 10 s
+windows_inside_recordings,PASS,
+subject_session_consistency,PASS,subject_id and session match record_id
+subjects_table_complete,PASS,42 subjects
+clipped_windows_rejected,PASS,finger windows clipped > 1 %: 2700; ear: 121
+features_one_row_per_window,PASS,30841 feature rows
+feature_schema_complete,PASS,100 features documented
+no_bp_derived_features,PASS,no BP/CNAP-derived inputs
+waveform_references_match_wfdb,PASS,50 random windows matched raw WFDB
+healthy_session2_complete,PASS,37/37

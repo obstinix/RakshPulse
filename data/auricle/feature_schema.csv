@@ -1,0 +1,101 @@
+column,site,feature,group,unit,definition
+ear_beat_T,ear,beat_T,morphology,s,median beat duration (foot to next foot)
+ear_sys_T,ear,sys_T,morphology,s,systolic rise time: foot to systolic peak
+ear_dia_T,ear,dia_T,morphology,s,systolic peak to next foot
+ear_sys_ratio,ear,sys_ratio,morphology,1,sys_T / beat_T
+ear_w10,ear,w10,morphology,s,pulse width at 10 % of beat amplitude
+ear_w25,ear,w25,morphology,s,pulse width at 25 % of beat amplitude
+ear_w50,ear,w50,morphology,s,pulse width at 50 % of beat amplitude
+ear_w75,ear,w75,morphology,s,pulse width at 75 % of beat amplitude
+ear_w90,ear,w90,morphology,s,pulse width at 90 % of beat amplitude
+ear_w10_sd_ratio,ear,w10_sd_ratio,morphology,1,diastolic/systolic part of the width at 10 %
+ear_w25_sd_ratio,ear,w25_sd_ratio,morphology,1,diastolic/systolic part of the width at 25 %
+ear_w50_sd_ratio,ear,w50_sd_ratio,morphology,1,diastolic/systolic part of the width at 50 %
+ear_w75_sd_ratio,ear,w75_sd_ratio,morphology,1,diastolic/systolic part of the width at 75 %
+ear_w90_sd_ratio,ear,w90_sd_ratio,morphology,1,diastolic/systolic part of the width at 90 %
+ear_area_sys,ear,area_sys,morphology,s,area under normalised beat before the peak
+ear_area_dia,ear,area_dia,morphology,s,area under normalised beat after the peak
+ear_area_ratio,ear,area_ratio,morphology,1,area_dia / area_sys
+ear_max_slope,ear,max_slope,morphology,1/s,maximum upstroke slope of the amplitude-normalised beat
+ear_t_max_slope,ear,t_max_slope,morphology,s,time from foot to maximum upstroke slope
+ear_beat_skew,ear,beat_skew,morphology,1,skewness of the normalised beat
+ear_beat_kurt,ear,beat_kurt,morphology,1,excess kurtosis of the normalised beat
+ear_apg_b_a,ear,apg_b_a,morphology,1,second-derivative b/a wave ratio (Takazawa)
+ear_apg_c_a,ear,apg_c_a,morphology,1,second-derivative c/a ratio
+ear_apg_d_a,ear,apg_d_a,morphology,1,second-derivative d/a ratio
+ear_apg_e_a,ear,apg_e_a,morphology,1,second-derivative e/a ratio (diastolic-shoulder related)
+ear_aging_index,ear,aging_index,morphology,1,(b - c - d - e) / a
+ear_t_apg_b,ear,t_apg_b,morphology,s,time from beat start to APG b wave
+ear_hr,ear,hr,physiological,bpm,heart rate from median inter-beat interval
+ear_sdnn,ear,sdnn,physiological,s,SD of inter-beat intervals in the window
+ear_rmssd,ear,rmssd,physiological,s,RMS of successive inter-beat interval differences
+ear_win_skew,ear,win_skew,time,1,skewness of the processed window
+ear_win_kurt,ear,win_kurt,time,1,excess kurtosis of the processed window
+ear_f0,ear,f0,frequency,Hz,dominant (pulse) frequency in 0.5-3.7 Hz
+ear_h2_h1,ear,h2_h1,frequency,1,2nd / 1st harmonic amplitude
+ear_h3_h1,ear,h3_h1,frequency,1,3rd / 1st harmonic amplitude
+ear_spec_entropy,ear,spec_entropy,frequency,1,normalised spectral entropy in 0.5-10 Hz
+ear_pow_0p5_2,ear,pow_0p5_2,frequency,1,fraction of 0.5-10 Hz power in 0.5-2 Hz
+ear_pow_2_5,ear,pow_2_5,frequency,1,fraction of 0.5-10 Hz power in 2-5 Hz
+ear_pow_5_10,ear,pow_5_10,frequency,1,fraction of 0.5-10 Hz power in 5-10 Hz
+ear_raw_mean,ear,raw_mean,time,mV,"mean of the raw window (amplifier output, includes offset)"
+ear_raw_std,ear,raw_std,time,mV,standard deviation of the raw window
+ear_raw_var,ear,raw_var,time,mV^2,variance of the raw window
+ear_raw_rms,ear,raw_rms,time,mV,RMS of the mean-removed raw window
+ear_raw_peak,ear,raw_peak,time,mV,maximum absolute deviation from the window mean
+ear_raw_p2p,ear,raw_p2p,time,mV,peak-to-peak range of the raw window
+ear_raw_skew,ear,raw_skew,time,1,skewness of the raw window
+ear_raw_kurt,ear,raw_kurt,time,1,excess kurtosis of the raw window
+ear_pulse_amp,ear,pulse_amp,morphology,mV,median foot-to-peak amplitude of band-passed beats (gain-dependent)
+ear_ibi_mean,ear,ibi_mean,physiological,ms,mean inter-beat interval
+ear_ibi_sd,ear,ibi_sd,physiological,ms,SD of inter-beat intervals
+finger_beat_T,finger,beat_T,morphology,s,median beat duration (foot to next foot)
+finger_sys_T,finger,sys_T,morphology,s,systolic rise time: foot to systolic peak
+finger_dia_T,finger,dia_T,morphology,s,systolic peak to next foot
+finger_sys_ratio,finger,sys_ratio,morphology,1,sys_T / beat_T
+finger_w10,finger,w10,morphology,s,pulse width at 10 % of beat amplitude
+finger_w25,finger,w25,morphology,s,pulse width at 25 % of beat amplitude
+finger_w50,finger,w50,morphology,s,pulse width at 50 % of beat amplitude
+finger_w75,finger,w75,morphology,s,pulse width at 75 % of beat amplitude
+finger_w90,finger,w90,morphology,s,pulse width at 90 % of beat amplitude
+finger_w10_sd_ratio,finger,w10_sd_ratio,morphology,1,diastolic/systolic part of the width at 10 %
+finger_w25_sd_ratio,finger,w25_sd_ratio,morphology,1,diastolic/systolic part of the width at 25 %
+finger_w50_sd_ratio,finger,w50_sd_ratio,morphology,1,diastolic/systolic part of the width at 50 %
+finger_w75_sd_ratio,finger,w75_sd_ratio,morphology,1,diastolic/systolic part of the width at 75 %
+finger_w90_sd_ratio,finger,w90_sd_ratio,morphology,1,diastolic/systolic part of the width at 90 %
+finger_area_sys,finger,area_sys,morphology,s,area under normalised beat before the peak
+finger_area_dia,finger,area_dia,morphology,s,area under normalised beat after the peak
+finger_area_ratio,finger,area_ratio,morphology,1,area_dia / area_sys
+finger_max_slope,finger,max_slope,morphology,1/s,maximum upstroke slope of the amplitude-normalised beat
+finger_t_max_slope,finger,t_max_slope,morphology,s,time from foot to maximum upstroke slope
+finger_beat_skew,finger,beat_skew,morphology,1,skewness of the normalised beat
+finger_beat_kurt,finger,beat_kurt,morphology,1,excess kurtosis of the normalised beat
+finger_apg_b_a,finger,apg_b_a,morphology,1,second-derivative b/a wave ratio (Takazawa)
+finger_apg_c_a,finger,apg_c_a,morphology,1,second-derivative c/a ratio
+finger_apg_d_a,finger,apg_d_a,morphology,1,second-derivative d/a ratio
+finger_apg_e_a,finger,apg_e_a,morphology,1,second-derivative e/a ratio (diastolic-shoulder related)
+finger_aging_index,finger,aging_index,morphology,1,(b - c - d - e) / a
+finger_t_apg_b,finger,t_apg_b,morphology,s,time from beat start to APG b wave
+finger_hr,finger,hr,physiological,bpm,heart rate from median inter-beat interval
+finger_sdnn,finger,sdnn,physiological,s,SD of inter-beat intervals in the window
+finger_rmssd,finger,rmssd,physiological,s,RMS of successive inter-beat interval differences
+finger_win_skew,finger,win_skew,time,1,skewness of the processed window
+finger_win_kurt,finger,win_kurt,time,1,excess kurtosis of the processed window
+finger_f0,finger,f0,frequency,Hz,dominant (pulse) frequency in 0.5-3.7 Hz
+finger_h2_h1,finger,h2_h1,frequency,1,2nd / 1st harmonic amplitude
+finger_h3_h1,finger,h3_h1,frequency,1,3rd / 1st harmonic amplitude
+finger_spec_entropy,finger,spec_entropy,frequency,1,normalised spectral entropy in 0.5-10 Hz
+finger_pow_0p5_2,finger,pow_0p5_2,frequency,1,fraction of 0.5-10 Hz power in 0.5-2 Hz
+finger_pow_2_5,finger,pow_2_5,frequency,1,fraction of 0.5-10 Hz power in 2-5 Hz
+finger_pow_5_10,finger,pow_5_10,frequency,1,fraction of 0.5-10 Hz power in 5-10 Hz
+finger_raw_mean,finger,raw_mean,time,mV,"mean of the raw window (amplifier output, includes offset)"
+finger_raw_std,finger,raw_std,time,mV,standard deviation of the raw window
+finger_raw_var,finger,raw_var,time,mV^2,variance of the raw window
+finger_raw_rms,finger,raw_rms,time,mV,RMS of the mean-removed raw window
+finger_raw_peak,finger,raw_peak,time,mV,maximum absolute deviation from the window mean
+finger_raw_p2p,finger,raw_p2p,time,mV,peak-to-peak range of the raw window
+finger_raw_skew,finger,raw_skew,time,1,skewness of the raw window
+finger_raw_kurt,finger,raw_kurt,time,1,excess kurtosis of the raw window
+finger_pulse_amp,finger,pulse_amp,morphology,mV,median foot-to-peak amplitude of band-passed beats (gain-dependent)
+finger_ibi_mean,finger,ibi_mean,physiological,ms,mean inter-beat interval
+finger_ibi_sd,finger,ibi_sd,physiological,ms,SD of inter-beat intervals
