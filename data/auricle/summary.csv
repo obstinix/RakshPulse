@@ -9,9 +9,9 @@ windows_total,30841.0,
 windows_label_valid,16419.0,
 windows_label_valid_session1,8458.0,
 windows_label_valid_session2,7961.0,
-windows_ear_sqi_ok,22872.0,
+windows_ear_sqi_ok,22789.0,
 windows_finger_sqi_ok,24813.0,
-windows_label_valid_and_ear_sqi_ok,12696.0,
+windows_label_valid_and_ear_sqi_ok,12638.0,
 windows_label_valid_and_finger_sqi_ok,13427.0,
 windows_finger_rail_clipped,2700.0,
 features_per_window,100.0,
@@ -36,9 +36,11 @@ label_valid_windows_activity_rest,10367.0,
 label_valid_windows_activity_unlabelled,221.0,
 label_valid_windows_activity_valsalva,1148.0,
 file_size_feature_schema.csv,0.01,MB
-file_size_features.csv,25.45,MB
+file_size_features.csv,25.39,MB
 file_size_recordings.csv,0.07,MB
+file_size_release_manifest.csv,0.04,MB
 file_size_subjects.csv,0.01,MB
+file_size_validation_report.csv,0.0,MB
 file_size_waveforms/auricle_waveforms_session1.npz,175.88,MB
 file_size_waveforms/auricle_waveforms_session2.npz,162.31,MB
-file_size_windows.csv,8.9,MB
+file_size_windows.csv,8.97,MB

@@ -13,6 +13,7 @@ windows_inside_recordings,PASS,
 subject_session_consistency,PASS,subject_id and session match record_id
 subjects_table_complete,PASS,42 subjects
 clipped_windows_rejected,PASS,finger windows clipped > 1 %: 2700; ear: 121
+flatline_windows_rejected,PASS,"flat (raw SD < 0.003 mV) windows: ear 3458, finger 339; accepted by SQI: 0"
 features_one_row_per_window,PASS,30841 feature rows
 feature_schema_complete,PASS,100 features documented
 no_bp_derived_features,PASS,no BP/CNAP-derived inputs

@@ -362,3 +362,6 @@ def test_rail_gate_rejects_clipped_windows_only():
     assert out.finger_sqi_ok.tolist() == [False, True, False]
     assert out.finger_sqi_reasons[0] == "clipped_at_rail" and out.finger_sqi_reasons[2] == "too_few_beats"
     assert apply_rail_gate(out.copy()).finger_sqi_reasons[0] == "clipped_at_rail"  # idempotent
+    flat = df.assign(ear_raw_std=[0.0003, 0.1, 0.1], finger_raw_std=[0.1, 0.1, 0.1])
+    g = apply_rail_gate(flat)
+    assert g.ear_sqi_ok.tolist() == [False, True, False] and g.ear_sqi_reasons[0] == "no_signal_flatline"

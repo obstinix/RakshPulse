@@ -45,6 +45,9 @@ TARGET_FS = filtering.TARGET_FS  # 100 Hz
 WAVE_LEN = int(WIN_S * TARGET_FS)
 RAIL_V = 9.99  # BIOPAC amplifier rail (±10 V input range)
 MAX_RAIL_FRACTION = 0.01
+# Signal presence: raw-window SD is bimodal (flat/disconnected sensor ~0.0003 mV vs pulsatile ~0.1 mV, trough
+# near 0.003 mV). Below this the "pulse" is amplified noise; such windows are rejected as no_signal_flatline.
+MIN_SIGNAL_STD_MV = 0.003
 SBP_RANGE, DBP_RANGE = (60.0, 250.0), (30.0, 150.0)
 K_CAL_REST = 3  # matches the cross-day study protocol
 SITES = ("ear", "finger")
@@ -173,8 +176,9 @@ def _extra_features(raw_win: np.ndarray, proc: np.ndarray, fs_proc: float) -> di
         "raw_rms": float(np.sqrt(np.mean(xc**2))),
         "raw_peak": float(np.abs(xc).max()),
         "raw_p2p": float(np.ptp(x)),
-        "raw_skew": float(stats.skew(x)),
-        "raw_kurt": float(stats.kurtosis(x)),
+        # higher moments of a flat (noise-floor) window are numerically meaningless -> unavailable
+        "raw_skew": float(stats.skew(x)) if x.std() >= MIN_SIGNAL_STD_MV else np.nan,
+        "raw_kurt": float(stats.kurtosis(x)) if x.std() >= MIN_SIGNAL_STD_MV else np.nan,
         "pulse_amp": np.nan,
         "ibi_mean": np.nan,
         "ibi_sd": np.nan,
@@ -267,8 +271,13 @@ def process_record(rid: str, demo: dict, manifest: dict) -> RecordResult:
             fts, proc = extract_features({"ir": sig}, fs, has_dc=False)
             pc = proc["ir"]
             proc_arr[site][i, : pc.filtered.size] = pc.filtered[:WAVE_LEN]
-            sqi_ok = bool(pc.sqi.acceptable and rail <= MAX_RAIL_FRACTION)
-            reasons = list(pc.sqi.reasons) + (["clipped_at_rail"] if rail > MAX_RAIL_FRACTION else [])
+            flat = float(np.std(sig)) < MIN_SIGNAL_STD_MV
+            sqi_ok = bool(pc.sqi.acceptable and rail <= MAX_RAIL_FRACTION and not flat)
+            reasons = (
+                list(pc.sqi.reasons)
+                + (["clipped_at_rail"] if rail > MAX_RAIL_FRACTION else [])
+                + (["no_signal_flatline"] if flat else [])
+            )
             row.update(
                 {
                     f"{site}_sqi_ok": sqi_ok,
@@ -559,6 +568,15 @@ def validate(check_raw: bool = True, sample: int = 25, seed: int = 0) -> pd.Data
         not clipped.any(),
         f"finger windows clipped > {100 * MAX_RAIL_FRACTION:.0f} %: {int((win.finger_rail_pct > 1).sum())}; "
         f"ear: {int((win.ear_rail_pct > 1).sum())}",
+    )
+    fl = feat.merge(win[["window_id", "ear_sqi_ok", "finger_sqi_ok"]], on="window_id")
+    n_flat = {s: int((fl[f"{s}_raw_std"] < MIN_SIGNAL_STD_MV).sum()) for s in ("ear", "finger")}
+    flat_ok = sum(int(((fl[f"{s}_raw_std"] < MIN_SIGNAL_STD_MV) & fl[f"{s}_sqi_ok"]).sum()) for s in ("ear", "finger"))
+    add(
+        "flatline_windows_rejected",
+        flat_ok == 0,
+        f"flat (raw SD < {MIN_SIGNAL_STD_MV} mV) windows: ear {n_flat['ear']}, finger {n_flat['finger']}; "
+        f"accepted by SQI: {flat_ok}",
     )
     add(
         "features_one_row_per_window",

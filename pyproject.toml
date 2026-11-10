@@ -44,3 +44,5 @@ pythonpath = ["tests"]
 # dataset URLs, titles and citations are kept verbatim on one line
 "src/rakshpulse/data/download.py" = ["E501"]
 "src/rakshpulse/data/physionet.py" = ["E501"]
+# Markdown table generator: long f-string rows are clearer unwrapped
+"scripts/write_session1_tables.py" = ["E501"]

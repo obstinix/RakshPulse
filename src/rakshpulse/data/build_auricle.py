@@ -39,11 +39,18 @@ SBP_OK, DBP_OK = (60.0, 250.0), (30.0, 150.0)
 # 1 % of samples on the rail are therefore rejected.
 RAIL_V = 9.99
 MAX_RAIL_FRACTION = 0.01
+MIN_SIGNAL_STD_MV = 0.003  # flat / disconnected sensor (see auricle_dataset.MIN_SIGNAL_STD_MV)
 
 
 def apply_rail_gate(df: pd.DataFrame) -> pd.DataFrame:
     """Mark windows with > MAX_RAIL_FRACTION rail-clipped samples as SQI failures (idempotent)."""
     for site in ("ear", "finger"):
+        if f"{site}_raw_std" in df:  # flat / disconnected sensor (older caches lack the column)
+            flat = df[f"{site}_raw_std"] < MIN_SIGNAL_STD_MV
+            r = df[f"{site}_sqi_reasons"].fillna("").astype(str)
+            add_f = flat & ~r.str.contains("no_signal_flatline")
+            df.loc[add_f, f"{site}_sqi_reasons"] = (r[add_f] + "|no_signal_flatline").str.strip("|")
+            df[f"{site}_sqi_ok"] = df[f"{site}_sqi_ok"].astype(bool) & ~flat
         clipped = df[f"{site}_sat_fraction"] > MAX_RAIL_FRACTION
         reasons = df[f"{site}_sqi_reasons"].fillna("").astype(str)
         add = clipped & ~reasons.str.contains("clipped_at_rail")
@@ -60,6 +67,7 @@ def _site_features(sig: np.ndarray, fs: float, site: str) -> dict:
     out[f"{site}_sqi_reasons"] = "|".join(s.reasons)
     out[f"{site}_sqi_template_corr"] = s.template_corr
     out[f"{site}_sat_fraction"] = float(np.mean(np.abs(sig) >= RAIL_V))  # ±10 V amplifier rail
+    out[f"{site}_raw_std"] = float(np.std(sig))
     return out
 
 

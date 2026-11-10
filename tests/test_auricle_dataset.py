@@ -21,12 +21,14 @@ CHANNELS = [
 ]
 
 
-def _write_record(root, rid, seconds=60, mask_from_s=12, with_mask=True, clip_finger=False, seed=0):
+def _write_record(root, rid, seconds=60, mask_from_s=12, with_mask=True, clip_finger=False, flat_ear=False, seed=0):
     fs = 1000
     n = seconds * fs
     t = np.arange(n) / fs
     ear = synthetic_ppg(fs, seconds, 70, seed=seed, raw_counts=False)
     finger = -6 + 0.5 * synthetic_ppg(fs, seconds, 70, seed=seed + 1, raw_counts=False)
+    if flat_ear:  # disconnected sensor: noise floor only
+        ear = 0.2 + 1e-4 * np.random.default_rng(seed).standard_normal(n)
     if clip_finger:
         finger[: n // 2] = -10.0  # amplifier rail
     sbp = 115 + 10 * (t > 30)
@@ -56,7 +58,7 @@ def tiny_auricle(tmp_path, monkeypatch):
     root = tmp_path / "raw" / "auricle"
     _write_record(root, "HC_1_1", seed=0)
     _write_record(root, "HC_1_2", seed=2, clip_finger=True)
-    _write_record(root, "HC_2_1", seed=4, with_mask=False)
+    _write_record(root, "HC_2_1", seed=4, with_mask=False, flat_ear=True)
     (root / "RECORDS").write_text("HC_1_1/HC_1_1\nHC_1_2/HC_1_2\nHC_2_1/HC_2_1\n")
     (root / "demographics.csv").write_text(
         "ID,Cohort,Participant,Age,Gender,Height (cm),Weight (kg)\n"
@@ -101,6 +103,16 @@ def test_labels_masks_and_clipping(tiny_auricle):
     assert c.finger_sqi_reasons.str.contains("clipped_at_rail").all()
     elig = w[w.ear_calibration_eligible]
     assert (elig.activity_code == 0).all() and elig.label_valid.all() and elig.ear_sqi_ok.all()
+
+
+def test_flat_sensor_windows_rejected(tiny_auricle):
+    _, out, _ = tiny_auricle
+    w = pd.read_csv(out / "windows.csv")
+    f = pd.read_csv(out / "features.csv").set_index("window_id")
+    flat = w[w.record_id == "HC_2_1"]
+    assert (~flat.ear_sqi_ok).all() and flat.ear_sqi_reasons.str.contains("no_signal_flatline").all()
+    assert f.loc[flat.window_id, "ear_raw_skew"].isna().all()  # moments of a flat window are not reported
+    assert w[w.record_id == "HC_1_1"].ear_sqi_reasons.fillna("").str.contains("no_signal_flatline").sum() == 0
 
 
 def test_features_traceable_and_free_of_bp_inputs(tiny_auricle):

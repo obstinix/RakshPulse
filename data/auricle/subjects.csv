@@ -9,19 +9,19 @@ auricle_HC_15,HC,26.0,female,165.0,55.0,1;2,HC_15_1;HC_15_2,unavailable (de-iden
 auricle_HC_16,HC,22.0,female,154.0,58.7,1,HC_16_1,unavailable (de-identified),ear;finger,446,198,345,324,107,100,False,False,no session 2
 auricle_HC_17,HC,55.0,male,167.0,57.2,1;2,HC_17_1;HC_17_2,unavailable (de-identified),ear;finger,875,422,822,712,127,74,True,True,
 auricle_HC_18,HC,51.0,female,162.0,70.04,1;2,HC_18_1;HC_18_2,unavailable (de-identified),ear;finger,788,411,682,689,109,111,True,True,
-auricle_HC_19,HC,22.0,female,160.0,45.0,1;2,HC_19_1;HC_19_2,unavailable (de-identified),ear;finger,691,367,358,516,88,74,True,True,
+auricle_HC_19,HC,22.0,female,160.0,45.0,1;2,HC_19_1;HC_19_2,unavailable (de-identified),ear;finger,691,367,350,516,87,74,True,True,
 auricle_HC_2,HC,32.0,female,172.0,71.7,1;2,HC_2_1;HC_2_2,unavailable (de-identified),ear;finger,777,324,616,590,92,70,True,True,
 auricle_HC_20,HC,22.0,male,173.0,77.6,1;2,HC_20_1;HC_20_2,unavailable (de-identified),ear;finger,686,351,672,601,84,72,True,True,
 auricle_HC_21,HC,27.0,female,164.0,47.0,1;2,HC_21_1;HC_21_2,unavailable (de-identified),ear;finger,800,409,486,510,0,0,False,False,ear: <3 calibration-eligible session-1 rest windows | finger: <3 calibration-eligible session-1 rest windows
 auricle_HC_22,HC,28.0,female,170.0,77.0,1;2,HC_22_1;HC_22_2,unavailable (de-identified),ear;finger,571,332,423,527,61,82,True,True,
-auricle_HC_23,HC,19.0,female,163.0,48.9,1;2,HC_23_1;HC_23_2,unavailable (de-identified),ear;finger,798,425,1,687,0,122,False,True,ear: <3 calibration-eligible session-1 rest windows
+auricle_HC_23,HC,19.0,female,163.0,48.9,1;2,HC_23_1;HC_23_2,unavailable (de-identified),ear;finger,798,425,0,687,0,122,False,True,ear: <3 calibration-eligible session-1 rest windows
 auricle_HC_24,HC,20.0,male,167.0,61.0,1;2,HC_24_1;HC_24_2,unavailable (de-identified),ear;finger,808,413,748,577,116,124,True,True,
 auricle_HC_25,HC,23.0,female,160.0,50.4,1;2,HC_25_1;HC_25_2,unavailable (de-identified),ear;finger,773,436,705,693,130,118,True,True,
 auricle_HC_26,HC,20.0,male,187.0,68.9,1;2,HC_26_1;HC_26_2,unavailable (de-identified),ear;finger,742,407,512,483,80,92,True,True,
-auricle_HC_27,HC,19.0,female,163.0,51.0,1;2,HC_27_1;HC_27_2,unavailable (de-identified),ear;finger,698,287,139,344,48,64,True,True,
+auricle_HC_27,HC,19.0,female,163.0,51.0,1;2,HC_27_1;HC_27_2,unavailable (de-identified),ear;finger,698,287,122,344,48,64,True,True,
 auricle_HC_28,HC,23.0,male,178.0,96.6,1;2,HC_28_1;HC_28_2,unavailable (de-identified),ear;finger,756,380,687,731,104,112,True,True,
 auricle_HC_29,HC,57.0,male,188.0,106.0,1,HC_29_1,unavailable (de-identified),ear;finger,384,205,253,383,108,139,False,False,no session 2
-auricle_HC_3,HC,36.0,female,163.0,88.0,1;2,HC_3_1;HC_3_2,unavailable (de-identified),ear;finger,831,422,703,663,116,115,True,True,
+auricle_HC_3,HC,36.0,female,163.0,88.0,1;2,HC_3_1;HC_3_2,unavailable (de-identified),ear;finger,831,422,698,663,116,115,True,True,
 auricle_HC_30,HC,33.0,male,179.0,80.4,1;2,HC_30_1;HC_30_2,unavailable (de-identified),ear;finger,765,392,703,713,123,121,True,True,
 auricle_HC_31,HC,32.0,female,168.0,61.9,1;2,HC_31_1;HC_31_2,unavailable (de-identified),ear;finger,767,406,692,556,102,105,True,True,
 auricle_HC_32,HC,30.0,male,188.0,110.2,1,HC_32_1,unavailable (de-identified),ear;finger,380,203,350,369,130,137,False,False,no session 2
@@ -35,7 +35,7 @@ auricle_HC_39,HC,24.0,male,175.0,85.0,1;2,HC_39_1;HC_39_2,unavailable (de-identi
 auricle_HC_4,HC,35.0,male,180.0,86.9,1;2,HC_4_1;HC_4_2,unavailable (de-identified),ear;finger,806,402,784,564,122,86,True,True,
 auricle_HC_40,HC,22.0,male,181.0,79.0,1;2,HC_40_1;HC_40_2,unavailable (de-identified),ear;finger,931,674,829,847,231,206,True,True,
 auricle_HC_41,HC,25.0,female,173.0,65.0,1;2,HC_41_1;HC_41_2,unavailable (de-identified),ear;finger,915,671,816,717,222,224,True,True,
-auricle_HC_42,HC,37.0,female,168.0,70.0,1;2,HC_42_1;HC_42_2,unavailable (de-identified),ear;finger,958,677,501,851,146,230,True,True,
+auricle_HC_42,HC,37.0,female,168.0,70.0,1;2,HC_42_1;HC_42_2,unavailable (de-identified),ear;finger,958,677,449,851,110,230,True,True,
 auricle_HC_5,HC,22.0,female,161.0,65.5,1;2,HC_5_1;HC_5_2,unavailable (de-identified),ear;finger,598,289,0,307,0,9,False,True,ear: <3 calibration-eligible session-1 rest windows
 auricle_HC_6,HC,22.0,female,160.0,63.0,1;2,HC_6_1;HC_6_2,unavailable (de-identified),ear;finger,843,419,222,661,63,81,True,True,
 auricle_HC_7,HC,22.0,male,181.0,60.0,1;2,HC_7_1;HC_7_2,unavailable (de-identified),ear;finger,747,405,718,477,119,82,True,True,
