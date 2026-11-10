@@ -11,6 +11,7 @@ belongs to (``part`` / ``n_parts`` for chunked files), so anyone can download, v
 
     python -m rakshpulse.data.release fetch waveforms   # -> data/auricle/waveforms/*.npz
     python -m rakshpulse.data.release fetch raw         # -> data/raw/auricle/data/<record>/*
+    python -m rakshpulse.data.release verify            # server-side SHA-256 check of every asset
 """
 
 from __future__ import annotations
@@ -129,17 +130,31 @@ def package_raw() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def remote_assets(tag: str) -> dict[str, dict]:
+    """name -> {size, sha256} for a release, using GitHub's server-side asset digests."""
+    import json as _json
+
+    r = subprocess.run(
+        ["gh", "api", f"repos/{REPO}/releases/tags/{tag}", "--paginate", "--jq", ".assets[]"],
+        capture_output=True,
+        text=True,
+    )
+    if r.returncode != 0:
+        return {}
+    out = {}
+    for line in r.stdout.splitlines():
+        a = _json.loads(line)
+        out[a["name"]] = {"size": a["size"], "sha256": (a.get("digest") or "").removeprefix("sha256:")}
+    return out
+
+
 def upload(df: pd.DataFrame) -> None:
-    """Upload assets with the GitHub CLI (already-present assets with the same name are skipped)."""
+    """Upload assets with the GitHub CLI. Assets already present with the same SHA-256 are skipped,
+    and assets whose remote digest differs are replaced."""
     for tag, g in df.groupby("release_tag"):
-        have = subprocess.run(
-            ["gh", "release", "view", tag, "-R", REPO, "--json", "assets", "-q", ".assets[].name"],
-            capture_output=True,
-            text=True,
-        )
-        existing = set(have.stdout.split()) if have.returncode == 0 else set()
+        existing = remote_assets(tag)
         for r in g.itertuples():
-            if r.asset_name in existing:
+            if existing.get(r.asset_name, {}).get("sha256") == r.sha256:
                 continue
             src = Path(r.local_source)
             target = src if src.name == r.asset_name else STAGING / r.asset_name  # never write into data/raw
@@ -148,6 +163,28 @@ def upload(df: pd.DataFrame) -> None:
                 target.write_bytes(src.read_bytes())
             subprocess.run(["gh", "release", "upload", tag, str(target), "-R", REPO, "--clobber"], check=True)
             print(f"uploaded {r.asset_name} ({r.size_bytes / 1e6:.1f} MB)", flush=True)
+
+
+def verify_remote(manifest: Path | None = None) -> pd.DataFrame:
+    """Compare every manifest entry with the release's server-side size and SHA-256 digest."""
+    m = pd.read_csv(manifest or MANIFEST)
+    rows = []
+    for tag, g in m.groupby("release_tag"):
+        remote = remote_assets(tag)
+        for r in g.itertuples():
+            ra = remote.get(r.asset_name)
+            ok = ra is not None and ra["size"] == r.size_bytes and ra["sha256"] == r.sha256
+            rows.append(
+                {
+                    "release_tag": tag,
+                    "asset_name": r.asset_name,
+                    "present": ra is not None,
+                    "size_match": bool(ra and ra["size"] == r.size_bytes),
+                    "sha256_match": bool(ra and ra["sha256"] == r.sha256),
+                    "ok": ok,
+                }
+            )
+    return pd.DataFrame(rows)
 
 
 def fetch(collection: str, dest_root: Path = DATA_ROOT.parent, manifest: Path | None = None) -> list[Path]:
@@ -190,9 +227,17 @@ def main(argv: list[str] | None = None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     f = sub.add_parser("fetch")
     f.add_argument("collection", choices=["waveforms", "raw"])
+    sub.add_parser("verify", help="check every manifest asset against GitHub's server-side SHA-256 digest")
     a = ap.parse_args(argv)
     if a.cmd == "fetch":
         fetch(a.collection)
+    elif a.cmd == "verify":
+        v = verify_remote()
+        print(v.groupby("release_tag").ok.agg(["sum", "count"]).to_string())
+        bad = v[~v.ok]
+        if len(bad):
+            print(bad.to_string(index=False))
+            return 1
     return 0
 
 

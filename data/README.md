@@ -57,6 +57,7 @@ python -m rakshpulse.data build && python -m rakshpulse.data validate
 | `sbp_range_in_window_mmHg` | SBP range inside the window (label stability) |
 | `<site>_sqi_ok`, `<site>_sqi_reasons`, `<site>_template_corr`, `<site>_cardiac_power_ratio`, `<site>_n_beats` | signal quality (site = `ear`, `finger`) |
 | `<site>_rail_pct` | % of samples at the ±10 V amplifier rail (> 1 % ⇒ `sqi_ok` false) |
+| (`<site>_raw_std` in `features.csv`) | raw SD < 0.003 mV ⇒ flat/disconnected sensor, `sqi_ok` false (`no_signal_flatline`) |
 | `<site>_hr_bpm` | PPG-derived heart rate |
 | `<site>_calibration_eligible` | rest window with a valid label and good SQI (usable as a calibration reference) |
 | `<site>_feature_status` | `complete` / `partial` / `failed` |
@@ -84,8 +85,10 @@ preprocessing configuration). Shape `(n_windows, 1000)`, float32.
 ### Key statistics (from `summary.csv`)
 
 30,841 windows, of which 16,419 are labelled (8,458 in session 1, 7,961 in session 2). Labelled SBP 115.8 ± 19.8 mmHg
-(61–195), DBP 70.1 ± 13.4 mmHg. Ear SQI passes in 22,872 windows and finger SQI in 24,813. 2,700 finger windows
-are rail-clipped. Age 19–57 (median 23), 50 % female.
+(61–195), DBP 70.1 ± 13.4 mmHg. Ear SQI passes in 22,789 windows and finger SQI in 24,813. 2,700 finger windows
+are rail-clipped. 3,458 ear and 339 finger windows come from a flat or disconnected sensor (raw SD < 0.003 mV) and
+are rejected (`no_signal_flatline`). Whole recordings without ear signal include HC_23_1, HC_23_2, HC_5_2, HC_6_2
+and HC_35_2. Age 19–57 (median 23), 50 % female.
 
 ## Other datasets (earlier Guilin study)
 
