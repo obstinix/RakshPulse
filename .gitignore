@@ -28,3 +28,6 @@ models/*
 
 # Per-window experiment predictions (regenerable, contain per-subject derived data)
 results/predictions/
+
+# Processed waveform arrays are published as GitHub Release assets (see data/auricle/release_manifest.csv)
+data/auricle/waveforms/
