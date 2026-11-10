@@ -12,11 +12,11 @@
   "model_ranking": [
     {
       "model": "ridge",
-      "cross_day_mae_mean": 14.025,
+      "cross_day_mae_mean": 14.022,
       "mean_rank": 1.0,
       "worst_rank": 1.0,
-      "within_to_cross_day_gap": 2.052
+      "within_to_cross_day_gap": 2.036
     }
   ],
-  "runtime_s": 58.0
+  "runtime_s": 53.6
 }

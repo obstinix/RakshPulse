@@ -1,111 +1,111 @@
 {
   "ear": {
     "within_session_r_sbp_vs_hr_median": 0.18817279154718466,
-    "within_session_partial_r_sbp_shape_given_hr_median": 0.22777141905779894,
+    "within_session_partial_r_sbp_shape_given_hr_median": 0.22456693604201622,
     "within_session_partial_r_n_sessions": 71,
     "partial_r_median_ci": [
-      0.17387348316555462,
-      0.2867800668374471
+      0.156773080614408,
+      0.3114183662116291
     ],
-    "uncalibrated_prediction_between_subject_variance_fraction": 0.3933113129420869,
-    "subject_mean_r_truth_vs_pred": 0.12738617351646903,
-    "truth_between_subject_variance_fraction": 0.46842180507105435,
+    "uncalibrated_prediction_between_subject_variance_fraction": 0.3891395211683644,
+    "subject_mean_r_truth_vs_pred": 0.1433988899013063,
+    "truth_between_subject_variance_fraction": 0.4696792240817429,
     "rest_sbp_day2_minus_day1": {
       "n": 29,
-      "mean": 4.659087081724806,
-      "sd": 15.383373533311397,
-      "abs_mean": 11.497444943865196
+      "mean": 4.691604087229676,
+      "sd": 15.403316432153535,
+      "abs_mean": 11.528383453674001
     },
     "cross_day_offset_mae_by_activity": {
-      "-1": 12.09,
-      "0": 15.76,
-      "1": 15.35,
-      "2": 18.43,
-      "3": 20.8,
-      "4": 16.48,
-      "9": 16.68
+      "-1": 11.93,
+      "0": 15.72,
+      "1": 15.37,
+      "2": 18.32,
+      "3": 20.84,
+      "4": 16.44,
+      "9": 16.3
     },
     "sbp_day_effects": {
       "n_subjects": 29,
-      "rest_shift_mean": 4.659087081724806,
-      "rest_shift_sd": 15.383373533311397,
-      "rest_shift_abs_mean": 11.497444943865196,
-      "r_pred_shift_vs_rest_shift": 0.08989442591654928,
+      "rest_shift_mean": 4.691604087229676,
+      "rest_shift_sd": 15.403316432153535,
+      "rest_shift_abs_mean": 11.528383453674001,
+      "r_pred_shift_vs_rest_shift": 0.10223153974671116,
       "r_pred_shift_vs_rest_shift_ci": [
-        -0.29992750867174306,
-        0.3714803633299285
+        -0.2814433391975129,
+        0.37790065771518677
       ],
-      "slope_pred_shift_on_rest_shift": 0.016786171709076484,
+      "slope_pred_shift_on_rest_shift": 0.019311325164141937,
       "slope_pred_shift_on_rest_shift_ci": [
-        -0.04411909801857203,
-        0.08585826714146515
+        -0.04237581555977841,
+        0.09229853092306005
       ],
-      "offset_day1_day2_r": 0.4254418543855998,
+      "offset_day1_day2_r": 0.4215055642368834,
       "offset_day1_day2_r_ci": [
-        0.07970341407540843,
-        0.7068656525202863
+        0.07244596270838838,
+        0.7025021503881593
       ],
-      "offset_change_abs_mean": 11.910451195313245,
-      "offset_change_sd": 15.667175096212317,
-      "rest_error_after_offset_abs_mean": 11.798604604713029,
-      "rest_error_carry_forward_abs_mean": 11.497444943865196
+      "offset_change_abs_mean": 11.953322509518397,
+      "offset_change_sd": 15.690022999514111,
+      "rest_error_after_offset_abs_mean": 11.816821579368161,
+      "rest_error_carry_forward_abs_mean": 11.528383453674001
     },
     "sbp_uncalibrated_vs_carry_forward": [
-      -2.539451452302348,
-      -6.06361318890653,
-      0.9344820623037884
+      -2.5985654022215368,
+      -6.138115911706558,
+      0.9049662526763871
     ],
     "sbp_offset_vs_uncalibrated": [
-      1.9076677120883787,
-      -1.3318417606058728,
-      5.156354115398195
+      1.8957441405267,
+      -1.318146924679482,
+      5.16063896195009
     ],
     "dbp_day_effects": {
       "n_subjects": 29,
-      "rest_shift_mean": 2.9381324505670396,
-      "rest_shift_sd": 11.650256240014526,
-      "rest_shift_abs_mean": 8.65007597685963,
-      "r_pred_shift_vs_rest_shift": -0.1354081226369191,
+      "rest_shift_mean": 2.9381324510856603,
+      "rest_shift_sd": 11.646761063200392,
+      "rest_shift_abs_mean": 8.652917268082257,
+      "r_pred_shift_vs_rest_shift": -0.12700647505500676,
       "r_pred_shift_vs_rest_shift_ci": [
-        -0.4599622944404753,
-        0.2303035910423684
+        -0.448558624640655,
+        0.2241708681887038
       ],
-      "slope_pred_shift_on_rest_shift": -0.03362313014024937,
+      "slope_pred_shift_on_rest_shift": -0.03143642366812769,
       "slope_pred_shift_on_rest_shift_ci": [
-        -0.15852007367895135,
-        0.047101202448923976
+        -0.15158647138885548,
+        0.0481518742550463
       ],
-      "offset_day1_day2_r": 0.33794982178182315,
+      "offset_day1_day2_r": 0.333220880255436,
       "offset_day1_day2_r_ci": [
-        0.07889250829462621,
-        0.6412326424966038
+        0.0743272466029894,
+        0.6395602536506142
       ],
-      "offset_change_abs_mean": 9.562135101929952,
-      "offset_change_sd": 12.48416947921366,
-      "rest_error_after_offset_abs_mean": 9.300059495363682,
-      "rest_error_carry_forward_abs_mean": 8.65007597685963
+      "offset_change_abs_mean": 9.622084937968989,
+      "offset_change_sd": 12.55965783577776,
+      "rest_error_after_offset_abs_mean": 9.321507331181714,
+      "rest_error_carry_forward_abs_mean": 8.652917268082257
     },
     "dbp_uncalibrated_vs_carry_forward": [
-      -1.6244360213948592,
-      -4.0398165967181745,
-      0.6146859850278552
+      -1.6395538421120635,
+      -4.0557501934321065,
+      0.6068551861653976
     ],
     "dbp_offset_vs_uncalibrated": [
-      2.7988959976445393,
-      0.21871121049008807,
-      5.663199857246481
+      2.827415141425617,
+      0.22889377974393435,
+      5.675855053843202
     ]
   },
   "finger": {
     "within_session_r_sbp_vs_hr_median": 0.22524085450782522,
-    "within_session_partial_r_sbp_shape_given_hr_median": 0.11434621720134508,
+    "within_session_partial_r_sbp_shape_given_hr_median": 0.1143462172013451,
     "within_session_partial_r_n_sessions": 78,
     "partial_r_median_ci": [
-      0.032763395370445966,
-      0.16932237253452168
+      0.032763395370445925,
+      0.16932237253452162
     ],
-    "uncalibrated_prediction_between_subject_variance_fraction": 0.2564248555192918,
-    "subject_mean_r_truth_vs_pred": -0.010154895412635074,
+    "uncalibrated_prediction_between_subject_variance_fraction": 0.2564248555192917,
+    "subject_mean_r_truth_vs_pred": -0.010154895412635158,
     "truth_between_subject_variance_fraction": 0.47336413063010907,
     "rest_sbp_day2_minus_day1": {
       "n": 33,
@@ -127,34 +127,34 @@
       "rest_shift_mean": 2.9531305500620406,
       "rest_shift_sd": 16.464500114270407,
       "rest_shift_abs_mean": 11.547435413131922,
-      "r_pred_shift_vs_rest_shift": -0.03538066714555681,
+      "r_pred_shift_vs_rest_shift": -0.035380667145556176,
       "r_pred_shift_vs_rest_shift_ci": [
-        -0.3734801811047728,
-        0.3400603332330548
+        -0.37348018110477266,
+        0.34006033323305657
       ],
-      "slope_pred_shift_on_rest_shift": -0.008892436007468217,
+      "slope_pred_shift_on_rest_shift": -0.00889243600746809,
       "slope_pred_shift_on_rest_shift_ci": [
-        -0.09649320329403518,
-        0.09129656158374787
+        -0.09649320329403517,
+        0.09129656158374838
       ],
       "offset_day1_day2_r": 0.3935551063615183,
       "offset_day1_day2_r_ci": [
-        -0.0004247680439829567,
-        0.7142203454561659
+        -0.00042476804398275977,
+        0.714220345456166
       ],
-      "offset_change_abs_mean": 12.276360952393183,
+      "offset_change_abs_mean": 12.27636095239318,
       "offset_change_sd": 17.267335981753153,
-      "rest_error_after_offset_abs_mean": 11.918137748351018,
+      "rest_error_after_offset_abs_mean": 11.918137748351016,
       "rest_error_carry_forward_abs_mean": 11.547435413131922
     },
     "sbp_uncalibrated_vs_carry_forward": [
-      -0.2820692823535354,
+      -0.282069282353536,
       -3.8338094862746748,
-      3.3993459800124617
+      3.399345980012461
     ],
     "sbp_offset_vs_uncalibrated": [
-      -0.1534731195541993,
-      -3.4613347377687456,
+      -0.15347311955419976,
+      -3.461334737768746,
       3.2246162071347104
     ],
     "dbp_day_effects": {
@@ -162,33 +162,33 @@
       "rest_shift_mean": 1.274663752199412,
       "rest_shift_sd": 12.050790980663914,
       "rest_shift_abs_mean": 8.695706454468336,
-      "r_pred_shift_vs_rest_shift": 0.11369939486958933,
+      "r_pred_shift_vs_rest_shift": 0.11369939486958974,
       "r_pred_shift_vs_rest_shift_ci": [
-        -0.2676318603167658,
-        0.44521749107166314
+        -0.2676318603167652,
+        0.44521749107166386
       ],
-      "slope_pred_shift_on_rest_shift": 0.023185317283636788,
+      "slope_pred_shift_on_rest_shift": 0.023185317283636868,
       "slope_pred_shift_on_rest_shift_ci": [
-        -0.06655517364055334,
-        0.08793311808611658
+        -0.06655517364055326,
+        0.08793311808611676
       ],
-      "offset_day1_day2_r": 0.4082579688007142,
+      "offset_day1_day2_r": 0.40825796880071413,
       "offset_day1_day2_r_ci": [
         0.15965646516130294,
         0.6723163533552673
       ],
-      "offset_change_abs_mean": 8.968732217665424,
+      "offset_change_abs_mean": 8.968732217665426,
       "offset_change_sd": 12.101167785265998,
       "rest_error_after_offset_abs_mean": 8.821612901705413,
       "rest_error_carry_forward_abs_mean": 8.695706454468336
     },
     "dbp_uncalibrated_vs_carry_forward": [
       -1.1165356370020918,
-      -3.7326010203434374,
+      -3.7326010203434383,
       1.0574221759963105
     ],
     "dbp_offset_vs_uncalibrated": [
-      1.480268806306951,
+      1.4802688063069507,
       -0.8240068707953911,
       4.148172728516618
     ]

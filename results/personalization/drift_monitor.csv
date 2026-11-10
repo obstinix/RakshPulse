@@ -1,33 +1,33 @@
 site,subject_id,first_day2_residual_sbp,recommended,reasons,day2_mae_with_day1_cal
-ear,auricle_HC_10,7.3359,False,,11.3430
-ear,auricle_HC_11,9.4713,False,,6.1470
-ear,auricle_HC_12,-11.4011,False,,15.6950
-ear,auricle_HC_14,6.4515,False,,16.7568
-ear,auricle_HC_15,0.7842,False,,6.4804
-ear,auricle_HC_17,-11.4280,False,,24.3202
-ear,auricle_HC_18,23.1371,False,,31.6946
-ear,auricle_HC_19,-2.9876,False,,10.1550
-ear,auricle_HC_2,20.4380,False,,18.8194
-ear,auricle_HC_20,3.0275,False,,14.1532
-ear,auricle_HC_22,-23.2042,False,,10.3598
-ear,auricle_HC_24,4.2764,False,,17.9797
-ear,auricle_HC_25,19.8948,False,,13.9036
-ear,auricle_HC_26,14.6561,False,,13.8563
-ear,auricle_HC_28,30.2485,True,last update unstable: sbp calibration moved > 25.0 mmHg,13.3186
-ear,auricle_HC_3,-28.4078,False,,30.3248
-ear,auricle_HC_30,-33.0938,True,last update unstable: sbp calibration moved > 25.0 mmHg,32.7834
-ear,auricle_HC_31,-29.9262,True,last update unstable: sbp calibration moved > 25.0 mmHg,20.7416
-ear,auricle_HC_34,-19.1252,False,,17.3530
-ear,auricle_HC_36,4.3360,False,,14.6568
-ear,auricle_HC_37,1.4896,False,,19.4878
-ear,auricle_HC_39,20.6672,False,,21.0752
-ear,auricle_HC_4,-15.8036,False,,8.2680
-ear,auricle_HC_40,12.4456,False,,7.6389
-ear,auricle_HC_41,-3.0000,False,,6.7515
-ear,auricle_HC_42,6.9406,False,,12.8377
-ear,auricle_HC_7,-8.1110,False,,20.5182
-ear,auricle_HC_8,12.0985,False,,15.6956
-ear,auricle_HC_9,23.2440,False,,35.2945
+ear,auricle_HC_10,7.3551,False,,11.2965
+ear,auricle_HC_11,9.5083,False,,6.1493
+ear,auricle_HC_12,-9.6384,False,,15.6051
+ear,auricle_HC_14,6.2844,False,,16.7527
+ear,auricle_HC_15,0.6839,False,,6.4946
+ear,auricle_HC_17,-11.2687,False,,24.4259
+ear,auricle_HC_18,23.1578,False,,31.7309
+ear,auricle_HC_19,-2.9226,False,,10.1622
+ear,auricle_HC_2,20.2780,False,,18.6235
+ear,auricle_HC_20,2.9675,False,,14.0013
+ear,auricle_HC_22,-22.9788,False,,10.3535
+ear,auricle_HC_24,4.3234,False,,17.9317
+ear,auricle_HC_25,20.0471,False,,14.0354
+ear,auricle_HC_26,14.4476,False,,13.9812
+ear,auricle_HC_28,30.2142,True,last update unstable: sbp calibration moved > 25.0 mmHg,13.2146
+ear,auricle_HC_3,-28.3682,False,,30.4570
+ear,auricle_HC_30,-33.0218,True,last update unstable: sbp calibration moved > 25.0 mmHg,32.7330
+ear,auricle_HC_31,-29.6941,True,last update unstable: sbp calibration moved > 25.0 mmHg,20.5063
+ear,auricle_HC_34,-19.2637,False,,17.4164
+ear,auricle_HC_36,3.9835,False,,15.0502
+ear,auricle_HC_37,1.2421,False,,19.3099
+ear,auricle_HC_39,21.4191,False,,21.3115
+ear,auricle_HC_4,-15.3663,False,,7.9581
+ear,auricle_HC_40,12.4299,False,,7.6446
+ear,auricle_HC_41,-3.0195,False,,6.7427
+ear,auricle_HC_42,6.9900,False,,12.9168
+ear,auricle_HC_7,-7.2542,False,,19.8568
+ear,auricle_HC_8,12.0326,False,,15.7510
+ear,auricle_HC_9,23.1869,False,,35.1377
 finger,auricle_HC_10,3.7791,False,,8.6656
 finger,auricle_HC_11,15.6637,False,,9.7498
 finger,auricle_HC_12,28.9062,False,,26.0837

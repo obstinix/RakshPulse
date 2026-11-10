@@ -12,53 +12,53 @@
   "model_ranking": [
     {
       "model": "svr",
-      "cross_day_mae_mean": 13.797,
+      "cross_day_mae_mean": 13.793,
       "mean_rank": 2.25,
       "worst_rank": 5.0,
-      "within_to_cross_day_gap": 1.81
+      "within_to_cross_day_gap": 1.841
     },
     {
       "model": "elasticnet",
-      "cross_day_mae_mean": 13.733,
+      "cross_day_mae_mean": 13.832,
       "mean_rank": 2.5,
       "worst_rank": 4.0,
-      "within_to_cross_day_gap": 1.721
+      "within_to_cross_day_gap": 1.737
     },
     {
       "model": "extra_trees",
-      "cross_day_mae_mean": 13.92,
+      "cross_day_mae_mean": 13.903,
       "mean_rank": 3.25,
       "worst_rank": 4.0,
-      "within_to_cross_day_gap": 1.744
+      "within_to_cross_day_gap": 1.753
     },
     {
       "model": "ridge",
-      "cross_day_mae_mean": 14.058,
+      "cross_day_mae_mean": 14.054,
       "mean_rank": 4.5,
       "worst_rank": 7.0,
-      "within_to_cross_day_gap": 1.91
+      "within_to_cross_day_gap": 1.894
     },
     {
       "model": "xgboost",
-      "cross_day_mae_mean": 14.504,
+      "cross_day_mae_mean": 14.459,
       "mean_rank": 4.75,
       "worst_rank": 6.0,
-      "within_to_cross_day_gap": 1.93
+      "within_to_cross_day_gap": 1.872
     },
     {
       "model": "random_forest",
-      "cross_day_mae_mean": 14.543,
-      "mean_rank": 5.0,
+      "cross_day_mae_mean": 14.56,
+      "mean_rank": 5.25,
       "worst_rank": 6.0,
-      "within_to_cross_day_gap": 1.996
+      "within_to_cross_day_gap": 1.992
     },
     {
       "model": "hist_gb",
-      "cross_day_mae_mean": 15.146,
-      "mean_rank": 5.75,
+      "cross_day_mae_mean": 15.05,
+      "mean_rank": 5.5,
       "worst_rank": 7.0,
-      "within_to_cross_day_gap": 2.027
+      "within_to_cross_day_gap": 2.107
     }
   ],
-  "runtime_s": 266.8
+  "runtime_s": 256.2
 }

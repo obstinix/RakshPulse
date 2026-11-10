@@ -51,14 +51,14 @@ high-altitude settings, built around the MAX30102 optical sensor.
    (r = −0.35) that single-site PPG shape lacks. A two-site optical *pulse transit time* design is
    worth evaluating. ECG is not available on the MAX30102.
 8. **Earlobe evidence (Auricle, 41 healthy subjects, simultaneous finger + earlobe PPG, continuous BP):**
-   PPG tracks within-session SBP changes slightly better than heart rate (ear r 0.28 vs 0.19, finger r 0.34 vs 0.28,
-   after removing rail-clipped windows). With one-point
-   calibration, earlobe SBP error beat carry-forward by about 1.2 mmHg (95 % CI [−2.08, −0.34]), but absolute
+   PPG tracks within-session SBP changes slightly better than heart rate (ear r 0.29 vs 0.21, finger r 0.34 vs 0.28,
+   after removing rail-clipped and flat-signal windows). With one-point
+   calibration, earlobe SBP error beat carry-forward by about 1.2 mmHg (95 % CI [−2.07, −0.29]), but absolute
    MAE was still about 14 mmHg and DBP showed no benefit. **Finger-trained models lost most tracking at the
-   ear (r 0.34 → ≤ 0.19)**, so a behind-ear model needs behind-ear training data.
+   ear (r 0.34 → ≤ 0.18)**, so a behind-ear model needs behind-ear training data.
 9. **Cross-day (36 subjects, two recording days, audited):** a day-1 calibration does **not** hold on day 2. The model
    does not follow day-to-day resting-BP shifts (slope 0.02, 95 % CI [−0.04, 0.09]), calibration offsets drift by
-   9–12 mmHg, and day-2 SBP error with day-1 calibration (ear 16.2 mmHg MAE) is no better than reporting the
+   9–12 mmHg, and day-2 SBP error with day-1 calibration (ear 16.1 mmHg MAE) is no better than reporting the
    calibration value. Within a session, ear pulse shape does carry heart-rate-independent SBP trend information.
    See [docs/RESEARCH_FINDINGS.md](docs/RESEARCH_FINDINGS.md).
 10. **Population vs personalisation (standardised dataset):** on unseen subjects no population model beat predicting

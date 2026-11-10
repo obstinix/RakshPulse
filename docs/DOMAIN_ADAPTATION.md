@@ -31,18 +31,18 @@ reflective MAX30102, but it is the closest open evidence available. Full tables 
 - **Morphology differs** (`docs/figures/auricle_ear_vs_finger_beat.png`): the earlobe pulse has a slower
   upstroke, a later systolic peak (~23 % vs ~15 % of the beat) and no diastolic shoulder. This matches the
   expectation in §1 of a smoother, more proximal waveform.
-- **Signal quality was lower at the ear** (SQI pass 78.8 % vs 79.7 % after removing
-  rail-clipped finger windows; exercise 52.5 % vs 57.5 %), so the
+- **Signal quality was lower at the ear** (SQI pass 78.2 % vs 79.7 % after removing
+  rail-clipped and flat-signal windows; exercise 52.3 % vs 57.5 %), so the
   ear is not automatically the more robust site.
 - **Finger-trained models do not transfer to the ear:** within-session SBP tracking fell from r 0.34
-  (finger→finger) to r 0.03–0.19 (finger→ear). Unsupervised per-site standardisation removed the bias
+  (finger→finger) to r 0.03–0.18 (finger→ear). Unsupervised per-site standardisation removed the bias
   (−3.8 → +0.9 mmHg) but did **not** restore tracking.
-- **Ear-trained models do work modestly:** ear→ear tracking r 0.28 (vs 0.19 for heart rate alone). With
-  one-point calibration, SBP MAE was 14.36 vs 15.41 mmHg for carry-forward (ΔMAE −1.19, 95 % CI [−2.08, −0.34]).
+- **Ear-trained models do work modestly:** ear→ear tracking r 0.29 (vs 0.21 for heart rate alone). With
+  one-point calibration, SBP MAE was 14.37 vs 15.40 mmHg for carry-forward (ΔMAE −1.16, 95 % CI [−2.07, −0.29]).
   There was no DBP benefit.
 
 - **Cross-day (36 subjects, two days):** ear pulse shape keeps tracking within-session SBP changes on day 2
-  (r 0.38) and adds information beyond heart rate (partial r 0.23 [0.17, 0.29]). It does **not** track day-to-day
+  (r 0.38) and adds information beyond heart rate (partial r 0.23 [0.16, 0.31]). It does **not** track day-to-day
   resting-BP shifts, and a day-1 calibration offset changes by 9–12 mmHg by day 2 (RESEARCH_FINDINGS.md).
 
 **Consequence for RakshPulse:** a behind-ear model must be trained on behind-ear data with a calibration
