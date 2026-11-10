@@ -8,9 +8,8 @@ Design constraints:
 * Output: 2 values (SBP, DBP), standardised with training-fold statistics only.
 * Global average pooling gives invariance to beat phase within the window.
 
-LSTM was considered and not run. With one cuff label per subject and 148 subjects there is
-not enough independent supervision to fit a recurrent model meaningfully, and the
-convolutional receptive field already spans multiple beats (docs/MODEL_ARCHITECTURE.md).
+``CNNRegressor(arch=...)`` also trains the recurrent, TCN and Transformer variants in ``sequence.py`` with this same
+loop, so architectures are compared under identical conditions (docs/MODEL_ARCHITECTURE.md).
 """
 
 from __future__ import annotations
@@ -62,10 +61,11 @@ class CNNConfig:
 class CNNRegressor:
     """Minimal fit/predict wrapper with subject-grouped early stopping."""
 
-    def __init__(self, in_ch: int, cfg: CNNConfig | None = None):
+    def __init__(self, in_ch: int, cfg: CNNConfig | None = None, arch: str = "cnn"):
         self.cfg = cfg or CNNConfig()
         self.in_ch = in_ch
-        self.model: BPNet | None = None
+        self.arch = arch
+        self.model: torch.nn.Module | None = None
         self.y_mu = self.y_sd = None
 
     def _augment(self, xb: torch.Tensor, gen: torch.Generator) -> torch.Tensor:
@@ -86,7 +86,9 @@ class CNNRegressor:
         yt = torch.tensor((y[~vmask] - self.y_mu) / self.y_sd, dtype=torch.float32)
         Xv = torch.tensor(np.nan_to_num(X[vmask]), dtype=torch.float32)
         yv = torch.tensor((y[vmask] - self.y_mu) / self.y_sd, dtype=torch.float32)
-        self.model = BPNet(self.in_ch, cfg.width)
+        from .sequence import ARCHITECTURES
+
+        self.model = ARCHITECTURES[self.arch](self.in_ch, cfg.width)
         opt = torch.optim.AdamW(self.model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
         gen = torch.Generator().manual_seed(cfg.seed)
         best, best_state, bad = np.inf, None, 0

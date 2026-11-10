@@ -69,3 +69,25 @@ recommendation with reasons. It returns no BP when ear SQI fails in more than ha
 side is responsible for collecting trusted reference readings (validated cuff) and passing them to
 `engine.update(...)`. The engine never treats PPG alone as evidence that a calibration is valid. The Auricle-trained
 bundle comes from earlobe Nonin PPG, not behind-ear MAX30102 data. Retraining on device data is required.
+
+## Streaming interface (RakshPulse 3.0, `src/rakshpulse/inference/streaming.py`)
+
+`StreamingEstimator(bundle, fs, engine=None, baseline=None, hop_s=5, buffer_s=30, aggregate_s=30, lost_after=3,
+log_path=None)` consumes samples in chunks of any size (e.g. MAX30102 FIFO reads) with the timestamp of the last
+sample: `events = s.push(chunk, timestamp=t)`.
+
+- A ring buffer holds the last `buffer_s` seconds. Every `hop_s` seconds of new data, the 10 s window ending at
+  the newest sample passes the same SQI gate (plus a flat-signal check) and feature pipeline as training.
+- Each evaluated window yields one `StreamEvent` with: per-window estimate; the median over the last `aggregate_s`
+  (personalised when a calibrated engine is attached); `status` (`warming_up`, `ok`, `poor_signal`, or
+  `signal_lost` after `lost_after` consecutive rejections); rejection reasons; recent acceptance fraction;
+  recalibration flag; baseline deviation; and feature/model latency.
+- Non-finite input, wrong sampling rates and decreasing timestamps raise `InputError`. Events can be appended to a
+  JSON-lines log for auditing.
+- After signal loss the last good aggregate is still reported, but the status marks it stale. Consumers must not
+  display it as current.
+
+Measured cost on a desktop CPU is in RESEARCH_FINDINGS.md V6 (`scripts/benchmark_inference.py`: startup, p50/p95
+feature and model latency at 100 and 1000 Hz, throughput, real-time factor, CPU utilisation, peak Python memory).
+These are **not** microcontroller numbers.
+

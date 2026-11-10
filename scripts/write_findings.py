@@ -17,6 +17,7 @@ DOC = ROOT / "docs" / "RESEARCH_FINDINGS.md"
 B, E = "<!-- BEGIN AUTO -->", "<!-- END AUTO -->"
 BP_, EP_ = "<!-- BEGIN PERSONALIZATION -->", "<!-- END PERSONALIZATION -->"
 PERS = ROOT / "results" / "personalization"
+BV, EV = "<!-- BEGIN V3 -->", "<!-- END V3 -->"
 
 
 def ci(s) -> str:
@@ -208,6 +209,192 @@ def personalization_block() -> str:
         ),
         "",
     ]
+    return "\n".join(out)
+
+
+def _d(r) -> str:
+    """Paired difference with CI; * marks a CI excluding 0."""
+    if r is None:
+        return "—"
+    star = "*" if bool(r["significant"]) else ""
+    return f"{r['mae_diff']:+.2f} [{r['ci_low']:+.2f}, {r['ci_high']:+.2f}]{star}"
+
+
+def v3_block() -> str:
+    """RakshPulse 3.0 tables (beyond-reference, calibration count, features, deep models, VitalDB, latency)."""
+    out = []
+    br = ROOT / "results" / "beyond_reference"
+    if (br / "metrics.csv").exists():
+        m, p = pd.read_csv(br / "metrics.csv"), pd.read_csv(br / "paired.csv")
+        out += [
+            "### V1. Does the waveform add information beyond the last reference? (Δ MAE vs the `mean_change` "
+            "control, mmHg; negative = the signal helps; * = 95 % subject-bootstrap CI excludes 0)",
+            "",
+        ]
+        rows = []
+        keys = ["dataset", "site", "target", "scenario"]
+        for k, g in m.groupby(keys, sort=False):
+            pp = p.merge(pd.DataFrame([dict(zip(keys, k, strict=True))]), on=keys)
+
+            def get(comp, pp=pp):
+                q = pp[pp.comparison == comp]
+                return q.iloc[0] if len(q) else None
+
+            mae = g.set_index("method").mae
+            rows.append(
+                [
+                    *k,
+                    f2(mae.get("last_reference")),
+                    f2(mae.get("population_mean")),
+                    _d(get("delta_hr_only vs mean_change")),
+                    _d(get("delta_hr_shape vs mean_change")),
+                    _d(get("delta_ppg_all vs mean_change")),
+                    _d(get("delta_hr_shape_pat vs mean_change")),
+                    _d(get("rakshpulse2_offset vs last_reference")),
+                    int(g.n_subjects.iloc[0]),
+                ]
+            )
+        cols = [
+            "Data",
+            "Site",
+            "Target",
+            "Reference scenario",
+            "MAE last ref",
+            "MAE pop. mean",
+            "HR only",
+            "HR + shape",
+            "All PPG",
+            "HR + shape + PAT",
+            "2.0 model offset vs last ref",
+            "n subj",
+        ]
+        out += [table(pd.DataFrame(rows, columns=cols)), ""]
+    cs = ROOT / "results" / "calibration_study"
+    if (cs / "metrics.csv").exists():
+        m, p = pd.read_csv(cs / "metrics.csv"), pd.read_csv(cs / "paired.csv")
+        out += ["### V2. Calibration count (SBP MAE, mmHg; 2.0 ridge population model, cached OOF predictions)", ""]
+        for site in ("ear", "finger"):
+            v = m[(m.site == site) & (m.target == "sbp")].pivot_table(
+                index=["scenario", "method"], columns="k", values="mae"
+            )
+            v = v.map(f2).reset_index()
+            v.columns = ["Scenario", "Method", *[f"k={c}" for c in v.columns[2:]]]
+            out += [f"**{site}**", "", table(v), ""]
+        q = p[(p.target == "sbp") & p.comparison.isin(["bayes_offset vs reference_mean", "offset vs reference_mean"])]
+        rows = [
+            [r["site"], r["scenario"], r["k"], r["comparison"], _d(r)] for _, r in q.iterrows() if r["k"] in (1, 3, 10)
+        ]
+        out += [
+            "Paired (Δ MAE, negative favours the PPG-based calibration over the cuff readings alone):",
+            "",
+            table(pd.DataFrame(rows, columns=["Site", "Scenario", "k", "Comparison", "Δ MAE [95% CI]"])),
+            "",
+        ]
+        cov = m[(m.target == "sbp") & (m.k == 3)][
+            ["site", "scenario", "method", "pi90_coverage", "pi90_halfwidth_mean"]
+        ]
+        cov = cov.assign(pi90_coverage=cov.pi90_coverage.map(f2), pi90_halfwidth_mean=cov.pi90_halfwidth_mean.map(f2))
+        out += [
+            "Cross-subject conformal 90 % intervals (k = 3):",
+            "",
+            table(cov.set_axis(["Site", "Scenario", "Method", "Coverage", "Mean half-width (mmHg)"], axis=1)),
+            "",
+        ]
+        dr = pd.read_csv(cs / "drift.csv")
+        dr = dr[dr.target == "sbp"][["site", "method", "minutes_since_calibration", "mae", "bias", "n_subjects"]]
+        dr = dr.assign(mae=dr.mae.map(f2), bias=dr.bias.map(f2))
+        out += [
+            "Error vs time since calibration (within day, k = 3, SBP):",
+            "",
+            table(dr.set_axis(["Site", "Method", "Minutes since calibration", "MAE", "Bias", "n subj"], axis=1)),
+            "",
+        ]
+    fa = ROOT / "results" / "feature_analysis"
+    if (fa / "features.csv").exists():
+        f, sel = pd.read_csv(fa / "features.csv"), pd.read_csv(fa / "selection.csv")
+        f = f.merge(sel[["site", "feature", "selection_freq"]], on=["site", "feature"], how="left")
+        f = f.reindex(f.within_r_s1_median.abs().sort_values(ascending=False).index)
+        rows = []
+        for site in ("ear", "finger"):
+            for _, r in f[f.site == site].head(12).iterrows():
+                rows.append(
+                    [
+                        site,
+                        r["feature"],
+                        f"{r['within_r_s1_median']:+.2f} "
+                        f"[{r['within_r_s1_ci_low']:+.2f}, {r['within_r_s1_ci_high']:+.2f}]",
+                        f"{r['within_r_s2_median']:+.2f}",
+                        f2(r["sign_agreement_s1_s2"]),
+                        f2(r["rest_icc31_day1_day2"]),
+                        f"{r['vif']:.1f}",
+                        f2(r["selection_freq"]),
+                    ]
+                )
+        cols = [
+            "Site",
+            "Feature",
+            "Within-subj Spearman day 1 [95% CI]",
+            "Day 2",
+            "Sign agreement day1/day2",
+            "Rest ICC(3,1) day1/day2",
+            "VIF",
+            "Stability-selection freq.",
+        ]
+        out += [
+            "### V3. Features: within-subject association with SBP, cross-day stability, redundancy "
+            "(top 12 by |within-subject r|)",
+            "",
+            table(pd.DataFrame(rows, columns=cols)),
+            "",
+        ]
+    db = ROOT / "results" / "deep_benchmark"
+    if (db / "metrics.csv").exists():
+        m, p = pd.read_csv(db / "metrics.csv"), pd.read_csv(db / "paired.csv")
+        rows = []
+        for (target, meth), g in m.groupby(["target", "method"], sort=False):
+            gm = {(a, b): v for a, b, v in zip(g["scope"], g["mode"], g["mae"], strict=True)}
+            pp = p[(p.target == target) & p.comparison.str.startswith(f"{meth} vs")]
+            pm = {(r["scope"], r["mode"]): r for _, r in pp.iterrows()}
+
+            def dd(scope, mode, gm=gm, pm=pm):
+                if (scope, mode) not in gm:
+                    return "—"
+                v = f2(gm[(scope, mode)])
+                return v + (f" ({_d(pm[(scope, mode)])})" if (scope, mode) in pm else "")
+
+            rows.append(
+                [
+                    target.split("_")[0].upper(),
+                    meth,
+                    dd("same_day_heldout_subjects", "absolute"),
+                    dd("other_day_heldout_subjects", "absolute"),
+                    dd("same_day_heldout_subjects", "offset_calibrated"),
+                    dd("other_day_heldout_subjects", "offset_calibrated"),
+                ]
+            )
+        cols = [
+            "Target",
+            "Method",
+            "Same day, absolute",
+            "Other day, absolute",
+            "Same day, offset-calibrated",
+            "Other day, offset-calibrated",
+        ]
+        out += [
+            "### V4. Raw-waveform deep models vs baselines (ear; held-out subjects; MAE mmHg; in brackets Δ vs "
+            "`training_mean` (absolute) or vs `reference_only` (calibrated))",
+            "",
+            table(pd.DataFrame(rows, columns=cols)),
+            "",
+        ]
+    vs = ROOT / "data" / "vitaldb" / "summary.csv"
+    if vs.exists():
+        out += ["### V5. VitalDB subset (surgical patients, CC BY 4.0)", "", table(pd.read_csv(vs)), ""]
+    ib = ROOT / "results" / "benchmarks" / "inference_benchmark.csv"
+    if ib.exists():
+        b = pd.read_csv(ib).set_index("fs_hz").T.reset_index()
+        b.columns = ["Metric", *[f"{c} Hz" for c in b.columns[1:]]]
+        out += ["### V6. Streaming inference cost (desktop CPU; not a microcontroller measurement)", "", table(b), ""]
     return "\n".join(out)
 
 
@@ -517,6 +704,7 @@ def main() -> int:
     text = text[:a] + "\n\n" + auto + "\n" + text[b:]
     if (PERS / "population_models.csv").exists():
         text = _replace_block(text, BP_, EP_, personalization_block())
+        text = _replace_block(text, BV, EV, v3_block())
     DOC.write_text(text, encoding="utf-8")
     print(f"wrote {DOC.relative_to(ROOT)} ({len(auto)} chars of tables)")
     return 0

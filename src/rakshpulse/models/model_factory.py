@@ -42,6 +42,10 @@ def make_model(name: str, seed: int = 0) -> tuple[Pipeline, dict]:
     if name == "hist_gb":
         hgb = HistGradientBoostingRegressor(max_iter=300, learning_rate=0.05, l2_regularization=1.0, random_state=seed)
         return _pipe(hgb, scale=False), {"model__max_depth": [3, None], "model__min_samples_leaf": [20, 80]}
+    if name == "pls":
+        from sklearn.cross_decomposition import PLSRegression
+
+        return _pipe(PLSRegression(scale=False)), {"model__n_components": [2, 4, 8]}
     if name == "lightgbm":
         from lightgbm import LGBMRegressor
 
@@ -75,6 +79,7 @@ def make_model(name: str, seed: int = 0) -> tuple[Pipeline, dict]:
 FEATURE_MODELS = ("mean", "linear", "ridge", "svr", "random_forest", "xgboost")
 EXTENDED_MODELS = ("ridge", "elasticnet", "svr", "random_forest", "extra_trees", "hist_gb", "xgboost")
 PERSONALIZATION_MODELS = EXTENDED_MODELS + ("lightgbm",)
+V3_MODELS = PERSONALIZATION_MODELS + ("pls",)
 
 # keep RandomForestRegressor importable from here for type checks
 __all__ = ["make_model", "FEATURE_MODELS", "RandomForestRegressor"]

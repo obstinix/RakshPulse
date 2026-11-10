@@ -46,11 +46,22 @@ decay 1e-3), smooth-L1 loss, early stopping on a held-out **group of training su
 and train-only augmentation (±10 % amplitude scale, circular time shift). Targets are
 standardised with training-fold statistics.
 
-**LSTM: not run.** With one cuff label per subject and 148 subjects there is not enough
-independent supervision for a recurrent model. The CNN, which has fewer parameters and a
-stronger inductive bias, already failed to beat the mean baseline (MODEL_EVALUATION.md).
-Adding an LSTM would add capacity without adding information. It should be revisited only
-with beat-level continuous references (e.g. CNAP in Auricle) or far more subjects.
+**Recurrent and attention models (RakshPulse 3.0, `src/rakshpulse/models/sequence.py`).** The 2.0 note said an
+LSTM should be revisited only with continuous beat-level references. Auricle provides those (CNAP), so 3.0 adds
+four compact alternatives. All share `CNNRegressor`'s training loop (`CNNRegressor(in_ch, cfg, arch=...)`): same
+subject-held-out early stopping, augmentation, multi-task SBP + DBP output and target standardisation, so
+differences come from the architecture alone.
+
+| `arch` | Structure (input 1×1000, 100 Hz) | Parameters |
+|---|---|---:|
+| `cnn` | BPNet above | 16,338 |
+| `gru` | strided conv stem (3 layers, 1000 → 125 steps × 32 ch) → GRU(32) → last state → Linear | 14,434 |
+| `cnn_lstm` | same stem → LSTM(32) → last state → Linear | 16,546 |
+| `tcn` | same stem → 4 residual dilated conv blocks (dilation 1, 2, 4, 8) → mean pool → Linear | 20,770 |
+| `transformer` | same stem → learned positions → 2 encoder layers (d = 32, 4 heads, FF 64) → mean pool → Linear | 29,186 |
+
+The models are deliberately small: each fold trains on about 30 subjects. Results are in RESEARCH_FINDINGS.md V4
+(`scripts/run_deep_benchmark.py`).
 
 ## Inference bundle (`src/rakshpulse/inference/`)
 

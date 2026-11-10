@@ -8,7 +8,7 @@ from rakshpulse.evaluation.validation import nested_cv, subject_level
 from rakshpulse.features.feature_pipeline import extract_features, feature_names
 from rakshpulse.inference.model_loader import ModelBundle, load_bundle
 from rakshpulse.inference.predictor import BPPredictor, InputError
-from rakshpulse.models.model_factory import FEATURE_MODELS, PERSONALIZATION_MODELS, make_model
+from rakshpulse.models.model_factory import FEATURE_MODELS, V3_MODELS, make_model
 
 
 def _toy_df(n_subj=20, per=6, seed=0):
@@ -32,7 +32,7 @@ def _toy_df(n_subj=20, per=6, seed=0):
     return pd.DataFrame(rows)
 
 
-@pytest.mark.parametrize("name", sorted(set(FEATURE_MODELS) | set(PERSONALIZATION_MODELS)))
+@pytest.mark.parametrize("name", sorted(set(FEATURE_MODELS) | set(V3_MODELS)))
 def test_models_fit_predict_with_nans(name):
     df = _toy_df()
     est, _ = make_model(name, 0)
