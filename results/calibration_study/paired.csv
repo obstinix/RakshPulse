@@ -1,0 +1,273 @@
+site,target,scenario,k,comparison,mae_diff,ci_low,ci_high,significant
+ear,sbp,cross_day,0,population vs training_mean,-0.3005,-1.1816,0.5331,False
+ear,sbp,cross_day,1,offset vs reference_mean,-0.6914,-2.7391,1.4330,False
+ear,sbp,cross_day,1,bayes_offset vs reference_mean,-4.3837,-6.5876,-2.1667,True
+ear,sbp,cross_day,1,bayes_reference vs reference_mean,-3.7459,-6.0210,-1.4143,True
+ear,sbp,cross_day,1,bayes_offset vs bayes_reference,-0.6378,-1.7462,0.4151,False
+ear,sbp,cross_day,2,offset vs reference_mean,0.1169,-1.0484,1.3223,False
+ear,sbp,cross_day,2,bayes_offset vs reference_mean,-1.6152,-2.8124,-0.4468,True
+ear,sbp,cross_day,2,bayes_reference vs reference_mean,-1.4204,-2.6336,-0.3398,True
+ear,sbp,cross_day,2,linear_free vs reference_mean,15.7311,3.1310,33.3727,True
+ear,sbp,cross_day,2,linear_shrunk vs reference_mean,0.1828,-0.8164,1.2253,False
+ear,sbp,cross_day,2,bayes_offset vs bayes_reference,-0.1948,-1.0383,0.5715,False
+ear,sbp,cross_day,3,offset vs reference_mean,-0.5140,-1.7123,0.4992,False
+ear,sbp,cross_day,3,bayes_offset vs reference_mean,-1.6485,-2.8595,-0.5030,True
+ear,sbp,cross_day,3,bayes_reference vs reference_mean,-1.1238,-1.9825,-0.2847,True
+ear,sbp,cross_day,3,linear_free vs reference_mean,3.9780,1.1710,7.1183,True
+ear,sbp,cross_day,3,linear_shrunk vs reference_mean,-0.6311,-1.9762,0.5809,False
+ear,sbp,cross_day,3,bayes_offset vs bayes_reference,-0.5247,-1.4958,0.3338,False
+ear,sbp,cross_day,5,offset vs reference_mean,-0.2143,-1.3477,0.7603,False
+ear,sbp,cross_day,5,bayes_offset vs reference_mean,-0.9394,-1.9494,0.0128,False
+ear,sbp,cross_day,5,bayes_reference vs reference_mean,-0.5787,-1.1029,-0.0661,True
+ear,sbp,cross_day,5,linear_free vs reference_mean,2.4397,0.1742,5.0244,True
+ear,sbp,cross_day,5,linear_shrunk vs reference_mean,-0.1719,-1.3160,0.8708,False
+ear,sbp,cross_day,5,bayes_offset vs bayes_reference,-0.3607,-1.3169,0.4802,False
+ear,sbp,cross_day,10,offset vs reference_mean,-0.6835,-1.5023,0.0766,False
+ear,sbp,cross_day,10,bayes_offset vs reference_mean,-0.9765,-1.7372,-0.2364,True
+ear,sbp,cross_day,10,bayes_reference vs reference_mean,-0.3188,-0.5765,-0.0596,True
+ear,sbp,cross_day,10,linear_free vs reference_mean,1.1600,-0.4387,3.0583,False
+ear,sbp,cross_day,10,linear_shrunk vs reference_mean,-0.4164,-1.2681,0.3597,False
+ear,sbp,cross_day,10,bayes_offset vs bayes_reference,-0.6577,-1.4732,0.0986,False
+ear,sbp,within_day,0,population vs training_mean,-0.0029,-0.9928,1.0132,False
+ear,sbp,within_day,1,offset vs reference_mean,-0.7523,-2.3251,0.9520,False
+ear,sbp,within_day,1,bayes_offset vs reference_mean,-3.8682,-5.6796,-2.1465,True
+ear,sbp,within_day,1,bayes_reference vs reference_mean,-3.7002,-5.2615,-2.1863,True
+ear,sbp,within_day,1,bayes_offset vs bayes_reference,-0.1681,-0.9005,0.6066,False
+ear,sbp,within_day,2,offset vs reference_mean,-0.5819,-1.4269,0.3131,False
+ear,sbp,within_day,2,bayes_offset vs reference_mean,-1.5968,-2.6496,-0.6517,True
+ear,sbp,within_day,2,bayes_reference vs reference_mean,-1.2232,-1.9956,-0.5269,True
+ear,sbp,within_day,2,linear_free vs reference_mean,12.7690,3.3241,26.5716,True
+ear,sbp,within_day,2,linear_shrunk vs reference_mean,-0.8926,-1.8490,-0.0529,True
+ear,sbp,within_day,2,bayes_offset vs bayes_reference,-0.3736,-0.9106,0.1786,False
+ear,sbp,within_day,3,offset vs reference_mean,-1.2586,-2.2258,-0.4017,True
+ear,sbp,within_day,3,bayes_offset vs reference_mean,-1.8172,-2.8287,-0.8971,True
+ear,sbp,within_day,3,bayes_reference vs reference_mean,-1.0193,-1.5976,-0.4977,True
+ear,sbp,within_day,3,linear_free vs reference_mean,3.1052,0.4745,6.0518,True
+ear,sbp,within_day,3,linear_shrunk vs reference_mean,-1.6592,-2.8389,-0.6892,True
+ear,sbp,within_day,3,bayes_offset vs bayes_reference,-0.7979,-1.4795,-0.1711,True
+ear,sbp,within_day,5,offset vs reference_mean,-0.9450,-1.8081,-0.0986,True
+ear,sbp,within_day,5,bayes_offset vs reference_mean,-1.4350,-2.3017,-0.6465,True
+ear,sbp,within_day,5,bayes_reference vs reference_mean,-0.7044,-1.1448,-0.2923,True
+ear,sbp,within_day,5,linear_free vs reference_mean,1.1290,-0.6217,3.3660,False
+ear,sbp,within_day,5,linear_shrunk vs reference_mean,-1.0564,-1.8920,-0.2638,True
+ear,sbp,within_day,5,bayes_offset vs bayes_reference,-0.7306,-1.4372,-0.0675,True
+ear,sbp,within_day,10,offset vs reference_mean,-0.8539,-1.6571,-0.0829,True
+ear,sbp,within_day,10,bayes_offset vs reference_mean,-1.0340,-1.8644,-0.2163,True
+ear,sbp,within_day,10,bayes_reference vs reference_mean,-0.2570,-0.4972,-0.0297,True
+ear,sbp,within_day,10,linear_free vs reference_mean,0.4358,-0.9198,2.3256,False
+ear,sbp,within_day,10,linear_shrunk vs reference_mean,-1.1245,-1.9564,-0.3380,True
+ear,sbp,within_day,10,bayes_offset vs bayes_reference,-0.7770,-1.5322,-0.0504,True
+ear,sbp,within_day,1,offset vs population (k=0),0.8808,-1.9331,3.7617,False
+ear,sbp,within_day,2,offset vs population (k=0),-2.3765,-4.6999,-0.1171,True
+ear,sbp,within_day,3,offset vs population (k=0),-3.1628,-5.3735,-1.0269,True
+ear,sbp,within_day,5,offset vs population (k=0),-2.6425,-4.9210,-0.4777,True
+ear,sbp,within_day,10,offset vs population (k=0),-3.0711,-5.3315,-0.9628,True
+ear,sbp,cross_day,1,offset vs population (k=0),3.2360,-0.4799,6.8082,False
+ear,sbp,cross_day,2,offset vs population (k=0),1.0085,-1.8083,3.5678,False
+ear,sbp,cross_day,3,offset vs population (k=0),0.3637,-2.5070,2.9290,False
+ear,sbp,cross_day,5,offset vs population (k=0),0.1492,-2.6318,2.6919,False
+ear,sbp,cross_day,10,offset vs population (k=0),-0.5163,-3.2601,2.0877,False
+ear,dbp,cross_day,0,population vs training_mean,0.2019,-0.4489,0.8231,False
+ear,dbp,cross_day,1,offset vs reference_mean,0.6906,-0.9271,2.2611,False
+ear,dbp,cross_day,1,bayes_offset vs reference_mean,-1.9979,-3.3081,-0.8175,True
+ear,dbp,cross_day,1,bayes_reference vs reference_mean,-2.3451,-3.5701,-1.1431,True
+ear,dbp,cross_day,1,bayes_offset vs bayes_reference,0.3472,-0.5343,1.1968,False
+ear,dbp,cross_day,2,offset vs reference_mean,0.8939,-0.2754,2.0880,False
+ear,dbp,cross_day,2,bayes_offset vs reference_mean,-0.7375,-1.5715,0.0428,False
+ear,dbp,cross_day,2,bayes_reference vs reference_mean,-1.4053,-2.1114,-0.7134,True
+ear,dbp,cross_day,2,linear_free vs reference_mean,9.2649,2.5039,17.3665,True
+ear,dbp,cross_day,2,linear_shrunk vs reference_mean,0.5929,-0.3602,1.7017,False
+ear,dbp,cross_day,2,bayes_offset vs bayes_reference,0.6678,-0.1221,1.5129,False
+ear,dbp,cross_day,3,offset vs reference_mean,0.7755,-0.2705,1.8418,False
+ear,dbp,cross_day,3,bayes_offset vs reference_mean,-0.2625,-1.1045,0.5156,False
+ear,dbp,cross_day,3,bayes_reference vs reference_mean,-0.9084,-1.3519,-0.4615,True
+ear,dbp,cross_day,3,linear_free vs reference_mean,3.3011,0.7524,6.6813,True
+ear,dbp,cross_day,3,linear_shrunk vs reference_mean,0.5407,-0.2429,1.3008,False
+ear,dbp,cross_day,3,bayes_offset vs bayes_reference,0.6458,-0.1467,1.4979,False
+ear,dbp,cross_day,5,offset vs reference_mean,0.8870,0.0940,1.8019,True
+ear,dbp,cross_day,5,bayes_offset vs reference_mean,0.2421,-0.3800,0.9281,False
+ear,dbp,cross_day,5,bayes_reference vs reference_mean,-0.5256,-0.8055,-0.2381,True
+ear,dbp,cross_day,5,linear_free vs reference_mean,1.6674,0.0092,3.5125,True
+ear,dbp,cross_day,5,linear_shrunk vs reference_mean,0.7770,0.1120,1.5391,True
+ear,dbp,cross_day,5,bayes_offset vs bayes_reference,0.7677,0.0766,1.5711,True
+ear,dbp,cross_day,10,offset vs reference_mean,0.8588,0.1613,1.6956,True
+ear,dbp,cross_day,10,bayes_offset vs reference_mean,0.5623,-0.0531,1.2972,False
+ear,dbp,cross_day,10,bayes_reference vs reference_mean,-0.2314,-0.3741,-0.0916,True
+ear,dbp,cross_day,10,linear_free vs reference_mean,1.0218,-0.3056,2.6977,False
+ear,dbp,cross_day,10,linear_shrunk vs reference_mean,0.5595,0.0743,1.0828,True
+ear,dbp,cross_day,10,bayes_offset vs bayes_reference,0.7937,0.1365,1.5715,True
+ear,dbp,within_day,0,population vs training_mean,0.2849,-0.4153,1.0716,False
+ear,dbp,within_day,1,offset vs reference_mean,0.3759,-0.5806,1.2261,False
+ear,dbp,within_day,1,bayes_offset vs reference_mean,-1.3031,-2.6529,0.0492,False
+ear,dbp,within_day,1,bayes_reference vs reference_mean,-1.3453,-2.4302,-0.2465,True
+ear,dbp,within_day,1,bayes_offset vs bayes_reference,0.0422,-0.4622,0.5054,False
+ear,dbp,within_day,2,offset vs reference_mean,0.2322,-0.4277,0.8005,False
+ear,dbp,within_day,2,bayes_offset vs reference_mean,-0.6448,-1.4732,0.1816,False
+ear,dbp,within_day,2,bayes_reference vs reference_mean,-0.7219,-1.3712,-0.0835,True
+ear,dbp,within_day,2,linear_free vs reference_mean,5.4983,1.9387,9.5564,True
+ear,dbp,within_day,2,linear_shrunk vs reference_mean,-0.0434,-0.7780,0.5219,False
+ear,dbp,within_day,2,bayes_offset vs bayes_reference,0.0771,-0.4059,0.5091,False
+ear,dbp,within_day,3,offset vs reference_mean,0.0226,-0.6815,0.5982,False
+ear,dbp,within_day,3,bayes_offset vs reference_mean,-0.2806,-1.0829,0.4485,False
+ear,dbp,within_day,3,bayes_reference vs reference_mean,-0.2752,-0.6482,0.1163,False
+ear,dbp,within_day,3,linear_free vs reference_mean,2.3791,0.5909,4.4937,True
+ear,dbp,within_day,3,linear_shrunk vs reference_mean,-0.2064,-0.9401,0.3401,False
+ear,dbp,within_day,3,bayes_offset vs bayes_reference,-0.0054,-0.5689,0.4822,False
+ear,dbp,within_day,5,offset vs reference_mean,0.1834,-0.3768,0.6863,False
+ear,dbp,within_day,5,bayes_offset vs reference_mean,-0.0365,-0.6091,0.5266,False
+ear,dbp,within_day,5,bayes_reference vs reference_mean,-0.1361,-0.3406,0.0944,False
+ear,dbp,within_day,5,linear_free vs reference_mean,1.0599,0.0033,2.2332,True
+ear,dbp,within_day,5,linear_shrunk vs reference_mean,-0.0922,-0.6672,0.3451,False
+ear,dbp,within_day,5,bayes_offset vs bayes_reference,0.0996,-0.3962,0.5636,False
+ear,dbp,within_day,10,offset vs reference_mean,0.0158,-0.4571,0.4783,False
+ear,dbp,within_day,10,bayes_offset vs reference_mean,-0.0153,-0.4949,0.4317,False
+ear,dbp,within_day,10,bayes_reference vs reference_mean,-0.0176,-0.1330,0.1037,False
+ear,dbp,within_day,10,linear_free vs reference_mean,1.0429,0.0616,2.3404,True
+ear,dbp,within_day,10,linear_shrunk vs reference_mean,-0.1947,-0.6072,0.1591,False
+ear,dbp,within_day,10,bayes_offset vs bayes_reference,0.0023,-0.4349,0.4316,False
+ear,dbp,within_day,1,offset vs population (k=0),-0.2263,-2.3124,1.7522,False
+ear,dbp,within_day,2,offset vs population (k=0),-1.3047,-3.2813,0.6579,False
+ear,dbp,within_day,3,offset vs population (k=0),-2.4816,-4.1241,-1.0202,True
+ear,dbp,within_day,5,offset vs population (k=0),-2.5658,-4.1996,-1.1566,True
+ear,dbp,within_day,10,offset vs population (k=0),-2.9787,-4.7555,-1.3448,True
+ear,dbp,cross_day,1,offset vs population (k=0),3.0938,0.2258,6.1992,True
+ear,dbp,cross_day,2,offset vs population (k=0),2.5587,-0.0924,5.4278,False
+ear,dbp,cross_day,3,offset vs population (k=0),1.7266,-0.2270,4.0043,False
+ear,dbp,cross_day,5,offset vs population (k=0),1.5405,-0.4078,3.8398,False
+ear,dbp,cross_day,10,offset vs population (k=0),0.9964,-0.5846,2.7773,False
+finger,sbp,cross_day,0,population vs training_mean,0.4459,-0.6407,1.6921,False
+finger,sbp,cross_day,1,offset vs reference_mean,0.2965,-1.1697,1.8222,False
+finger,sbp,cross_day,1,bayes_offset vs reference_mean,-1.2406,-3.3512,0.9440,False
+finger,sbp,cross_day,1,bayes_reference vs reference_mean,-1.9252,-3.6862,-0.1719,True
+finger,sbp,cross_day,1,bayes_offset vs bayes_reference,0.6846,-0.2705,1.7246,False
+finger,sbp,cross_day,2,offset vs reference_mean,-0.1601,-1.5000,1.1365,False
+finger,sbp,cross_day,2,bayes_offset vs reference_mean,-1.0544,-2.8594,0.6965,False
+finger,sbp,cross_day,2,bayes_reference vs reference_mean,-1.4155,-2.6644,-0.2787,True
+finger,sbp,cross_day,2,linear_free vs reference_mean,27.2874,5.9795,61.2143,True
+finger,sbp,cross_day,2,linear_shrunk vs reference_mean,-0.2388,-1.5489,0.9633,False
+finger,sbp,cross_day,2,bayes_offset vs bayes_reference,0.3610,-0.7478,1.5252,False
+finger,sbp,cross_day,3,offset vs reference_mean,-0.1932,-1.6019,1.2157,False
+finger,sbp,cross_day,3,bayes_offset vs reference_mean,-0.8167,-2.4742,0.8520,False
+finger,sbp,cross_day,3,bayes_reference vs reference_mean,-1.0047,-1.8499,-0.2081,True
+finger,sbp,cross_day,3,linear_free vs reference_mean,1.0072,-1.0085,3.0923,False
+finger,sbp,cross_day,3,linear_shrunk vs reference_mean,-0.7175,-2.3665,0.6080,False
+finger,sbp,cross_day,3,bayes_offset vs bayes_reference,0.1880,-1.0120,1.4598,False
+finger,sbp,cross_day,5,offset vs reference_mean,0.4509,-0.7927,1.9116,False
+finger,sbp,cross_day,5,bayes_offset vs reference_mean,0.0730,-1.2579,1.5528,False
+finger,sbp,cross_day,5,bayes_reference vs reference_mean,-0.4892,-1.0374,0.0104,False
+finger,sbp,cross_day,5,linear_free vs reference_mean,-0.6527,-1.8668,0.4326,False
+finger,sbp,cross_day,5,linear_shrunk vs reference_mean,-0.9765,-1.9654,-0.0919,True
+finger,sbp,cross_day,5,bayes_offset vs bayes_reference,0.5622,-0.5977,1.9436,False
+finger,sbp,cross_day,10,offset vs reference_mean,-0.2933,-1.3956,0.9190,False
+finger,sbp,cross_day,10,bayes_offset vs reference_mean,-0.4225,-1.5983,0.8747,False
+finger,sbp,cross_day,10,bayes_reference vs reference_mean,-0.2085,-0.4783,0.0383,False
+finger,sbp,cross_day,10,linear_free vs reference_mean,0.1050,-0.9331,1.2706,False
+finger,sbp,cross_day,10,linear_shrunk vs reference_mean,-0.8024,-1.4927,-0.1067,True
+finger,sbp,cross_day,10,bayes_offset vs bayes_reference,-0.2140,-1.2814,0.9391,False
+finger,sbp,within_day,0,population vs training_mean,-0.3780,-1.1202,0.4152,False
+finger,sbp,within_day,1,offset vs reference_mean,0.0217,-1.6069,1.6321,False
+finger,sbp,within_day,1,bayes_offset vs reference_mean,-1.9259,-3.6244,-0.1757,True
+finger,sbp,within_day,1,bayes_reference vs reference_mean,-2.0435,-3.3203,-0.7764,True
+finger,sbp,within_day,1,bayes_offset vs bayes_reference,0.1175,-0.7559,1.0492,False
+finger,sbp,within_day,2,offset vs reference_mean,-0.3514,-1.4620,0.6839,False
+finger,sbp,within_day,2,bayes_offset vs reference_mean,-1.2523,-2.7711,0.1597,False
+finger,sbp,within_day,2,bayes_reference vs reference_mean,-1.1831,-2.2141,-0.3220,True
+finger,sbp,within_day,2,linear_free vs reference_mean,23.5118,7.9388,46.4694,True
+finger,sbp,within_day,2,linear_shrunk vs reference_mean,-0.4025,-1.2747,0.4381,False
+finger,sbp,within_day,2,bayes_offset vs bayes_reference,-0.0692,-0.9249,0.7950,False
+finger,sbp,within_day,3,offset vs reference_mean,-0.8989,-2.0722,0.1680,False
+finger,sbp,within_day,3,bayes_offset vs reference_mean,-1.3146,-2.6826,-0.0637,True
+finger,sbp,within_day,3,bayes_reference vs reference_mean,-0.8779,-1.5148,-0.2938,True
+finger,sbp,within_day,3,linear_free vs reference_mean,2.8731,0.4684,5.6340,True
+finger,sbp,within_day,3,linear_shrunk vs reference_mean,-0.9243,-2.2183,0.1403,False
+finger,sbp,within_day,3,bayes_offset vs bayes_reference,-0.4367,-1.4009,0.4860,False
+finger,sbp,within_day,5,offset vs reference_mean,-0.9757,-1.9331,0.0339,False
+finger,sbp,within_day,5,bayes_offset vs reference_mean,-1.3134,-2.3463,-0.1993,True
+finger,sbp,within_day,5,bayes_reference vs reference_mean,-0.6006,-1.0637,-0.1738,True
+finger,sbp,within_day,5,linear_free vs reference_mean,-0.3399,-1.6069,0.8535,False
+finger,sbp,within_day,5,linear_shrunk vs reference_mean,-1.4900,-2.4015,-0.7250,True
+finger,sbp,within_day,5,bayes_offset vs bayes_reference,-0.7128,-1.5363,0.2014,False
+finger,sbp,within_day,10,offset vs reference_mean,-1.0009,-1.6868,-0.3187,True
+finger,sbp,within_day,10,bayes_offset vs reference_mean,-1.0824,-1.8261,-0.3248,True
+finger,sbp,within_day,10,bayes_reference vs reference_mean,-0.2190,-0.4565,0.0175,False
+finger,sbp,within_day,10,linear_free vs reference_mean,0.5075,-0.8091,2.2384,False
+finger,sbp,within_day,10,linear_shrunk vs reference_mean,-1.0191,-1.6276,-0.4537,True
+finger,sbp,within_day,10,bayes_offset vs bayes_reference,-0.8634,-1.5189,-0.2246,True
+finger,sbp,within_day,1,offset vs population (k=0),0.2081,-1.9415,2.2972,False
+finger,sbp,within_day,2,offset vs population (k=0),-1.3043,-3.3422,0.4464,False
+finger,sbp,within_day,3,offset vs population (k=0),-1.8539,-3.8054,-0.2080,True
+finger,sbp,within_day,5,offset vs population (k=0),-1.9885,-3.9277,-0.3320,True
+finger,sbp,within_day,10,offset vs population (k=0),-2.4307,-4.4546,-0.6276,True
+finger,sbp,cross_day,1,offset vs population (k=0),0.6314,-2.9037,3.9547,False
+finger,sbp,cross_day,2,offset vs population (k=0),-0.0686,-3.0943,2.7866,False
+finger,sbp,cross_day,3,offset vs population (k=0),-0.2780,-3.0355,2.2715,False
+finger,sbp,cross_day,5,offset vs population (k=0),-0.3636,-3.2241,2.4516,False
+finger,sbp,cross_day,10,offset vs population (k=0),-1.1994,-3.4753,1.1060,False
+finger,dbp,cross_day,0,population vs training_mean,0.1668,-0.3658,0.7677,False
+finger,dbp,cross_day,1,offset vs reference_mean,0.4371,-0.3217,1.2596,False
+finger,dbp,cross_day,1,bayes_offset vs reference_mean,-1.3394,-2.4224,-0.3072,True
+finger,dbp,cross_day,1,bayes_reference vs reference_mean,-1.5434,-2.6230,-0.4797,True
+finger,dbp,cross_day,1,bayes_offset vs bayes_reference,0.2039,-0.4260,0.8829,False
+finger,dbp,cross_day,2,offset vs reference_mean,0.2734,-0.4265,0.9849,False
+finger,dbp,cross_day,2,bayes_offset vs reference_mean,-0.6947,-1.5759,0.0764,False
+finger,dbp,cross_day,2,bayes_reference vs reference_mean,-0.9489,-1.6213,-0.2908,True
+finger,dbp,cross_day,2,linear_free vs reference_mean,37.4848,6.6066,76.8907,True
+finger,dbp,cross_day,2,linear_shrunk vs reference_mean,0.1645,-0.5136,0.8795,False
+finger,dbp,cross_day,2,bayes_offset vs bayes_reference,0.2542,-0.3837,0.9054,False
+finger,dbp,cross_day,3,offset vs reference_mean,0.2378,-0.4440,0.9179,False
+finger,dbp,cross_day,3,bayes_offset vs reference_mean,-0.4536,-1.1986,0.2493,False
+finger,dbp,cross_day,3,bayes_reference vs reference_mean,-0.6827,-1.1441,-0.2261,True
+finger,dbp,cross_day,3,linear_free vs reference_mean,3.8116,1.0010,7.2217,True
+finger,dbp,cross_day,3,linear_shrunk vs reference_mean,0.2342,-0.4387,0.9219,False
+finger,dbp,cross_day,3,bayes_offset vs bayes_reference,0.2291,-0.4163,0.8741,False
+finger,dbp,cross_day,5,offset vs reference_mean,0.1463,-0.4684,0.7480,False
+finger,dbp,cross_day,5,bayes_offset vs reference_mean,-0.2452,-0.8943,0.3942,False
+finger,dbp,cross_day,5,bayes_reference vs reference_mean,-0.4154,-0.7013,-0.1353,True
+finger,dbp,cross_day,5,linear_free vs reference_mean,2.0250,0.4818,4.3193,True
+finger,dbp,cross_day,5,linear_shrunk vs reference_mean,0.1796,-0.4141,0.7886,False
+finger,dbp,cross_day,5,bayes_offset vs bayes_reference,0.1702,-0.4142,0.7390,False
+finger,dbp,cross_day,10,offset vs reference_mean,0.0364,-0.6669,0.7398,False
+finger,dbp,cross_day,10,bayes_offset vs reference_mean,-0.1604,-0.8681,0.5286,False
+finger,dbp,cross_day,10,bayes_reference vs reference_mean,-0.2242,-0.3580,-0.0912,True
+finger,dbp,cross_day,10,linear_free vs reference_mean,0.2674,-0.4148,0.9642,False
+finger,dbp,cross_day,10,linear_shrunk vs reference_mean,0.0371,-0.5394,0.5531,False
+finger,dbp,cross_day,10,bayes_offset vs bayes_reference,0.0638,-0.6188,0.7467,False
+finger,dbp,within_day,0,population vs training_mean,0.3637,-0.1182,0.9011,False
+finger,dbp,within_day,1,offset vs reference_mean,0.1270,-0.4591,0.7125,False
+finger,dbp,within_day,1,bayes_offset vs reference_mean,-0.5468,-1.5398,0.5206,False
+finger,dbp,within_day,1,bayes_reference vs reference_mean,-0.7484,-1.6917,0.2361,False
+finger,dbp,within_day,1,bayes_offset vs bayes_reference,0.2017,-0.2358,0.6985,False
+finger,dbp,within_day,2,offset vs reference_mean,0.1752,-0.2088,0.5809,False
+finger,dbp,within_day,2,bayes_offset vs reference_mean,-0.2281,-0.9215,0.4913,False
+finger,dbp,within_day,2,bayes_reference vs reference_mean,-0.4880,-1.0713,0.1178,False
+finger,dbp,within_day,2,linear_free vs reference_mean,26.3852,5.8609,51.8387,True
+finger,dbp,within_day,2,linear_shrunk vs reference_mean,0.1025,-0.2588,0.4880,False
+finger,dbp,within_day,2,bayes_offset vs bayes_reference,0.2599,-0.0885,0.6339,False
+finger,dbp,within_day,3,offset vs reference_mean,0.0671,-0.2547,0.4018,False
+finger,dbp,within_day,3,bayes_offset vs reference_mean,-0.0303,-0.5381,0.5048,False
+finger,dbp,within_day,3,bayes_reference vs reference_mean,-0.2162,-0.5967,0.1789,False
+finger,dbp,within_day,3,linear_free vs reference_mean,2.8088,0.9695,5.1114,True
+finger,dbp,within_day,3,linear_shrunk vs reference_mean,0.0159,-0.2869,0.3685,False
+finger,dbp,within_day,3,bayes_offset vs bayes_reference,0.1858,-0.1229,0.5220,False
+finger,dbp,within_day,5,offset vs reference_mean,0.1666,-0.1867,0.5356,False
+finger,dbp,within_day,5,bayes_offset vs reference_mean,0.1509,-0.3096,0.6534,False
+finger,dbp,within_day,5,bayes_reference vs reference_mean,-0.1049,-0.3336,0.1342,False
+finger,dbp,within_day,5,linear_free vs reference_mean,1.3601,0.6418,2.3298,True
+finger,dbp,within_day,5,linear_shrunk vs reference_mean,0.0633,-0.2095,0.3470,False
+finger,dbp,within_day,5,bayes_offset vs bayes_reference,0.2558,-0.0807,0.6244,False
+finger,dbp,within_day,10,offset vs reference_mean,0.1079,-0.2557,0.4713,False
+finger,dbp,within_day,10,bayes_offset vs reference_mean,0.1673,-0.2123,0.5481,False
+finger,dbp,within_day,10,bayes_reference vs reference_mean,-0.0024,-0.1123,0.1099,False
+finger,dbp,within_day,10,linear_free vs reference_mean,1.1302,0.2391,2.6696,True
+finger,dbp,within_day,10,linear_shrunk vs reference_mean,0.0155,-0.2594,0.2784,False
+finger,dbp,within_day,10,bayes_offset vs bayes_reference,0.1697,-0.1876,0.5332,False
+finger,dbp,within_day,1,offset vs population (k=0),-1.3164,-3.2151,0.5549,False
+finger,dbp,within_day,2,offset vs population (k=0),-1.9248,-3.6627,-0.3687,True
+finger,dbp,within_day,3,offset vs population (k=0),-2.3907,-4.0647,-0.9004,True
+finger,dbp,within_day,5,offset vs population (k=0),-2.7401,-4.3465,-1.2973,True
+finger,dbp,within_day,10,offset vs population (k=0),-2.9469,-4.7769,-1.2934,True
+finger,dbp,cross_day,1,offset vs population (k=0),1.5115,-0.6289,3.8306,False
+finger,dbp,cross_day,2,offset vs population (k=0),0.6949,-1.2599,2.7038,False
+finger,dbp,cross_day,3,offset vs population (k=0),0.3388,-1.4248,2.0563,False
+finger,dbp,cross_day,5,offset vs population (k=0),0.1177,-1.4500,1.6745,False
+finger,dbp,cross_day,10,offset vs population (k=0),-0.0417,-1.3456,1.2077,False

@@ -264,6 +264,21 @@ generated from `results/cross_day/` by `scripts/write_findings.py` after the ind
   across days (|change| 9–12 mmHg).
 - No model differs from ridge in a meaningful way. Rail-clipping removal changed MAEs by ≤ 0.5 mmHg.
 
+
+## G. RakshPulse 3.0: beyond-reference, calibration count, features, deep models, streaming
+
+Protocols and results tables are in [RESEARCH_FINDINGS.md § RakshPulse 3.0](RESEARCH_FINDINGS.md#rakshpulse-30-information-beyond-the-reference-reading)
+(auto-generated block V1–V6). Common rules:
+- folds are subject-grouped (`subject_folds`, 5 folds balanced by mean SBP); every method in a table is evaluated on
+  the same windows;
+- each comparison has a matched no-information control. `mean_change` is the control for change models,
+  `bayes_reference` for shrunk calibration, `training_mean` / `reference_only` for deep models;
+- CIs come from 2,000 subject-level bootstrap draws, and paired tests use per-subject MAE differences;
+- datasets are hashed, and code commit, software versions and splits are recorded in `results/runs/` per run.
+
+Summary: a small within-session pulse-shape signal beyond the last reference (about 0.6–1.2 mmHg SBP at the ear);
+nothing across days; not demonstrated with real cuff references in VitalDB; no gain from deep sequence models.
+
 ## Interpretation
 
 1. **Single-site PPG morphology carries little SBP information in this cohort.** No PPG-only

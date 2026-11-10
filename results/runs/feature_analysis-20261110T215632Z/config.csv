@@ -1,0 +1,25 @@
+key,value
+run_id,feature_analysis-20261110T215632Z
+name,feature_analysis
+seed,0
+started_utc,2026-11-10T21:56:32+00:00
+duration_s,18.6
+git_commit,c13491cae2b2e6714581d23818e9095c0a0981a3
+git_dirty,True
+python,3.11.9
+platform,Windows-10-10.0.26300-SP0
+numpy,2.4.6
+scipy,1.17.1
+pandas,3.0.6
+scikit-learn,1.9.1
+xgboost,3.2.0
+lightgbm,4.7.0
+torch,2.15.0+cpu
+wfdb,4.3.1
+vitaldb,1.7.2
+dataset:data/auricle/windows.csv,be0832d93d2ca380bca2931c26d4178a5526aa1ce575bc75016006f61601e0f4
+dataset:data/auricle/features.csv,5c8517a57e55724e0881d014344a7c3faa4d6f6436801d6d410bdfb0d3777036
+dataset:data/auricle/features_advanced.csv,254719b99b9e95d6e158a9bdea7fcd5eb4fb80a5c54a5c22c8e46941119d254d
+config:n_boot,2000
+config:n_stability_resamples,200
+config:within_r,"Spearman, subjects with >=20 windows"

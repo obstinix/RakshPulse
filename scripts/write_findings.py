@@ -280,12 +280,14 @@ def v3_block() -> str:
             v = v.map(f2).reset_index()
             v.columns = ["Scenario", "Method", *[f"k={c}" for c in v.columns[2:]]]
             out += [f"**{site}**", "", table(v), ""]
-        q = p[(p.target == "sbp") & p.comparison.isin(["bayes_offset vs reference_mean", "offset vs reference_mean"])]
+        comps = ["bayes_offset vs bayes_reference", "bayes_offset vs reference_mean", "offset vs reference_mean"]
+        q = p[(p.target == "sbp") & p.comparison.isin(comps)]
         rows = [
             [r["site"], r["scenario"], r["k"], r["comparison"], _d(r)] for _, r in q.iterrows() if r["k"] in (1, 3, 10)
         ]
         out += [
-            "Paired (Δ MAE, negative favours the PPG-based calibration over the cuff readings alone):",
+            "Paired (Δ MAE; negative favours the first method. `bayes_offset vs bayes_reference` is the PPG's own "
+            "contribution; the other rows also credit shrinkage):",
             "",
             table(pd.DataFrame(rows, columns=["Site", "Scenario", "k", "Comparison", "Δ MAE [95% CI]"])),
             "",

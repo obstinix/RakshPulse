@@ -1,0 +1,30 @@
+key,value
+run_id,deep_waveform_benchmark-20261110T215654Z
+name,deep_waveform_benchmark
+seed,0
+started_utc,2026-11-10T21:56:54+00:00
+duration_s,455.4
+git_commit,c13491cae2b2e6714581d23818e9095c0a0981a3
+git_dirty,True
+python,3.11.9
+platform,Windows-10-10.0.26300-SP0
+numpy,2.4.6
+scipy,1.17.1
+pandas,3.0.6
+scikit-learn,1.9.1
+xgboost,3.2.0
+lightgbm,4.7.0
+torch,2.15.0+cpu
+wfdb,4.3.1
+vitaldb,1.7.2
+dataset:data/auricle/windows.csv,be0832d93d2ca380bca2931c26d4178a5526aa1ce575bc75016006f61601e0f4
+dataset:data/auricle/features.csv,5c8517a57e55724e0881d014344a7c3faa4d6f6436801d6d410bdfb0d3777036
+dataset:data/auricle/waveforms/auricle_waveforms_session1.npz,241c9f24429fa16c8339c9d021dbc8628c1785284f3f3e029bb6e4e8d9f9e804
+dataset:data/auricle/waveforms/auricle_waveforms_session2.npz,85c2be8c62939aad3e476a17245f405a31cc33ad41c6284839054a891f720280
+config:site,ear
+config:train,session 1 of training subjects
+config:train_stride,2
+config:cnn_config,"CNNConfig(epochs=40, batch_size=64, lr=0.001, weight_decay=0.001, patience=8, width=16, seed=0)"
+config:architectures,cnn;gru;cnn_lstm;tcn;transformer
+config:n_boot,2000
+config:calibration,"offset, first 3 accepted windows per subject-session"

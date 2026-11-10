@@ -26,6 +26,10 @@ high-altitude settings, built around the MAX30102 optical sensor.
 | Standardised Auricle dataset (CSV tables + NPZ waveforms, 30,841 windows) | ✅ Built, validated (19 checks), published ([data/README.md](data/README.md)) |
 | Population model, personalisation engine, baseline tracker, adaptive calibration | ✅ Implemented, tested, evaluated ([RESEARCH_FINDINGS](docs/RESEARCH_FINDINGS.md#population-model-and-personalisation-standardised-dataset-dataauricle)) |
 | Real-time estimation interface (ear PPG + optional calibration state) | ✅ Implemented (hardware-independent; research use) |
+| 3.0: VitalDB subset (40 surgical cases, real cuff + arterial line), advanced features (PAT, wavelets, ear→finger PTT) | ✅ Built and committed ([data/README.md](data/README.md#vitaldb-subset-datavitaldb-rakshpulse-30)) |
+| 3.0: beyond-reference study, calibration-count study, feature stability, GRU / CNN-LSTM / TCN / Transformer / PLS | ✅ Evaluated with matched controls ([RESEARCH_FINDINGS § 3.0](docs/RESEARCH_FINDINGS.md#rakshpulse-30-information-beyond-the-reference-reading)) |
+| 3.0: streaming estimator (chunked input, SQI, aggregation, signal-lost, JSONL log) + latency benchmark | ✅ Implemented and measured on desktop CPU ([HARDWARE_INTEGRATION](docs/HARDWARE_INTEGRATION.md#streaming-interface-rakshpulse-30-srcrakshpulseinferencestreamingpy)) |
+| 3.0: experiment provenance registry (dataset hashes, commit, versions, splits) | ✅ `results/runs/` |
 | Behind-ear validation | ❌ **Not done.** No behind-ear data exists yet ([docs/DOMAIN_ADAPTATION.md](docs/DOMAIN_ADAPTATION.md)) |
 | ESP32 / ONNX / TFLite deployment | ❌ Planned. Footprint measured only |
 | Clinical validation (ISO 81060-2 / IEEE 1708) | ❌ Not started |
@@ -66,7 +70,14 @@ high-altitude settings, built around the MAX30102 optical sensor.
     new cuff readings: a PPG-free tracker of the same readings did statistically as well, and with a reading
     every 2 min the PPG engine never beat "repeat the last reading". PPG added no measurable value beyond the
     references in these data.
-11. The realistic path forward is **per-user cuff calibration plus behind-ear data collection**.
+11. **RakshPulse 3.0, beyond the reference reading:** modelling *changes* in pulse shape since the last cuff
+    reading recovers a small, heart-rate-independent signal **within a session**: about 0.6–1.2 mmHg SBP better than
+    the matched no-signal control at the ear (CIs exclude 0). There is **no** such gain across days, and it was not
+    demonstrated with real cuff readings in 34 surgical patients (VitalDB), where the cuff itself differed from the
+    arterial line by about 13 mmHg MAE. Deep sequence models (GRU, CNN-LSTM, TCN, Transformer) did not beat the
+    baselines. This refines finding 10 without overturning it. See
+    [RESEARCH_FINDINGS § 3.0](docs/RESEARCH_FINDINGS.md#rakshpulse-30-information-beyond-the-reference-reading).
+12. The realistic path forward is **per-user cuff calibration plus behind-ear data collection**.
    It is not a bigger model on fingertip data.
 
 ## Installation
@@ -114,6 +125,16 @@ python scripts/run_personalization.py
 python -m rakshpulse.data.release fetch waveforms   # or fetch the published NPZ instead of building
 python scripts/compare_models.py      # paired bootstrap CIs
 python scripts/visualize_ppg.py       # figures in docs/figures/
+
+# RakshPulse 3.0 (VitalDB needs: pip install -e .[vitaldb])
+python -m rakshpulse.data export-advanced --jobs 3
+python -m rakshpulse.data.vitaldb_dataset build --jobs 3   # after downloading the selected .vital files
+python scripts/run_beyond_reference.py
+python scripts/run_calibration_study.py
+python scripts/run_feature_analysis.py
+python scripts/run_deep_benchmark.py                        # ~8 min CPU
+python scripts/benchmark_inference.py
+python scripts/write_findings.py
 
 # 3. reference inference bundle
 python scripts/train_final.py --feature-set ppg_ir_red+demo --model ridge
@@ -193,19 +214,21 @@ errors, not clinical confidence intervals.
 ## Repository layout
 
 ```
-src/rakshpulse/{data,preprocessing,features,models,evaluation,inference,personalization}
+src/rakshpulse/{data,preprocessing,features,models,evaluation,inference,personalization,experiments}
 scripts/      reproducible experiment entry points
 tests/        pytest suite (synthetic fixtures; no dataset needed)
 notebooks/    01_ppg_exploration.ipynb
 docs/         requirements, dataset research, preprocessing, models, evaluation, domain adaptation, hardware
 data/auricle/ populated Auricle CSV dataset (waveform NPZ + raw WFDB on GitHub Releases)
+data/vitaldb/ 40-case VitalDB subset, derived CSV tables (raw .vital files git-ignored)
 data/         other raw data git-ignored; provenance/manifests committed
-results/      metrics CSV/JSON (committed); large per-window prediction caches git-ignored
+results/      metrics CSV/JSON (committed); results/runs/ provenance registry; per-window caches git-ignored
 ```
 
 ## Data licences and attribution
 
-Guilin dual-wave (CC BY 4.0), Foggia multiwavelength (CC BY 4.0), PPG-BP (CC0) and Auricle (ODC-By 1.0;
-redistributed with attribution on this repository's Releases). Required
+Guilin dual-wave (CC BY 4.0), Foggia multiwavelength (CC BY 4.0), PPG-BP (CC0), Auricle (ODC-By 1.0;
+redistributed with attribution on this repository's Releases) and VitalDB (CC BY 4.0, PhysioNet
+doi:10.13026/czw8-9p62; derived tables redistributed with attribution). Required
 citations are in [docs/DATASET_ACQUISITION.md](docs/DATASET_ACQUISITION.md). Code is released
 under CC0 1.0 (see LICENSE).

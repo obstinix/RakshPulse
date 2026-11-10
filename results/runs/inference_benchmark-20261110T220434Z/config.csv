@@ -1,0 +1,23 @@
+key,value
+run_id,inference_benchmark-20261110T220434Z
+name,inference_benchmark
+seed,1
+started_utc,2026-11-10T22:04:34+00:00
+duration_s,20.6
+git_commit,c13491cae2b2e6714581d23818e9095c0a0981a3
+git_dirty,True
+python,3.11.9
+platform,Windows-10-10.0.26300-SP0
+numpy,2.4.6
+scipy,1.17.1
+pandas,3.0.6
+scikit-learn,1.9.1
+xgboost,3.2.0
+lightgbm,4.7.0
+torch,2.15.0+cpu
+wfdb,4.3.1
+vitaldb,1.7.2
+dataset:models/auricle_population_ear_ridge.joblib,a9a6a4f8e1dc9ce06d0bbd69f707f1a5cc91dce712ae1dfd309f6bf5c3a6d1ae
+config:signal,"synthetic two-Gaussian PPG, 72 bpm, 300 s"
+config:chunk,1 s
+config:hop_s,5

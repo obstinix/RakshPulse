@@ -1,0 +1,31 @@
+key,value
+run_id,beyond_reference-20261110T215421Z
+name,beyond_reference
+seed,0
+started_utc,2026-11-10T21:54:21+00:00
+duration_s,88.5
+git_commit,c13491cae2b2e6714581d23818e9095c0a0981a3
+git_dirty,True
+python,3.11.9
+platform,Windows-10-10.0.26300-SP0
+numpy,2.4.6
+scipy,1.17.1
+pandas,3.0.6
+scikit-learn,1.9.1
+xgboost,3.2.0
+lightgbm,4.7.0
+torch,2.15.0+cpu
+wfdb,4.3.1
+vitaldb,1.7.2
+dataset:data/auricle/windows.csv,be0832d93d2ca380bca2931c26d4178a5526aa1ce575bc75016006f61601e0f4
+dataset:data/auricle/features.csv,5c8517a57e55724e0881d014344a7c3faa4d6f6436801d6d410bdfb0d3777036
+dataset:data/auricle/features_advanced.csv,254719b99b9e95d6e158a9bdea7fcd5eb4fb80a5c54a5c22c8e46941119d254d
+dataset:data/vitaldb/windows.csv,4c42b7ce86d69bf477b81661da74f381edfb58b43ea2ad56717a176116b66448
+dataset:data/vitaldb/features.csv,5c90f2a43e2a5df053668e6ddc0d9fac8893c61d99a0723ffad800cb3b62d107
+dataset:data/vitaldb/nibp_readings.csv,22a693be0d582b1ddda5bec5f41ba5029c21fb3f0afb846165fc2f398c2bb182
+config:model,"RidgeCV(alphas=logspace(-1,4,12)) on feature changes; median-free zero imputation; standardised"
+config:folds,"5 subject-grouped folds (subject_folds, balanced by mean truth)"
+config:n_boot,2000
+config:auricle_reference_intervals_s,120;300;600
+config:min_gap_s,10
+config:vitaldb_max_gap_s,1800
