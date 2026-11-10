@@ -31,3 +31,4 @@ results/predictions/
 
 # Processed waveform arrays are published as GitHub Release assets (see data/auricle/release_manifest.csv)
 data/auricle/waveforms/
+!models/auricle_population_ear_ridge.joblib

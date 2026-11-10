@@ -42,6 +42,22 @@ def make_model(name: str, seed: int = 0) -> tuple[Pipeline, dict]:
     if name == "hist_gb":
         hgb = HistGradientBoostingRegressor(max_iter=300, learning_rate=0.05, l2_regularization=1.0, random_state=seed)
         return _pipe(hgb, scale=False), {"model__max_depth": [3, None], "model__min_samples_leaf": [20, 80]}
+    if name == "lightgbm":
+        from lightgbm import LGBMRegressor
+
+        lgb = LGBMRegressor(
+            n_estimators=400,
+            learning_rate=0.05,
+            subsample=0.7,
+            subsample_freq=1,
+            colsample_bytree=0.6,
+            reg_lambda=5.0,
+            min_child_samples=30,
+            random_state=seed,
+            n_jobs=4,
+            verbose=-1,
+        )
+        return _pipe(lgb, scale=False), {"model__num_leaves": [7, 31], "model__learning_rate": [0.03, 0.1]}
     if name == "svr":
         return _pipe(SVR(kernel="rbf")), {"model__C": [1.0, 10.0, 30.0], "model__epsilon": [1.0, 3.0]}
     if name == "random_forest":
@@ -58,6 +74,7 @@ def make_model(name: str, seed: int = 0) -> tuple[Pipeline, dict]:
 
 FEATURE_MODELS = ("mean", "linear", "ridge", "svr", "random_forest", "xgboost")
 EXTENDED_MODELS = ("ridge", "elasticnet", "svr", "random_forest", "extra_trees", "hist_gb", "xgboost")
+PERSONALIZATION_MODELS = EXTENDED_MODELS + ("lightgbm",)
 
 # keep RandomForestRegressor importable from here for type checks
 __all__ = ["make_model", "FEATURE_MODELS", "RandomForestRegressor"]

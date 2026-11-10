@@ -142,8 +142,9 @@ def upload(df: pd.DataFrame) -> None:
             if r.asset_name in existing:
                 continue
             src = Path(r.local_source)
-            target = src if src.name == r.asset_name else src.with_name(r.asset_name)
+            target = src if src.name == r.asset_name else STAGING / r.asset_name  # never write into data/raw
             if target != src:
+                STAGING.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(src.read_bytes())
             subprocess.run(["gh", "release", "upload", tag, str(target), "-R", REPO, "--clobber"], check=True)
             print(f"uploaded {r.asset_name} ({r.size_bytes / 1e6:.1f} MB)", flush=True)
