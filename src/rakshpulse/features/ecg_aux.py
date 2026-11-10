@@ -31,8 +31,14 @@ def r_peaks(ecg: np.ndarray, fs: float) -> np.ndarray:
     return pk
 
 
-def pat_features(ecg: np.ndarray, ppg_raw: np.ndarray, fs: float) -> dict[str, float]:
+def pat_features(
+    ecg: np.ndarray, ppg_raw: np.ndarray, fs: float, range_ms: tuple[float, float] = (80.0, 500.0)
+) -> dict[str, float]:
+    """R-peak → PPG foot / max-upslope delays. For each PPG foot the delay to *every* preceding R-peak is
+    considered and the smallest one inside ``range_ms`` is used, which stays unambiguous when a constant
+    acquisition lag makes the delay exceed one RR interval (e.g. VitalDB's monitor PLETH output)."""
     out = dict.fromkeys(PAT_FEATURES, np.nan)
+    lo, hi = range_ms[0] / 1000.0, range_ms[1] / 1000.0
     if ecg.size < 4 * fs:
         return out
     rp = r_peaks(ecg, fs) / fs
@@ -47,14 +53,15 @@ def pat_features(ecg: np.ndarray, ppg_raw: np.ndarray, fs: float) -> dict[str, f
     )
     pf, ps = [], []
     for f, s_ in zip(feet, slopes, strict=True):
-        prior = rp[rp < f]
-        if prior.size == 0:
+        cand = f - rp[rp < f]
+        cand = cand[(cand >= lo) & (cand <= hi)]
+        if cand.size == 0:
             continue
-        d = f - prior[-1]
-        if 0.08 <= d <= 0.5:
-            pf.append(d * 1000)
-            if np.isfinite(s_):
-                ps.append((s_ - prior[-1]) * 1000)
+        d = float(cand.min())
+        r_t = f - d
+        pf.append(d * 1000)
+        if np.isfinite(s_):
+            ps.append((s_ - r_t) * 1000)
     if len(pf) >= 3:
         out["pat_foot_ms"] = float(np.median(pf))
         out["pat_foot_sd_ms"] = float(np.std(pf))

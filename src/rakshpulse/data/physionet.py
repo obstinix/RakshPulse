@@ -62,6 +62,16 @@ PROJECTS = {
         citation="Auricle (v1.0.0), PhysioNet (2026), doi:10.13026/swme-vp69. Cite also Goldberger et al., PhysioNet, Circulation 101(23) (2000).",
         approx_bytes=15_400_000_000,
     ),
+    "vitaldb": PhysioNetProject(
+        key="vitaldb",
+        slug="vitaldb",
+        version="1.0.0",
+        title="VitalDB, a high-fidelity multi-parameter vital signs database in surgical patients",
+        doi="10.13026/czw8-9p62",
+        license="Creative Commons Attribution 4.0 International (CC BY 4.0)",
+        citation="Lee HC et al. VitalDB (v1.0.0), PhysioNet (2022), doi:10.13026/czw8-9p62; Sci Data 9:279 (2022).",
+        approx_bytes=2_000_000_000,  # disk check for the selected subset only
+    ),
 }
 
 

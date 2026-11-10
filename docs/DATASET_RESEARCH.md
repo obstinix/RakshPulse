@@ -55,7 +55,7 @@ hosting page that day, unless it is marked "not re-verified".*
 | **PulseDB v2** (MIMIC-III + VitalDB) | 5,361 | 1 PPG (pleth) + ECG | Monitor-dependent, not reported | 125 | Fingertip (ICU / OR) | **Invasive arterial line** | MIMIC part ODbL; VitalDB part CC BY-NC-SA 4.0 (non-commercial) |
 | **MIMIC-III Waveform Matched** | 10,282 pts (subset with PPG+ABP ≈ 2.8k) | 1 PPG | Not reported | 125 | Fingertip, ICU | Invasive ABP | ODbL, open |
 | **MIMIC-IV Waveform v0.1** | ≈200 records | 1 PPG | Not reported | 62.5–125 | Fingertip, ICU | Invasive ABP | ODbL, open (pilot release) |
-| **VitalDB** | 6,388 surgical pts | 1 PPG | Not reported | 100–500 | Fingertip, OR, anaesthetised | Invasive ABP + NIBP | Open on PhysioNet. Licence differs between VitalDB's own site and redistributions (PulseDB uses CC BY-NC-SA); *not re-verified* |
+| **VitalDB** | 6,388 surgical pts | 1 PPG | Not reported | 100–500 | Fingertip, OR, anaesthetised | Invasive ABP + NIBP | **CC BY 4.0** on PhysioNet v1.0.0 (doi:10.13026/czw8-9p62), verified in 3.0 from the PhysioNet project page and LICENSE file. PulseDB redistributes a derived subset under CC BY-NC-SA. Used in 3.0 as an *external* test of "beyond the last real cuff reading" (data/README.md) |
 | **UCI Cuff-Less BP** (MIMIC-II derived) | Unknown (no subject IDs) | 1 PPG | — | 125 | Fingertip, ICU | Invasive ABP | CC BY 4.0. **No subject IDs, so subject-wise splitting is impossible** |
 | **BUT PPG v2** | 50 | Smartphone camera (RGB video-derived) | Phone flash | 30 | Finger **or ear (phone held to ear)** | Single Fora D40 cuff value per recording | CC BY 4.0, open |
 | **CP-PPG** (figshare, 2025) | 142 | Dual-channel fingertip at several contact pressures | Not re-verified | — | Fingertip | Cuff SBP/DBP | figshare, open (details not re-verified) |
@@ -196,8 +196,12 @@ being evidence that the pipeline works at the ear.
   analysed in MODEL_EVALUATION.md §F. Pulse Transit Time PPG (2.9 GB) was not downloaded.
 - The Guilin sensor site and LED wavelengths are **not stated by the dataset authors**. The
   "finger-contact, 660/940 nm" description comes from a third-party index and is unverified.
-- Dataset facts for CP-PPG, Four-wavelength PPG, Aurora-BP and the VitalDB licence come from
-  landing pages and summaries and were not re-checked file by file.
+- Dataset facts for CP-PPG, Four-wavelength PPG and Aurora-BP come from landing pages and summaries and were not
+  re-checked file by file. The VitalDB licence was re-checked in 3.0 (CC BY 4.0, PhysioNet v1.0.0).
+- RakshPulse 3.0 additional-dataset review: VitalDB was adopted (open, CC BY 4.0, PPG + ECG + arterial line + real
+  NIBP). BIDMC has no BP labels. MIMIC-IV Waveform v0.1 (ODbL) has only about 200 records and no curated cuff
+  pairing. CardioWave-Portable and MIMIC-III-Ext are credentialed, so they were not used (access restrictions are
+  not bypassed).
 - Search coverage is limited to English-language sources and to what the search tools indexed.
 
 ## 14. References and official links
@@ -207,6 +211,7 @@ being evidence that the pipeline works at the ear.
 - PPG-BP: https://doi.org/10.6084/m9.figshare.5459299.v5; Liang et al., Sci Data 5:180020 (2018)
 - Pulse Transit Time PPG: https://physionet.org/content/pulse-transit-time-ppg/1.1.0/
 - Auricle: https://physionet.org/content/auricle/1.0.0/ (doi:10.13026/swme-vp69)
+- VitalDB: https://physionet.org/content/vitaldb/1.0.0/ (doi:10.13026/czw8-9p62); Lee et al., Sci Data 9:279 (2022)
 - CardioWave-Portable: https://physionet.org/content/cardiowave-portable/1.0.0/
 - PulseDB: https://github.com/pulselabteam/PulseDB; Wang et al., Front Digit Health 2023
 - MIMIC-III Waveform Matched: https://physionet.org/content/mimic3wdb-matched/1.0/

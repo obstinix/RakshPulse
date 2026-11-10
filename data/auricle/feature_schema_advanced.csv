@@ -1,0 +1,24 @@
+column,site,group,unit,definition
+ear_pat_foot_ms,ear,ecg_timing,ms,median ECG R-peak to PPG foot interval (80-500 ms beats only)
+ear_pat_slope_ms,ear,ecg_timing,ms,median ECG R-peak to PPG maximum-upslope interval
+ear_pat_foot_sd_ms,ear,ecg_timing,ms,SD of beat-wise R-to-foot intervals
+ear_wav_e1,ear,wavelet,1,"Haar relative energy, e1"
+ear_wav_e2,ear,wavelet,1,"Haar relative energy, e2"
+ear_wav_e3,ear,wavelet,1,"Haar relative energy, e3"
+ear_wav_e4,ear,wavelet,1,"Haar relative energy, e4"
+ear_wav_e5,ear,wavelet,1,"Haar relative energy, e5"
+ear_wav_e6,ear,wavelet,1,"Haar relative energy, e6"
+ear_wav_a6,ear,wavelet,1,"Haar relative energy, a6"
+finger_pat_foot_ms,finger,ecg_timing,ms,median ECG R-peak to PPG foot interval (80-500 ms beats only)
+finger_pat_slope_ms,finger,ecg_timing,ms,median ECG R-peak to PPG maximum-upslope interval
+finger_pat_foot_sd_ms,finger,ecg_timing,ms,SD of beat-wise R-to-foot intervals
+finger_wav_e1,finger,wavelet,1,"Haar relative energy, e1"
+finger_wav_e2,finger,wavelet,1,"Haar relative energy, e2"
+finger_wav_e3,finger,wavelet,1,"Haar relative energy, e3"
+finger_wav_e4,finger,wavelet,1,"Haar relative energy, e4"
+finger_wav_e5,finger,wavelet,1,"Haar relative energy, e5"
+finger_wav_e6,finger,wavelet,1,"Haar relative energy, e6"
+finger_wav_a6,finger,wavelet,1,"Haar relative energy, a6"
+ear_finger_ptt_ms,ear+finger,cross_site,ms,"median ear-foot to next finger-foot delay (0-300 ms), ECG-free"
+ear_finger_ptt_sd_ms,ear+finger,cross_site,ms,SD of beat-wise ear-to-finger delays
+ear_finger_corr,ear+finger,cross_site,1,Pearson correlation of processed ear and finger windows

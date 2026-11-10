@@ -1,0 +1,41 @@
+caseid,subject_id,duration_s,n_windows,n_label_valid,n_nibp_readings,source_file,age,sex,height,weight,bmi,asa,optype,department,approach,ane_type
+20,vitaldb_20,26474.3,1324,1243,18,vital_files/0020.vital,75,M,173.6,61.3,20.3,2.0,Major resection,Thoracic surgery,Videoscopic,General
+105,vitaldb_105,18190.3,910,840,10,vital_files/0105.vital,42,M,178.9,72.6,22.7,,Hepatic,General surgery,Videoscopic,General
+137,vitaldb_137,7241.3,362,310,6,vital_files/0137.vital,80,F,160.2,79.25,30.9,2.0,Others,General surgery,Open,General
+202,vitaldb_202,30937.4,1547,1442,14,vital_files/0202.vital,50,M,178.0,80.0,25.2,2.0,Transplantation,General surgery,Videoscopic,General
+250,vitaldb_250,11948.1,597,556,13,vital_files/0250.vital,60,M,169.5,61.6,21.4,3.0,Others,General surgery,Open,General
+481,vitaldb_481,9951.9,498,395,15,vital_files/0481.vital,76,F,151.0,61.6,27.0,2.0,Major resection,Thoracic surgery,Videoscopic,General
+516,vitaldb_516,13562.3,678,595,11,vital_files/0516.vital,34,F,163.1,45.1,17.0,2.0,Hepatic,General surgery,Open,General
+568,vitaldb_568,21696.2,1085,1007,6,vital_files/0568.vital,76,M,166.1,67.2,24.4,3.0,Hepatic,General surgery,Open,General
+1081,vitaldb_1081,24920.6,1246,1023,17,vital_files/1081.vital,28,F,150.0,36.2,16.1,1.0,Colorectal,General surgery,Videoscopic,General
+1093,vitaldb_1093,10932.6,547,470,14,vital_files/1093.vital,46,M,174.9,66.2,21.6,3.0,Vascular,General surgery,Open,General
+1690,vitaldb_1690,10654.2,533,419,8,vital_files/1690.vital,68,F,148.8,48.8,22.0,2.0,Major resection,Thoracic surgery,Videoscopic,General
+1748,vitaldb_1748,7610.9,381,307,4,vital_files/1748.vital,65,M,168.9,71.75,25.2,3.0,Others,Thoracic surgery,Videoscopic,General
+1891,vitaldb_1891,19473.0,974,911,4,vital_files/1891.vital,71,M,154.8,53.35,22.3,2.0,Hepatic,General surgery,Videoscopic,General
+1918,vitaldb_1918,27762.3,1388,1080,48,vital_files/1918.vital,56,M,165.7,60.8,22.1,3.0,Major resection,Thoracic surgery,Videoscopic,General
+2483,vitaldb_2483,17976.4,899,259,84,vital_files/2483.vital,79,M,162.7,49.85,18.8,1.0,Stomach,General surgery,Open,General
+2678,vitaldb_2678,8401.1,420,365,5,vital_files/2678.vital,38,F,166.8,53.25,19.1,2.0,Others,General surgery,Open,General
+3069,vitaldb_3069,16999.0,850,742,11,vital_files/3069.vital,61,M,166.0,67.2,24.4,2.0,Others,Thoracic surgery,Videoscopic,General
+3167,vitaldb_3167,14356.5,718,662,10,vital_files/3167.vital,55,M,172.4,66.9,22.5,2.0,Biliary/Pancreas,General surgery,Videoscopic,General
+3203,vitaldb_3203,17773.0,889,806,8,vital_files/3203.vital,29,M,173.8,86.0,28.5,3.0,Transplantation,General surgery,Open,General
+3427,vitaldb_3427,8211.4,411,362,6,vital_files/3427.vital,58,M,167.8,54.5,19.4,1.0,Colorectal,General surgery,Videoscopic,General
+3431,vitaldb_3431,14008.4,700,636,12,vital_files/3431.vital,68,F,158.9,64.2,25.4,3.0,Colorectal,General surgery,Videoscopic,General
+3505,vitaldb_3505,16030.9,802,734,27,vital_files/3505.vital,39,M,167.7,53.8,19.1,2.0,Transplantation,General surgery,Open,General
+3533,vitaldb_3533,20802.4,1040,924,18,vital_files/3533.vital,50,F,152.9,26.9,11.5,3.0,Transplantation,General surgery,Open,General
+3845,vitaldb_3845,13116.9,656,577,12,vital_files/3845.vital,62,M,162.7,69.0,26.1,2.0,Major resection,Urology,Robotic,General
+4016,vitaldb_4016,6282.0,314,228,7,vital_files/4016.vital,18,M,174.2,50.5,16.6,2.0,Minor resection,Thoracic surgery,Videoscopic,General
+4022,vitaldb_4022,7525.8,376,326,1,vital_files/4022.vital,69,M,166.0,43.0,15.6,3.0,Stomach,General surgery,Open,General
+4122,vitaldb_4122,11076.4,554,458,8,vital_files/4122.vital,48,M,166.3,64.4,23.3,2.0,Minor resection,Thoracic surgery,Videoscopic,General
+4266,vitaldb_4266,7459.3,373,302,13,vital_files/4266.vital,74,M,161.7,59.0,22.6,2.0,Others,Thoracic surgery,Open,General
+4690,vitaldb_4690,4624.2,231,155,14,vital_files/4690.vital,55,F,151.6,54.1,23.5,2.0,Minor resection,Gynecology,Videoscopic,General
+4718,vitaldb_4718,9676.9,484,418,7,vital_files/4718.vital,72,F,148.2,42.1,19.2,2.0,Others,General surgery,Open,General
+4912,vitaldb_4912,21614.7,1081,1018,13,vital_files/4912.vital,57,M,173.3,65.55,21.8,2.0,Colorectal,General surgery,Videoscopic,General
+5195,vitaldb_5195,9300.0,465,361,12,vital_files/5195.vital,35,F,165.2,70.6,25.9,2.0,Minor resection,Thoracic surgery,Videoscopic,General
+5229,vitaldb_5229,11227.1,561,490,16,vital_files/5229.vital,64,M,173.0,52.85,17.7,2.0,Colorectal,General surgery,Open,General
+5372,vitaldb_5372,19343.8,967,844,12,vital_files/5372.vital,73,F,150.2,51.45,22.8,2.0,Hepatic,General surgery,Open,General
+5404,vitaldb_5404,13512.1,676,603,5,vital_files/5404.vital,76,F,155.7,65.85,27.2,2.0,Vascular,General surgery,Open,General
+5460,vitaldb_5460,5644.4,282,219,4,vital_files/5460.vital,34,F,162.0,59.8,22.8,3.0,Others,Thoracic surgery,Videoscopic,General
+5513,vitaldb_5513,14951.3,748,679,9,vital_files/5513.vital,46,F,156.6,53.1,21.7,1.0,Stomach,General surgery,Videoscopic,General
+5788,vitaldb_5788,21542.9,1077,936,11,vital_files/5788.vital,53,F,166.1,58.95,21.4,1.0,Transplantation,General surgery,Videoscopic,General
+5946,vitaldb_5946,18141.7,907,798,12,vital_files/5946.vital,69,M,175.3,72.65,23.6,3.0,Hepatic,General surgery,Open,General
+6156,vitaldb_6156,8139.9,407,347,1,vital_files/6156.vital,46,M,182.2,78.0,23.5,3.0,Colorectal,General surgery,Open,General

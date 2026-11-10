@@ -60,7 +60,8 @@ free disk space of at least 3× the archive size before starting.
 | CardioWave-Portable (PhysioNet) | **Credentialed access**: requires a PhysioNet credentialed account, CITI training and a signed DUA | Apply at physionet.org. Not attempted |
 | MIMIC-III-Ext-PPG | Credentialed | As above |
 | Aurora-BP | DUA application to Microsoft Research | Not attempted |
-| PulseDB / MIMIC / VitalDB | Open, but out of scope (ICU invasive ABP, single unspecified-wavelength PPG) | See DATASET_RESEARCH.md |
+| PulseDB / MIMIC | Open, but out of scope (ICU invasive ABP, single unspecified-wavelength PPG) | See DATASET_RESEARCH.md |
+| VitalDB (40-case subset, 3.0) | Downloaded from PhysioNet, SHA-256 verified, CC BY 4.0. Used only as an external "beyond the cuff" test (surgical patients) | data/README.md |
 
 No dataset was substituted silently. The datasets in use are exactly those listed above.
 

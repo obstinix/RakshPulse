@@ -3,6 +3,7 @@
 ```
 data/
 ├── auricle/    standardised Auricle dataset: populated CSV tables (committed) + waveform NPZ (GitHub Release)
+├── vitaldb/    3.0: 40-case VitalDB subset, derived CSV tables (committed; raw .vital files git-ignored)
 ├── metadata/   provenance.json, auricle_manifest.json, validation/summary reports (committed)
 ├── raw/        original downloads, read-only, checksum-verified (git-ignored; Auricle WFDB also on a Release)
 ├── extracted/  archives unpacked as distributed (git-ignored)
@@ -89,6 +90,54 @@ preprocessing configuration). Shape `(n_windows, 1000)`, float32.
 are rail-clipped. 3,458 ear and 339 finger windows come from a flat or disconnected sensor (raw SD < 0.003 mV) and
 are rejected (`no_signal_flatline`). Whole recordings without ear signal include HC_23_1, HC_23_2, HC_5_2, HC_6_2
 and HC_35_2. Age 19–57 (median 23), 50 % female.
+
+
+### Advanced features (RakshPulse 3.0): `features_advanced.csv`, `feature_schema_advanced.csv`
+
+One row per window (same `window_id` as `windows.csv`), built by
+`python -m rakshpulse.data export-advanced --jobs 3` (`src/rakshpulse/data/auricle_advanced.py`):
+
+- `{ear,finger}_pat_foot_ms`, `_pat_slope_ms`, `_pat_foot_sd_ms`: ECG R-peak → PPG foot / max-slope delay
+  (median over beats, 80–500 ms). ECG is not available on a MAX30102; this is an upper-bound experiment.
+- `{ear,finger}_wav_e1..e6`, `_wav_a6`: relative energies of an orthonormal 6-level Haar decomposition of the
+  processed 100 Hz window (they sum to 1, so they are collinear by construction; see VIF in RESEARCH_FINDINGS V3).
+- `ear_finger_ptt_ms`, `_sd_ms`: ear foot → next finger foot delay (0–300 ms); `ear_finger_corr`.
+
+PAT is available in 22,542 ear and 24,579 finger windows; median ear PAT 220 ms, finger 239 ms, ear→finger
+delay 24 ms.
+
+## VitalDB subset (`data/vitaldb/`, RakshPulse 3.0)
+
+Source: *VitalDB, a high-fidelity multi-parameter vital signs database in surgical patients* v1.0.0, PhysioNet,
+doi:10.13026/czw8-9p62, **CC BY 4.0** (redistribution of derived data allowed with attribution; cite Lee et al.,
+Sci Data 9:279 (2022) and PhysioNet). Surgical patients under anaesthesia, so it is **not** a wearable population.
+It is used because it is the only open dataset found with fingertip PPG, ECG, a continuous arterial line *and*
+real intermittent cuff (NIBP) readings in the same recordings. That makes it a test of "beyond the last real cuff
+reading".
+
+Cases: 40 cases drawn at random (seed 0) from the 2,881 that have all required tracks
+(`data/metadata/vitaldb_selection.csv`; track list from the public VitalDB API, metadata only). The `.vital` files
+are downloaded from PhysioNet into `data/raw/vitaldb/` and SHA-256 verified (git-ignored). Reading needs the optional
+`vitaldb` package: `pip install -e .[vitaldb]`.
+
+```bash
+python -m rakshpulse.data.physionet vitaldb          # or download only the selected files
+python -m rakshpulse.data.vitaldb_dataset select     # re-creates the fixed selection
+python -m rakshpulse.data.vitaldb_dataset build --jobs 3
+python -m rakshpulse.data.vitaldb_dataset summarize
+```
+
+| File | Rows | Content |
+|---|---|---|
+| `cases.csv` | 40 | duration, window counts, NIBP count, demographics and surgery type from `clinical_data.csv` |
+| `windows.csv` | 28,958 | 10 s windows every 20 s; arterial-line SBP/DBP/MBP labels (median of the monitor numerics; valid only if plausible and the in-window SBP range ≤ 30 mmHg); finger SQI; PAT availability |
+| `features.csv` | 28,958 | finger HR + pulse-shape features (same pipeline as Auricle), Haar energies, ECG→PLETH PAT |
+| `nibp_readings.csv` | 526 | the real intermittent cuff readings (time, SBP, DBP) |
+| `summary.csv` | – | key statistics |
+
+Key statistics: 160.9 h; 24,847 label-valid windows, 21,662 also SQI-accepted; arterial SBP 117.5 ± 20.9 mmHg
+(median within-case SD 15.6); median age 57.5. The monitor's PLETH lags its ECG by about 0.4–0.5 s, so PAT here
+uses a 300–1000 ms search range. Absolute PAT is therefore not physiological; only within-case *changes* are used.
 
 ## Other datasets (earlier Guilin study)
 

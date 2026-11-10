@@ -23,6 +23,8 @@ def main(argv: list[str] | None = None) -> int:
     v = sub.add_parser("validate")
     v.add_argument("--no-raw", action="store_true", help="skip checks that need the raw WFDB files")
     sub.add_parser("export-features")
+    xa = sub.add_parser("export-advanced", help="RakshPulse 3.0 PAT / PTT / wavelet table (features_advanced.csv)")
+    xa.add_argument("--jobs", type=int, default=4)
     sub.add_parser("summary")
     p = sub.add_parser("package")
     p.add_argument("--chunk-mb", type=int, default=1900)
@@ -40,6 +42,10 @@ def main(argv: list[str] | None = None) -> int:
     elif a.cmd == "export-features":
         ds.feature_schema().to_csv(ds.OUT_DIR / "feature_schema.csv", index=False)
         print(f"feature_schema.csv: {len(ds.feature_schema())} documented features")
+    elif a.cmd == "export-advanced":
+        from .auricle_advanced import build_advanced
+
+        build_advanced(a.jobs)
     elif a.cmd == "summary":
         print(ds.summary().to_string(index=False))
     elif a.cmd == "package":
