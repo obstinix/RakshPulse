@@ -156,6 +156,24 @@ def fetch_project(key: str, records: list[str] | None = None, jobs: int = 4) -> 
             done.append(res)
             print(f"[{i}/{len(items)}] {res['status']:10s} {res['file']}", flush=True)
     prov = json.loads(PROVENANCE_FILE.read_text()) if PROVENANCE_FILE.exists() else {}
+    prev = prov.get(key, {})
+    # A later subset download must not erase the record of earlier ones: merge subsets, keep a history.
+    prev_subset = prev.get("subset")
+    if records and isinstance(prev_subset, list):
+        subset = sorted(set(prev_subset) | set(records))
+    else:
+        subset = records or "all"
+    history = list(prev.get("downloads", []))
+    history.append(
+        {
+            "utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+            "n_files": len(done),
+            "records": records or "all",
+        }
+    )
+    present = [r for r, _ in sorted(manifest.items()) if (dest / r).exists()]
+    if records:
+        present = [r for r in present if "/" not in r or r.split("/")[1] in set(subset)]
     prov[key] = {
         "key": key,
         "title": project.title,
@@ -165,11 +183,11 @@ def fetch_project(key: str, records: list[str] | None = None, jobs: int = 4) -> 
         "license": project.license,
         "citation": project.citation,
         "manifest": "SHA256SUMS.txt (all files verified against it)",
-        "n_files": len(done),
-        "total_bytes": sum((dest / d["file"]).stat().st_size for d in done),
-        "subset": records or "all",
-        "downloaded_utc": prov.get(key, {}).get("downloaded_utc")
-        or dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+        "n_files": len(present),
+        "total_bytes": sum((dest / r).stat().st_size for r in present),
+        "subset": subset,
+        "downloaded_utc": prev.get("downloaded_utc") or dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+        "downloads": history,
     }
     PROVENANCE_FILE.write_text(json.dumps(prov, indent=2) + "\n")
     return done

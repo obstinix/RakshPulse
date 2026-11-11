@@ -35,6 +35,13 @@ from .download import DATA_ROOT, USER_AGENT
 RAW = DATA_ROOT / "raw" / "vitaldb"
 OUT = DATA_ROOT / "vitaldb"
 SELECTION = DATA_ROOT / "metadata" / "vitaldb_selection.csv"
+# RakshPulse 4.0: an extension set of further cases, disjoint from SELECTION, kept in its own folder so the 3.0
+# subset and its results stay immutable. It is used for *independent* external validation (models fitted on the
+# 3.0 cases are evaluated on these patients without refitting).
+SELECTION_EXT = DATA_ROOT / "metadata" / "vitaldb_selection_ext.csv"
+OUT_EXT = DATA_ROOT / "vitaldb_ext"
+GZIP_MAGIC = bytes([0x1F, 0x8B])
+SETS = {"v3": (SELECTION, OUT), "ext": (SELECTION_EXT, OUT_EXT)}
 TRACKS = {
     "ppg": "SNUADC/PLETH",
     "ecg": "SNUADC/ECG_II",
@@ -55,14 +62,33 @@ MAX_ART_SBP_RANGE = 30.0
 PAT_RANGE_MS = (300.0, 1000.0)  # arterial SBP spread inside one window above this = flush/zeroing/artefact
 
 
-def select_cases(n: int = 40, seed: int = 0) -> pd.DataFrame:
-    """Pick ``n`` cases that have every required track (metadata-only API call; no signal data)."""
+def _eligible_cases() -> np.ndarray:
+    """Case ids that have every track in TRACKS (public VitalDB track list; metadata only)."""
     req = urllib.request.Request("https://api.vitaldb.net/trks", headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(req, timeout=120) as r:
         raw = r.read()
-    trks = pd.read_csv(io.BytesIO(gzip.decompress(raw) if raw[:2] == b"\x1f\x8b" else raw))
+    trks = pd.read_csv(io.BytesIO(gzip.decompress(raw) if raw[:2] == GZIP_MAGIC else raw))
     have = trks[trks.tname.isin(TRACKS.values())].groupby("caseid").tname.nunique()
-    eligible = np.sort(have[have == len(TRACKS)].index.to_numpy())
+    return np.sort(have[have == len(TRACKS)].index.to_numpy())
+
+
+def select_extension(n: int = 60, seed: int = 1) -> pd.DataFrame:
+    """Draw ``n`` further eligible cases, excluding every case already in ``SELECTION``."""
+    base = pd.read_csv(SELECTION)
+    eligible = _eligible_cases()
+    pool = np.setdiff1d(eligible, base.caseid.to_numpy())
+    pick = np.sort(np.random.default_rng(seed).choice(pool, size=min(n, pool.size), replace=False))
+    sel = pd.DataFrame({"caseid": pick, "file": [f"{c:04d}.vital" for c in pick]})
+    sel.attrs["n_eligible"] = int(eligible.size)
+    sel.assign(n_eligible_cases=int(eligible.size), seed=seed, excluded_from="vitaldb_selection.csv").to_csv(
+        SELECTION_EXT, index=False
+    )
+    return sel
+
+
+def select_cases(n: int = 40, seed: int = 0) -> pd.DataFrame:
+    """Pick ``n`` cases that have every required track (metadata-only API call; no signal data)."""
+    eligible = _eligible_cases()
     rng = np.random.default_rng(seed)
     pick = np.sort(rng.choice(eligible, size=min(n, eligible.size), replace=False))
     sel = pd.DataFrame({"caseid": pick, "file": [f"{c:04d}.vital" for c in pick]})
@@ -172,12 +198,13 @@ def process_case(caseid: int) -> tuple[dict, pd.DataFrame, pd.DataFrame, pd.Data
     return case, pd.DataFrame(rows), pd.DataFrame(feats), nib
 
 
-def build(jobs: int = 3) -> pd.DataFrame:
+def build(jobs: int = 3, which: str = "v3") -> pd.DataFrame:
     t0 = time.time()
-    sel = pd.read_csv(SELECTION)
+    selection, out = SETS[which]
+    sel = pd.read_csv(selection)
     cases = [int(c) for c in sel.caseid if (RAW / "vital_files" / f"{int(c):04d}.vital").exists()]
     res = Parallel(n_jobs=jobs, batch_size=1)(delayed(process_case)(c) for c in cases)
-    OUT.mkdir(parents=True, exist_ok=True)
+    out.mkdir(parents=True, exist_ok=True)
     cl = pd.read_csv(RAW / "clinical_data.csv")
     keep = ["caseid", "age", "sex", "height", "weight", "bmi", "asa", "optype", "department", "approach", "ane_type"]
     case_df = pd.DataFrame([r[0] for r in res]).merge(cl[[k for k in keep if k in cl]], on="caseid", how="left")
@@ -186,22 +213,23 @@ def build(jobs: int = 3) -> pd.DataFrame:
     nib = pd.concat([r[3] for r in res], ignore_index=True)
     pat_ok = feat.set_index("window_id")["pat_foot_ms"].notna()
     win["pat_available"] = win.window_id.map(pat_ok).fillna(False).astype(bool)
-    case_df.to_csv(OUT / "cases.csv", index=False)
-    win.to_csv(OUT / "windows.csv", index=False, float_format="%.4f")
-    feat.to_csv(OUT / "features.csv", index=False, float_format="%.6g")
-    nib.to_csv(OUT / "nibp_readings.csv", index=False)
-    summ = summarize(sel=sel)
+    case_df.to_csv(out / "cases.csv", index=False)
+    win.to_csv(out / "windows.csv", index=False, float_format="%.4f")
+    feat.to_csv(out / "features.csv", index=False, float_format="%.6g")
+    nib.to_csv(out / "nibp_readings.csv", index=False)
+    summ = summarize(sel=sel, which=which)
     print(f"({time.time() - t0:.0f}s)")
     return summ
 
 
-def summarize(sel: pd.DataFrame | None = None) -> pd.DataFrame:
+def summarize(sel: pd.DataFrame | None = None, which: str = "v3") -> pd.DataFrame:
     """Write ``summary.csv`` from the tables already in ``data/vitaldb`` (no re-processing)."""
-    sel = sel if sel is not None else pd.read_csv(SELECTION)
-    case_df = pd.read_csv(OUT / "cases.csv")
-    win = pd.read_csv(OUT / "windows.csv")
-    feat = pd.read_csv(OUT / "features.csv", nrows=1)
-    nib = pd.read_csv(OUT / "nibp_readings.csv")
+    selection, out = SETS[which]
+    sel = sel if sel is not None else pd.read_csv(selection)
+    case_df = pd.read_csv(out / "cases.csv")
+    win = pd.read_csv(out / "windows.csv")
+    feat = pd.read_csv(out / "features.csv", nrows=1)
+    nib = pd.read_csv(out / "nibp_readings.csv")
     lv = win[win.label_valid]
     age = pd.to_numeric(case_df.age, errors="coerce")  # clinical_data.csv stores age as text for some cases
     summ = pd.DataFrame(
@@ -223,7 +251,7 @@ def summarize(sel: pd.DataFrame | None = None) -> pd.DataFrame:
         ],
         columns=["statistic", "value", "unit"],
     )
-    summ.to_csv(OUT / "summary.csv", index=False)
+    summ.to_csv(out / "summary.csv", index=False)
     print(summ.to_string(index=False))
     return summ
 
@@ -234,20 +262,26 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m rakshpulse.data.vitaldb_dataset")
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("select")
-    s.add_argument("--n", type=int, default=40)
-    s.add_argument("--seed", type=int, default=0)
-    b = sub.add_parser("build")
-    b.add_argument("--jobs", type=int, default=3)
-    sub.add_parser("summarize")
+    s.add_argument("--n", type=int, default=None)
+    s.add_argument("--seed", type=int, default=None)
+    s.add_argument("--extension", action="store_true", help="4.0: draw further cases disjoint from the 3.0 set")
+    for name in ("build", "summarize"):
+        b = sub.add_parser(name)
+        b.add_argument("--set", dest="which", choices=sorted(SETS), default="v3")
+        if name == "build":
+            b.add_argument("--jobs", type=int, default=3)
     a = ap.parse_args(argv)
     if a.cmd == "select":
-        sel = select_cases(a.n, a.seed)
-        print(f"selected {len(sel)} of {sel.attrs['n_eligible']} eligible cases -> {SELECTION}")
+        if a.extension:
+            sel, dest = select_extension(a.n or 60, 1 if a.seed is None else a.seed), SELECTION_EXT
+        else:
+            sel, dest = select_cases(a.n or 40, 0 if a.seed is None else a.seed), SELECTION
+        print(f"selected {len(sel)} of {sel.attrs['n_eligible']} eligible cases -> {dest}")
         print(" ".join(sel.file))
     elif a.cmd == "summarize":
-        summarize()
+        summarize(which=a.which)
     else:
-        build(a.jobs)
+        build(a.jobs, a.which)
     return 0
 
 
