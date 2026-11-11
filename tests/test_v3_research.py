@@ -126,35 +126,6 @@ def test_registry_records_provenance(tmp_path, monkeypatch):
 
 
 # ------------------------------------------------------------------------------------- streaming
-@pytest.fixture
-def stream_bundle(tmp_path):
-    from conftest import synthetic_ppg
-
-    from rakshpulse.evaluation.auricle_study import add_normalised_shape, feature_set
-    from rakshpulse.inference.model_loader import ModelBundle
-    from rakshpulse.inference.realtime import site_window_features
-    from rakshpulse.models.model_factory import make_model
-
-    rows = []
-    for hr in (55, 75, 95):
-        for seed in range(2):
-            rows += site_window_features(synthetic_ppg(100, 10, hr, seed=seed, raw_counts=False), 100, "ear")[0]
-    X = add_normalised_shape(pd.DataFrame(rows), "ear")
-    cols = feature_set("hr_shape", "ear", [])
-    y = np.linspace(100, 140, len(X))
-    s, _ = make_model("ridge")
-    d, _ = make_model("ridge")
-    return ModelBundle(
-        s.fit(X[cols].to_numpy(float), y),
-        d.fit(X[cols].to_numpy(float), y * 0.6),
-        cols,
-        ("ear",),
-        False,
-        {},
-        "stream-test",
-    )
-
-
 def test_streaming_windows_quality_and_aggregation(stream_bundle, tmp_path):
     import json
 
