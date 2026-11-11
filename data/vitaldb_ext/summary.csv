@@ -1,0 +1,15 @@
+statistic,value,unit
+cases,60.0,
+cases_eligible_in_vitaldb,2881.0,
+total_hours,222.0,h
+windows_total,39956.0,
+windows_label_valid,33064.0,
+windows_finger_sqi_ok,34372.0,
+windows_label_valid_and_sqi_ok,29898.0,
+windows_with_pat,39197.0,
+nibp_readings,920.0,
+art_sbp_mean,122.1,mmHg
+art_sbp_sd,21.1,mmHg
+art_sbp_within_case_sd_median,16.1,mmHg
+age_median,60.5,years
+features_per_window,49.0,
