@@ -25,6 +25,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("export-features")
     xa = sub.add_parser("export-advanced", help="RakshPulse 3.0 PAT / PTT / wavelet table (features_advanced.csv)")
     xa.add_argument("--jobs", type=int, default=4)
+    xp = sub.add_parser("export-physio", help="RakshPulse 4.0 pulse-contour table (features_physio.csv)")
+    xp.add_argument("--jobs", type=int, default=4)
     sub.add_parser("summary")
     p = sub.add_parser("package")
     p.add_argument("--chunk-mb", type=int, default=1900)
@@ -42,6 +44,10 @@ def main(argv: list[str] | None = None) -> int:
     elif a.cmd == "export-features":
         ds.feature_schema().to_csv(ds.OUT_DIR / "feature_schema.csv", index=False)
         print(f"feature_schema.csv: {len(ds.feature_schema())} documented features")
+    elif a.cmd == "export-physio":
+        from .auricle_advanced import build_physio
+
+        build_physio(a.jobs)
     elif a.cmd == "export-advanced":
         from .auricle_advanced import build_advanced
 

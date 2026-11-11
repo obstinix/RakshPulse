@@ -107,3 +107,53 @@ def build_advanced(jobs: int = 4) -> pd.DataFrame:
     advanced_schema().to_csv(ds.OUT_DIR / "feature_schema_advanced.csv", index=False)
     print(f"features_advanced.csv: {len(adv)} rows x {adv.shape[1] - 4} features ({time.time() - t0:.0f}s)")
     return adv
+
+
+# ------------------------------------------------------------------------------------- RakshPulse 4.0
+PHYSIO_OUT = ds.OUT_DIR / "features_physio.csv"
+TEMPLATE_CACHE = ds.OUT_DIR.parent / "interim" / "auricle_templates.npz"  # git-ignored, regenerable
+
+
+def _physio_block(x: np.ndarray, fs: float) -> tuple[list[dict], np.ndarray]:
+    from ..features.physiological import N_TEMPLATE, physio_features
+
+    rows, tpls = [], np.full((len(x), N_TEMPLATE), np.nan, np.float32)
+    for i, w in enumerate(x):
+        if not np.isfinite(w).all() or np.std(w) == 0:
+            rows.append({})
+            continue
+        f, t = physio_features(w, fs)
+        rows.append(f)
+        if t is not None:
+            tpls[i] = t
+    return rows, tpls
+
+
+def build_physio(jobs: int = 4) -> pd.DataFrame:
+    """``features_physio.csv`` (contour landmarks per window and site) + template cache for drift analysis."""
+    from ..features.physiological import PHYSIO_FEATURES
+
+    t0 = time.time()
+    frames, cache = [], {}
+    for sess in (1, 2):
+        z = np.load(ds.OUT_DIR / f"waveforms/auricle_waveforms_session{sess}.npz")
+        wid = z["window_id"]
+        df = pd.DataFrame({"window_id": wid})
+        for site in ("ear", "finger"):
+            x = z[f"proc_{site}"]
+            chunks = np.array_split(np.arange(len(x)), max(jobs * 4, 1))
+            res = Parallel(n_jobs=jobs)(delayed(_physio_block)(x[c], ds.TARGET_FS) for c in chunks)
+            rows = [r for rr, _ in res for r in rr]
+            tp = np.vstack([t for _, t in res])
+            feats = pd.DataFrame(rows).reindex(columns=PHYSIO_FEATURES)
+            feats.columns = [f"{site}_{c}" for c in feats.columns]
+            df = pd.concat([df, feats], axis=1)
+            cache[f"{site}_s{sess}"] = tp.astype(np.float16)
+        cache[f"window_id_s{sess}"] = wid
+        frames.append(df)
+    out = pd.concat(frames, ignore_index=True)
+    out.to_csv(PHYSIO_OUT, index=False, float_format="%.5g")
+    TEMPLATE_CACHE.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(TEMPLATE_CACHE, **cache)
+    print(f"{PHYSIO_OUT.name}: {len(out)} rows x {out.shape[1] - 1} features ({time.time() - t0:.0f}s)")
+    return out
