@@ -10,7 +10,8 @@ do not depend on sensor gain. That gain is not comparable across devices or body
 from __future__ import annotations
 
 import numpy as np
-from scipy import stats
+
+from . import moments
 
 WIDTH_LEVELS = (0.10, 0.25, 0.50, 0.75, 0.90)
 
@@ -95,8 +96,8 @@ def beat_features(beat: np.ndarray, fs: float) -> dict[str, float]:
     vpg = np.gradient(b) * fs
     f["max_slope"] = float(vpg.max())
     f["t_max_slope"] = float(np.argmax(vpg)) / fs
-    f["beat_skew"] = float(stats.skew(b))
-    f["beat_kurt"] = float(stats.kurtosis(b))
+    f["beat_skew"] = float(moments.skew(b))
+    f["beat_kurt"] = float(moments.kurtosis(b))
     apg = np.gradient(vpg) * fs
     p = _apg_points(apg, pk)
     a = p["a"]

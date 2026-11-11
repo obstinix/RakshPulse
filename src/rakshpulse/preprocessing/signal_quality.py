@@ -24,8 +24,9 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 
 import numpy as np
-from scipy import signal, stats
+from scipy import signal
 
+from ..features import moments
 from .segmentation import MAX_HR_BPM, MIN_HR_BPM, detect_peaks, split_beats
 
 
@@ -115,7 +116,7 @@ def assess(x: np.ndarray, fs: float, raw: np.ndarray | None = None) -> SQIResult
     rr = np.diff(peaks) / fs if peaks.size > 1 else np.array([])
     hr = 60.0 / np.median(rr) if rr.size else np.nan
     rr_cv = float(rr.std() / rr.mean()) if rr.size > 1 else np.nan
-    skew = float(stats.skew(x))
+    skew = float(moments.skew(x))
     cpr = cardiac_power_ratio(x, fs, hr / 60 if np.isfinite(hr) else None)
     tc = template_correlation(beats)
     ff = flat_fraction(raw) if raw is not None else 0.0
