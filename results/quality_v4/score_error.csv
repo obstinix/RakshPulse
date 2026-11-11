@@ -1,0 +1,5 @@
+site,error,within_subject_spearman_median,frac_subjects_negative,n_subjects
+ear,ae,-0.0953,0.6923,39
+ear,ae_cal,-0.1251,0.7179,39
+finger,ae,-0.0848,0.6829,41
+finger,ae_cal,-0.1733,0.9024,41

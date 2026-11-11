@@ -1,0 +1,13 @@
+site,component,explained_var,top_loadings
+ear,ear_pc1,0.2199,ear_sys_ratio;ear_w10_sd_ratio;ear_area_ratio;ear_w25_sd_ratio
+ear,ear_pc2,0.1591,ear_notch_h;ear_dia_peak_h;ear_sys_dia_dt;ear_dia_peak_t
+ear,ear_pc3,0.1115,ear_notch_t;ear_sys_dia_dt;ear_dia_peak_t;ear_dia_peak_h
+ear,ear_pc4,0.0900,ear_apg_b_a;ear_aging_index;ear_apg_c_a;ear_apg_e_a
+ear,ear_pc5,0.0671,ear_win_kurt;ear_beat_amp_cv;ear_spec_entropy;ear_beat_template_corr
+ear,ear_pc6,0.0479,ear_h2_h1;ear_w90_sd_ratio;ear_h3_h1;ear_w25_n
+finger,finger_pc1,0.2306,finger_w50_sd_ratio;finger_notch_h;finger_area_ratio;finger_dia_peak_h
+finger,finger_pc2,0.1638,finger_w90_n;finger_w75_n;finger_sys_ratio;finger_w10_sd_ratio
+finger,finger_pc3,0.0891,finger_sys_dia_dt;finger_notch_t;finger_dia_peak_t;finger_dia_peak_h
+finger,finger_pc4,0.0518,finger_hr;finger_h3_h1;finger_beat_amp_cv;finger_w75_sd_ratio
+finger,finger_pc5,0.0442,finger_w25_n;finger_w10_n;finger_beat_amp_cv;finger_w90_sd_ratio
+finger,finger_pc6,0.0405,finger_apg_b_a;finger_hr;finger_w10_n;finger_max_slope_n

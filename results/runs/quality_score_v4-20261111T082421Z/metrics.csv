@@ -1,0 +1,13 @@
+site,error,quality_class,window_share,subject_mae,window_mae,n_subjects,n_windows
+ear,ae,good,0.70911,14.839,14.886,39,10831
+ear,ae,degraded,0.10724,17.342,15.206,39,1638
+ear,ae,unreliable,0.13454,20.948,17.481,39,2055
+ear,ae_cal,good,0.72528,12.896,13.528,39,10621
+ear,ae_cal,degraded,0.11151,14.109,13.593,39,1633
+ear,ae_cal,unreliable,0.13774,17.592,16.345,39,2017
+finger,ae,good,0.68478,16.24,16.104,41,10999
+finger,ae,degraded,0.13971,17.727,15.863,41,2244
+finger,ae,unreliable,0.17408,24.683,21.594,41,2796
+finger,ae_cal,good,0.68018,13.022,13.095,41,10768
+finger,ae_cal,degraded,0.14175,15.297,13.958,41,2244
+finger,ae_cal,unreliable,0.17662,24.208,22.994,41,2796

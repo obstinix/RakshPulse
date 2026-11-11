@@ -1,0 +1,9 @@
+site,error,comparison,n_units,mean_diff,ci_low,ci_high,cohen_dz,p_perm,p_wilcoxon,p_holm
+ear,ae,degraded vs good,39,2.5033,0.8468,4.2233,0.4479,0.0054,0.0034,0.0054
+ear,ae,unreliable vs good,39,6.1089,2.9254,9.5682,0.5508,0.0005,0.0009,0.0010
+ear,ae_cal,degraded vs good,39,1.2130,-0.1234,2.6010,0.2802,0.0891,0.0727,0.0891
+ear,ae_cal,unreliable vs good,39,4.6964,1.8312,7.7184,0.4938,0.0032,0.0047,0.0064
+finger,ae,degraded vs good,41,1.4871,-0.0853,3.0566,0.2786,0.0835,0.1633,0.0835
+finger,ae,unreliable vs good,41,8.4428,5.4503,11.4533,0.8193,0.0001,0.0000,0.0002
+finger,ae_cal,degraded vs good,41,2.2751,0.9784,3.6259,0.5265,0.0017,0.0006,0.0017
+finger,ae_cal,unreliable vs good,41,11.1862,8.5604,13.7637,1.2851,0.0001,0.0000,0.0002

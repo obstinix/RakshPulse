@@ -1,0 +1,31 @@
+key,value
+run_id,physio_features_v4-20261111T083034Z
+name,physio_features_v4
+seed,0
+started_utc,2026-11-11T08:30:34+00:00
+duration_s,48.7
+status,completed
+git_commit,9d0b26dba5d6ead62b58addfe66e54f1aae8b43e
+git_dirty,True
+git_dirty_code,False
+python,3.11.9
+platform,Windows-10-10.0.26300-SP0
+numpy,2.4.6
+scipy,1.17.1
+pandas,3.0.6
+scikit-learn,1.9.1
+xgboost,3.2.0
+lightgbm,4.7.0
+torch,2.15.0+cpu
+wfdb,4.3.1
+vitaldb,1.7.2
+dataset:data/auricle/windows.csv,be0832d93d2ca380bca2931c26d4178a5526aa1ce575bc75016006f61601e0f4
+dataset:data/auricle/features.csv,5c8517a57e55724e0881d014344a7c3faa4d6f6436801d6d410bdfb0d3777036
+dataset:data/auricle/features_physio.csv,99bb2bc80da406c70758b859e0a6d5651b14edaa83f1ae9427f23cf470b34fe5
+dataset_version:auricle,"PhysioNet 1.0.0, standardised tables 2.0, features_physio 4.0"
+config:n_boot,2000
+config:n_pc,6
+config:predictive_scenario,"within day, reference every 300 s"
+feature_config:physio,notch_present;notch_t;notch_h;dia_peak_h;dia_peak_t;sys_dia_dt;ipa;upstroke_10_90;decay_tau;beat_amp_cv;beat_template_corr
+feature_config:composites,PCA of within-subject-centred day-1 features
+model_config:delta_model,RidgeCV on feature changes (3.0 evaluate)

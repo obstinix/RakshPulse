@@ -1,0 +1,5 @@
+fs_hz,quality_grading,windows_evaluated,feature_ms_p50,feature_ms_p95,model_ms_p50,model_ms_p95,throughput_windows_per_s,realtime_factor,cpu_utilisation,peak_python_mem_mb,feature_ms_p50_3.0,model_ms_p50_3.0
+100,False,59,6.44,12.88,3.861,7.357,75.6,384.3,0.9,0.21,12.61,3.18
+100,True,59,9.37,14.87,3.713,6.381,69.6,354.0,0.87,0.16,12.61,3.18
+1000,False,59,11.57,12.85,6.035,7.064,55.9,284.2,0.96,0.8,24.66,6.096
+1000,True,59,16.68,18.32,5.614,6.451,44.3,225.2,0.99,0.8,24.66,6.096

@@ -1,0 +1,39 @@
+key,value
+run_id,external_validation_v4-20261111T082827Z
+name,external_validation_v4
+seed,0
+started_utc,2026-11-11T08:28:27+00:00
+duration_s,26.1
+status,completed
+phase_duration_s:train,0.3
+phase_duration_s:evaluate,24.7
+git_commit,4b0991ddd17504e5e2f59517ce145a072838901c
+git_dirty,True
+git_dirty_code,False
+python,3.11.9
+platform,Windows-10-10.0.26300-SP0
+numpy,2.4.6
+scipy,1.17.1
+pandas,3.0.6
+scikit-learn,1.9.1
+xgboost,3.2.0
+lightgbm,4.7.0
+torch,2.15.0+cpu
+wfdb,4.3.1
+vitaldb,1.7.2
+dataset:data/auricle/windows.csv,be0832d93d2ca380bca2931c26d4178a5526aa1ce575bc75016006f61601e0f4
+dataset:data/auricle/features.csv,5c8517a57e55724e0881d014344a7c3faa4d6f6436801d6d410bdfb0d3777036
+dataset:data/vitaldb/windows.csv,4c42b7ce86d69bf477b81661da74f381edfb58b43ea2ad56717a176116b66448
+dataset:data/vitaldb/features.csv,5c90f2a43e2a5df053668e6ddc0d9fac8893c61d99a0723ffad800cb3b62d107
+dataset:data/vitaldb/nibp_readings.csv,22a693be0d582b1ddda5bec5f41ba5029c21fb3f0afb846165fc2f398c2bb182
+dataset:data/vitaldb_ext/windows.csv,b3ad84b0734ab6b8ca41218fcf6c83a6d6affeafcf731f3cb343193f31ec992e
+dataset:data/vitaldb_ext/features.csv,6cf5ebefe283bb7f93bdbbeab99a1136a0e8da8a371bcef1c31f60b8d661ada7
+dataset:data/vitaldb_ext/nibp_readings.csv,42d274a6e2b786e875f4ee5080dcba69af3484ef5f25d7cefe2ac087c2b38f8b
+dataset_version:auricle,PhysioNet 1.0.0
+dataset_version:vitaldb_v3,"PhysioNet 1.0.0, 40 cases (seed 0)"
+dataset_version:vitaldb_ext,"PhysioNet 1.0.0, 60 further cases (seed 1, disjoint)"
+config:n_boot,2000
+config:auricle_refs,every 300 s (CNAP)
+config:vitaldb_refs,"real NIBP, gap <= 1800 s"
+model_config:population,ridge HR + shape
+model_config:change,RidgeCV on feature changes

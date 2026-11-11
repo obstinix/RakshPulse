@@ -1,0 +1,17 @@
+site,target,base,halfwidth_threshold_mmHg,halfwidth_at_reading,seconds_until_threshold
+ear,dbp,pmean,10.0000,12.4874,
+ear,dbp,pmean,15.0000,12.4874,303.3556
+ear,dbp,pred,10.0000,13.1964,
+ear,dbp,pred,15.0000,13.1964,186.2953
+ear,sbp,pmean,10.0000,18.0838,
+ear,sbp,pmean,15.0000,18.0838,
+ear,sbp,pred,10.0000,17.1011,
+ear,sbp,pred,15.0000,17.1011,
+finger,dbp,pmean,10.0000,12.0088,
+finger,dbp,pmean,15.0000,12.0088,294.0808
+finger,dbp,pred,10.0000,12.8136,
+finger,dbp,pred,15.0000,12.8136,236.4953
+finger,sbp,pmean,10.0000,16.9043,
+finger,sbp,pmean,15.0000,16.9043,
+finger,sbp,pred,10.0000,18.0816,
+finger,sbp,pred,15.0000,18.0816,

@@ -1,0 +1,41 @@
+key,value
+run_id,calibration_uncertainty_v4-20261111T082530Z
+name,calibration_uncertainty_v4
+seed,0
+started_utc,2026-11-11T08:25:30+00:00
+duration_s,173.7
+status,completed
+phase_duration_s:train,167.43
+phase_duration_s:evaluate,6.23
+git_commit,4b0991ddd17504e5e2f59517ce145a072838901c
+git_dirty,True
+git_dirty_code,False
+python,3.11.9
+platform,Windows-10-10.0.26300-SP0
+numpy,2.4.6
+scipy,1.17.1
+pandas,3.0.6
+scikit-learn,1.9.1
+xgboost,3.2.0
+lightgbm,4.7.0
+torch,2.15.0+cpu
+wfdb,4.3.1
+vitaldb,1.7.2
+dataset:data/auricle/windows.csv,be0832d93d2ca380bca2931c26d4178a5526aa1ce575bc75016006f61601e0f4
+dataset:results/predictions/personalization_pop_ear_ridge_dbp.csv.gz,ed87b31734e1525547410cd1fa80c7b440109a1791e6b145f704f1c2139c3a67
+dataset:results/predictions/personalization_pop_ear_ridge_sbp.csv.gz,e4a8ac8386e085e04d67f1d0d663f937820067ed027e0b0734e725d142c64613
+dataset:results/predictions/personalization_pop_finger_ridge_dbp.csv.gz,be3304de3f9810cbfd0cd72e0fca0af91aed473a700d121e626989874bdd32e4
+dataset:results/predictions/personalization_pop_finger_ridge_sbp.csv.gz,69699782933d45724c701a994b256cad89c490da4dc71d4b5933d1212a22fa5b
+dataset:results/predictions/personalization_pop_ear_mean_dbp.csv.gz,7f4d03c15b984b022a7243384af45a8bf24befce18e07bda37b3222e4a837f5b
+dataset:results/predictions/personalization_pop_ear_mean_sbp.csv.gz,2e0d94b9e7cc72c961f172d8c36edaea3bb0013d1bb5e85607c4f0e4a6de0571
+dataset:results/predictions/personalization_pop_finger_mean_dbp.csv.gz,99fe2b5b80ab947c67ca9064ff11904915e38383fc8de0b83cb348f5e56a2873
+dataset:results/predictions/personalization_pop_finger_mean_sbp.csv.gz,a8f63f76095fdc77292cafec4f723422839db05df8aba5735c98fe23d61ed08c
+dataset_version:auricle,"PhysioNet 1.0.0, standardised 2.0"
+dataset_version:base_predictions,RakshPulse 2.0 OOF
+config:scenarios,within_day_k1;within_day_k3;cross_day_transfer;cross_day_plus_one
+config:reading_spacing_s,60.0
+config:levels,0.5;0.8;0.9;0.95
+config:n_boot,2000
+config:folds,5
+model_config:hierarchical,b + c_session + capped linear variogram; method of moments on training subjects
+model_config:quantile,"HistGradientBoosting quantile, 150 iterations"

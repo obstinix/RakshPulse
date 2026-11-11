@@ -1,0 +1,35 @@
+key,value
+run_id,cross_day_generalization_v4-20261111T083414Z
+name,cross_day_generalization_v4
+seed,0
+started_utc,2026-11-11T08:34:14+00:00
+duration_s,28.0
+status,completed
+phase_duration_s:diagnostics,6.59
+phase_duration_s:train_evaluate,20.48
+git_commit,479b2655c8a6e66a9adb2ab53d0c361a690e72f8
+git_dirty,True
+git_dirty_code,False
+python,3.11.9
+platform,Windows-10-10.0.26300-SP0
+numpy,2.4.6
+scipy,1.17.1
+pandas,3.0.6
+scikit-learn,1.9.1
+xgboost,3.2.0
+lightgbm,4.7.0
+torch,2.15.0+cpu
+wfdb,4.3.1
+vitaldb,1.7.2
+dataset:data/auricle/windows.csv,be0832d93d2ca380bca2931c26d4178a5526aa1ce575bc75016006f61601e0f4
+dataset:data/auricle/features.csv,5c8517a57e55724e0881d014344a7c3faa4d6f6436801d6d410bdfb0d3777036
+dataset:data/auricle/features_physio.csv,99bb2bc80da406c70758b859e0a6d5651b14edaa83f1ae9427f23cf470b34fe5
+dataset_version:auricle,"PhysioNet 1.0.0 (doi:10.13026/swme-vp69), standardised tables 2.0"
+config:warmup_s,180.0
+config:n_boot,2000
+config:folds,5
+config:reference,first 3 eligible day-1 rest windows
+config:evaluation,day-2 label-valid windows after the warm-up; identical for all methods
+feature_config:normalisations,A=raw;B=session;C=subject;D=robust;E=adaptive;F=domain
+feature_config:stable,"top 10 by training-subject rest ICC(3,1)"
+model_config:delta_model,"SimpleImputer(0) -> StandardScaler -> RidgeCV(logspace(-1,4,12))"

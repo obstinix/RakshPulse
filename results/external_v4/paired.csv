@@ -1,0 +1,29 @@
+experiment,test_set,comparison,n_units,mean_diff,ci_low,ci_high,cohen_dz,p_perm,p_wilcoxon,p_holm,target
+E1,vitaldb_v3,auricle ridge vs auricle training mean,40,3.1777,1.6176,4.7209,0.6310,0.0004,0.0006,0.0044,sbp
+E1,vitaldb_ext,auricle ridge vs auricle training mean,57,3.5709,2.1844,5.0566,0.6249,0.0001,0.0001,0.0014,sbp
+E1,vitaldb_ext,"vitaldb_v3 ridge vs vitaldb_v3 mean (in-domain, new patients)",57,-2.1067,-3.2707,-1.0725,-0.4826,0.0002,0.0001,0.0024,sbp
+E2,vitaldb_v3,E2_delta_hr_shape_auricle_zero_shot vs E2_mean_change_auricle,34,0.6782,-0.0927,1.4121,0.3034,0.0823,0.0842,0.7406,sbp
+E2,vitaldb_v3,E2_delta_hr_shape_auricle_zero_shot vs last_reference,34,0.6501,-0.1142,1.3805,0.2916,0.0945,0.1166,0.7559,sbp
+E2,vitaldb_ext,E2_delta_hr_shape_auricle_zero_shot vs E2_mean_change_auricle,48,-0.2365,-1.5528,0.9114,-0.0548,0.7177,0.7182,1.0000,sbp
+E2,vitaldb_ext,E2_delta_hr_shape_auricle_zero_shot vs last_reference,48,-0.2752,-1.5865,0.8706,-0.0637,0.6802,0.6219,1.0000,sbp
+E3,vitaldb_ext,E3_delta_hr_shape_v3 vs E3_mean_change_v3,48,-0.7878,-2.0719,0.5957,-0.1640,0.2641,0.2385,1.0000,sbp
+E3,vitaldb_ext,E3_delta_hr_shape_pat_v3 vs E3_mean_change_v3,48,-0.4021,-2.1465,1.4301,-0.0619,0.6784,0.2960,1.0000,sbp
+E3,vitaldb_ext,E3_delta_hr_shape_v3 vs last_reference,48,-0.8070,-2.0883,0.5831,-0.1682,0.2510,0.2225,1.0000,sbp
+E3,vitaldb_ext,E3_population_mean_v3 vs last_reference,48,-5.8708,-8.6883,-3.3319,-0.6176,0.0001,0.0001,0.0014,sbp
+control,vitaldb_ext,historical_mean vs last_reference,48,-1.5323,-3.5304,0.5052,-0.2151,0.1407,0.0315,0.9848,sbp
+E4,vitaldb_ext,E4_delta_hr_shape_pooled_adapted vs E3_delta_hr_shape_v3,48,-0.1251,-0.8875,0.6047,-0.0462,0.7507,0.8989,1.0000,sbp
+E4,vitaldb_ext,E4_delta_hr_shape_pooled_adapted vs E3_mean_change_v3,48,-0.9130,-1.7720,0.0049,-0.2824,0.0573,0.0821,0.5729,sbp
+E1,vitaldb_v3,auricle ridge vs auricle training mean,40,0.4646,-0.0922,1.0353,0.2554,0.1197,0.2113,0.4788,dbp
+E1,vitaldb_ext,auricle ridge vs auricle training mean,57,1.0503,0.4160,1.7662,0.4003,0.0028,0.0104,0.0392,dbp
+E1,vitaldb_ext,"vitaldb_v3 ridge vs vitaldb_v3 mean (in-domain, new patients)",57,-0.7428,-1.4212,-0.0060,-0.2832,0.0374,0.0062,0.3366,dbp
+E2,vitaldb_v3,E2_delta_hr_shape_auricle_zero_shot vs E2_mean_change_auricle,34,-0.1675,-0.5330,0.2067,-0.1516,0.3783,0.3342,1.0000,dbp
+E2,vitaldb_v3,E2_delta_hr_shape_auricle_zero_shot vs last_reference,34,-0.1527,-0.5171,0.2236,-0.1374,0.4229,0.4365,1.0000,dbp
+E2,vitaldb_ext,E2_delta_hr_shape_auricle_zero_shot vs E2_mean_change_auricle,48,-0.4968,-0.9351,-0.0209,-0.3022,0.0379,0.0005,0.3366,dbp
+E2,vitaldb_ext,E2_delta_hr_shape_auricle_zero_shot vs last_reference,48,-0.4671,-0.9072,0.0056,-0.2827,0.0526,0.0015,0.3366,dbp
+E3,vitaldb_ext,E3_delta_hr_shape_v3 vs E3_mean_change_v3,48,-0.8743,-1.5428,-0.2393,-0.3797,0.0127,0.0070,0.1270,dbp
+E3,vitaldb_ext,E3_delta_hr_shape_pat_v3 vs E3_mean_change_v3,48,-0.9671,-1.6400,-0.2713,-0.4022,0.0085,0.0024,0.0935,dbp
+E3,vitaldb_ext,E3_delta_hr_shape_v3 vs last_reference,48,-0.9409,-1.6133,-0.3140,-0.4067,0.0073,0.0061,0.0876,dbp
+E3,vitaldb_ext,E3_population_mean_v3 vs last_reference,48,-1.9446,-3.7818,-0.1988,-0.2944,0.0446,0.0514,0.3366,dbp
+control,vitaldb_ext,historical_mean vs last_reference,48,-0.9503,-2.0251,0.1478,-0.2458,0.0957,0.0447,0.4785,dbp
+E4,vitaldb_ext,E4_delta_hr_shape_pooled_adapted vs E3_delta_hr_shape_v3,48,0.0278,-0.4284,0.4389,0.0173,0.9141,0.3254,1.0000,dbp
+E4,vitaldb_ext,E4_delta_hr_shape_pooled_adapted vs E3_mean_change_v3,48,-0.8466,-1.3463,-0.3464,-0.4723,0.0031,0.0028,0.0403,dbp

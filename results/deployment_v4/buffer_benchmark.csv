@@ -1,0 +1,3 @@
+fs_hz,buffer_samples,chunk_samples,np_roll_us_per_push,ring_buffer_us_per_push,identical_last_10s
+100,3000,32,8.17,0.63,True
+1000,30000,320,15.74,0.66,True

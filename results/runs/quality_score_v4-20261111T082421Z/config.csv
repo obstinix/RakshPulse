@@ -1,0 +1,33 @@
+key,value
+run_id,quality_score_v4-20261111T082421Z
+name,quality_score_v4
+seed,0
+started_utc,2026-11-11T08:24:21+00:00
+duration_s,65.4
+status,completed
+phase_duration_s:grade,62.61
+phase_duration_s:evaluate,2.77
+git_commit,4b0991ddd17504e5e2f59517ce145a072838901c
+git_dirty,True
+git_dirty_code,False
+python,3.11.9
+platform,Windows-10-10.0.26300-SP0
+numpy,2.4.6
+scipy,1.17.1
+pandas,3.0.6
+scikit-learn,1.9.1
+xgboost,3.2.0
+lightgbm,4.7.0
+torch,2.15.0+cpu
+wfdb,4.3.1
+vitaldb,1.7.2
+dataset:data/auricle/windows.csv,be0832d93d2ca380bca2931c26d4178a5526aa1ce575bc75016006f61601e0f4
+dataset:data/auricle/features.csv,5c8517a57e55724e0881d014344a7c3faa4d6f6436801d6d410bdfb0d3777036
+dataset:data/auricle/waveforms/auricle_waveforms_session1.npz,241c9f24429fa16c8339c9d021dbc8628c1785284f3f3e029bb6e4e8d9f9e804
+dataset:data/auricle/waveforms/auricle_waveforms_session2.npz,85c2be8c62939aad3e476a17245f405a31cc33ad41c6284839054a891f720280
+dataset_version:auricle,"PhysioNet 1.0.0, standardised tables 2.0"
+config:n_boot,2000
+config:thresholds,0;25;50;75;90;99.9
+config:calibration,offset from first 3 good windows per subject-session
+feature_config:quality,preprocessing/quality_score.py (pre-specified margins)
+model_config:population,"ridge HR + shape, SQI-accepted session-1 training windows"

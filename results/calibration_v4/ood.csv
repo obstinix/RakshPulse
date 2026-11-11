@@ -1,0 +1,17 @@
+site,target,scenario,method,coverage_top_decile_shift,coverage_rest,mae_top_decile_shift,mae_rest
+ear,sbp,cross_day_plus_one,bayes_ppg_hier,0.8858,0.9000,12.4739,12.1954
+ear,sbp,cross_day_transfer,bayes_ppg_hier,0.8993,0.8944,12.7360,13.5109
+ear,sbp,within_day_k1,bayes_ppg_hier,0.8101,0.9051,17.3719,13.6613
+ear,sbp,within_day_k3,bayes_ppg_hier,0.8316,0.9076,15.0283,11.4222
+ear,dbp,cross_day_plus_one,bayes_ppg_hier,0.9048,0.8779,12.0353,10.5702
+ear,dbp,cross_day_transfer,bayes_ppg_hier,0.9078,0.8986,9.3717,9.2019
+ear,dbp,within_day_k1,bayes_ppg_hier,0.9265,0.8976,8.0439,9.5672
+ear,dbp,within_day_k3,bayes_ppg_hier,0.8872,0.8990,8.1193,8.2124
+finger,sbp,cross_day_plus_one,bayes_ppg_hier,0.9097,0.8837,13.8992,13.2164
+finger,sbp,cross_day_transfer,bayes_ppg_hier,0.7865,0.9070,20.3493,13.9276
+finger,sbp,within_day_k1,bayes_ppg_hier,0.8120,0.9073,18.5424,13.7692
+finger,sbp,within_day_k3,bayes_ppg_hier,0.7881,0.9123,17.6867,12.2922
+finger,dbp,cross_day_plus_one,bayes_ppg_hier,0.8801,0.8980,9.9572,10.9436
+finger,dbp,cross_day_transfer,bayes_ppg_hier,0.8802,0.8980,10.4008,9.2585
+finger,dbp,within_day_k1,bayes_ppg_hier,0.7579,0.9092,12.1821,8.8070
+finger,dbp,within_day_k3,bayes_ppg_hier,0.7219,0.9166,12.6177,8.0072
