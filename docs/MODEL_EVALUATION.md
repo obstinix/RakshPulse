@@ -279,6 +279,36 @@ Protocols and results tables are in [RESEARCH_FINDINGS.md § RakshPulse 3.0](RES
 Summary: a small within-session pulse-shape signal beyond the last reference (about 0.6–1.2 mmHg SBP at the ear);
 nothing across days; not demonstrated with real cuff references in VitalDB; no gain from deep sequence models.
 
+
+## H. RakshPulse 4.0: generalisation, quality, calibration, uncertainty, external validation
+
+The protocols and all tables (W1–W6, generated from `results/*_v4/`) are in
+[RESEARCH_FINDINGS.md § 4.0](RESEARCH_FINDINGS.md#rakshpulse-40-generalisation-physiology-quality-calibration-uncertainty-external-validation).
+The evaluation rules added in 4.0:
+- **Unit of inference = subject (patient).** Every test reduces to per-subject MAE first. p-values come from
+  sign-flip permutation (exact for ≤ 16 subjects), CIs from 2,000 subject bootstraps. Effect sizes are Cohen's
+  d_z. Holm (family-wise) and Benjamini–Hochberg (FDR) adjustment is applied within each declared family, and the
+  verdicts in the text use Holm.
+- **Matched controls everywhere:** `mean_change` for change models; `bayes_reference_hier` (the same hierarchical
+  model on the training-mean BP) for PPG calibration; `training_mean` / `last_reference` / `historical_mean` /
+  `population_mean` for external tests.
+- **Leakage rules:** normalisation parameters use only that subject's unlabelled PPG available at prediction time.
+  Hyper-parameters, conformal scales and quantile models are fitted on training subjects only. Calibration
+  readings are never scored. External models are never refitted on the patients they are scored on, and pooled
+  adaptation is reported separately. `scripts/audit_v4.py` checks these rules, the provenance and the tables.
+- **Prediction settings are reported separately:** within-session, cross-day, cross-subject, external zero-shot,
+  external independent patients, personalised and reference-only.
+- **Agreement:** repeated-measures Bland–Altman (variance components) for absolute estimates; subject-weighted
+  error distributions.
+
+Summary:
+- **Within-session:** the ear SBP information beyond the reference survives correction (about −0.7 to −1.1 mmHg).
+- **Cross-day:** nothing, because of BP-unrelated measurement shift, and normalisation does not fix it.
+- **Reference-only:** hierarchical calibration beats the last cuff reading.
+- **Uncertainty:** conformal intervals are honest but wide.
+- **External:** zero-shot cross-dataset prediction fails. Within VitalDB, absolute SBP transfers to new patients
+  (−2.1 mmHg vs mean), but change gains beyond real cuffs are not significant.
+
 ## Interpretation
 
 1. **Single-site PPG morphology carries little SBP information in this cohort.** No PPG-only

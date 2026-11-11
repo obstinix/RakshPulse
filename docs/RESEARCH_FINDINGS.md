@@ -902,3 +902,664 @@ days, was not demonstrated with real cuff references in a surgical population, a
 device would need. RakshPulse remains a research prototype and is **not** a clinically validated BP monitor. The
 data support frequent cuff referencing plus a small, change-based PPG correction within a session. They do not
 support PPG-only estimation or calibration carried across days.
+
+---
+
+## RakshPulse 4.0: generalisation, physiology, quality, calibration, uncertainty, external validation
+
+**Objective.** Find out whether PPG-based BP estimation generalises beyond one recording session and gives
+reproducible information beyond reference measurements. The 2.0 and 3.0 sections above are the reference
+baseline and are unchanged. Their 3.0 tables reproduce byte-for-byte from the committed code.
+
+**What is new in 4.0** (every table below is generated from `results/*_v4/` by `scripts/write_findings.py`; every
+run is in `results/runs/runs.csv` with dataset hashes and versions, commit, code-only dirty flag, splits, phase
+timings and status):
+
+| Analysis | Script | Unit of inference |
+|---|---|---|
+| W1 cross-day shift diagnostics + normalisations A–F | `run_cross_day_generalization.py` | subject; Holm per site × target |
+| W2 pulse-contour features (relevance, stability, composites, added value) | `run_physio_features.py` | subject; Holm |
+| W3 graded quality score vs real errors, retention | `run_quality_study.py` | subject; Holm |
+| W4 hierarchical calibration vs matched no-PPG control; intervals | `run_calibration_uncertainty.py` | subject; Holm per family |
+| W5 external validation (zero-shot / independent patients / adaptation) | `run_external_validation.py` | patient; Holm per target |
+| W6 streaming cost and export | `run_deployment_v4.py` | desktop CPU only |
+
+All p-values are subject-level sign-flip permutation tests, CIs come from 2,000 subject bootstraps, and the
+headline verdicts use Holm-adjusted p (Benjamini–Hochberg is also reported in the CSVs). Windows are never treated
+as independent subjects.
+
+**How the 3.0 headline holds up under 4.0 statistics.** The ear within-day SBP change-model gain (reference every
+300 s) was re-tested with the permutation test and Holm correction: −0.74 mmHg [−1.29, −0.23], adjusted p = 0.029
+(W2). The independent hierarchical-calibration study reproduces it against a matched no-PPG control: −1.09 mmHg
+[−1.91, −0.32], adjusted p = 0.025 (W4, ear, within day, 3 readings). It is the only PPG effect that survives
+correction in 4.0.
+
+<!-- BEGIN V4 -->
+
+### W1. Why cross-day generalisation fails: distribution shift (resting windows)
+
+| Site | Cross-day shift (median, robust SD) | Within-day shift (null) | Features with excess cross-day shift (p<0.05) | Median |r| Δfeature vs ΔSBP between days | Subjects with lower day1/day2 template similarity | Median pulse-amplitude change | n subj |
+|---|---|---|---|---|---|---|---|
+| ear | 0.76 | 0.51 | 35/39 | 0.12 | 0.69 | 1.67× | 29 |
+| finger | 0.73 | 0.46 | 28/39 | 0.09 | 0.79 | 1.65× | 33 |
+
+Cross-day change models after normalisation (Δ MAE vs `mean_change`, mmHg; Holm-adjusted p within each site × target family; * = adjusted p < 0.05):
+
+| Features_normalisation | Ear SBP | Ear DBP | Finger SBP | Finger DBP |
+|---|---|---|---|---|
+| hr_shape_A_raw | -1.04 [-3.19, +1.36] (p=1.000) | +3.27 [+1.31, +5.29] (p=0.059) | +0.23 [-1.26, +1.80] (p=1.000) | +1.15 [+0.17, +2.07] (p=0.401) |
+| hr_shape_B_session | +1.94 [-0.59, +4.54] (p=1.000) | +3.78 [+1.57, +6.22] (p=0.059) | +1.99 [+0.18, +3.85] (p=0.843) | +0.77 [-0.46, +2.00] (p=1.000) |
+| hr_shape_C_subject | +0.53 [-1.31, +2.43] (p=1.000) | +2.18 [+0.78, +3.64] (p=0.075) | +0.11 [-1.66, +1.93] (p=1.000) | +0.99 [+0.01, +2.10] (p=0.925) |
+| hr_shape_D_robust | -0.23 [-2.37, +2.14] (p=1.000) | +2.15 [+0.63, +3.96] (p=0.182) | +1.43 [-0.44, +3.26] (p=1.000) | +1.18 [-0.24, +2.71] (p=1.000) |
+| hr_shape_E_adaptive | -0.22 [-2.29, +1.97] (p=1.000) | +1.78 [+0.07, +3.74] (p=0.409) | +1.38 [+0.30, +2.40] (p=0.393) | +0.93 [-0.14, +2.00] (p=1.000) |
+| hr_shape_F_domain | +2.10 [-0.19, +5.00] (p=1.000) | +2.55 [+0.63, +5.10] (p=0.191) | +0.81 [-0.09, +1.67] (p=1.000) | +2.08 [+0.74, +3.64] (p=0.080) |
+| physio_A_raw | +0.71 [-0.69, +2.36] (p=1.000) | +1.21 [+0.28, +2.24] (p=0.192) | -0.05 [-1.18, +1.16] (p=1.000) | +0.17 [-0.70, +0.87] (p=1.000) |
+| physio_B_session | +0.87 [-0.13, +1.97] (p=1.000) | +0.84 [-0.10, +1.92] (p=0.471) | -0.05 [-1.25, +1.17] (p=1.000) | +0.76 [-0.18, +1.53] (p=1.000) |
+| physio_C_subject | +0.85 [-0.58, +2.49] (p=1.000) | +1.12 [+0.20, +2.05] (p=0.247) | -0.40 [-1.46, +0.70] (p=1.000) | +0.67 [+0.08, +1.33] (p=0.771) |
+| physio_D_robust | +1.33 [-0.13, +2.94] (p=1.000) | +1.96 [+0.71, +3.24] (p=0.082) | +0.15 [-1.05, +1.36] (p=1.000) | +0.38 [-0.39, +1.16] (p=1.000) |
+| physio_E_adaptive | +0.20 [-0.97, +1.44] (p=1.000) | +0.56 [-0.32, +1.50] (p=0.478) | +0.41 [-0.48, +1.34] (p=1.000) | +0.23 [-0.60, +0.89] (p=1.000) |
+| physio_F_domain | +0.69 [-0.89, +2.66] (p=1.000) | +0.99 [-0.09, +2.46] (p=0.471) | +0.74 [-0.09, +1.77] (p=1.000) | +0.17 [-0.72, +0.81] (p=1.000) |
+| hr_shape_physio_A_raw | -1.35 [-3.53, +1.00] (p=1.000) | +3.29 [+1.45, +5.28] (p=0.051) | +0.37 [-1.17, +2.00] (p=1.000) | +0.92 [-0.31, +2.11] (p=1.000) |
+| hr_shape_physio_B_session | +1.97 [-0.89, +4.89] (p=1.000) | +4.57 [+2.39, +6.86] (p=0.016)* | +2.51 [+0.75, +4.28] (p=0.259) | +0.48 [-0.93, +1.83] (p=1.000) |
+| hr_shape_physio_C_subject | +1.08 [-0.91, +3.21] (p=1.000) | +2.67 [+1.13, +4.40] (p=0.059) | +0.39 [-1.54, +2.46] (p=1.000) | +0.89 [-0.24, +2.11] (p=1.000) |
+| hr_shape_physio_D_robust | +0.55 [-1.73, +3.06] (p=1.000) | +2.91 [+1.57, +4.35] (p=0.012)* | +2.10 [-0.08, +4.28] (p=1.000) | +1.42 [-0.10, +3.15] (p=1.000) |
+| hr_shape_physio_E_adaptive | -0.25 [-2.57, +2.11] (p=1.000) | +1.03 [-0.85, +2.93] (p=0.478) | +1.23 [+0.06, +2.33] (p=0.843) | +0.83 [-0.27, +1.99] (p=1.000) |
+| hr_shape_physio_F_domain | +2.20 [-0.36, +5.16] (p=1.000) | +2.30 [+0.36, +4.59] (p=0.265) | +1.21 [+0.15, +2.33] (p=0.843) | +1.14 [-0.06, +2.31] (p=1.000) |
+| stable_A_raw | +0.38 [-1.80, +3.14] (p=1.000) | +1.95 [+0.39, +3.94] (p=0.247) | +0.26 [-1.06, +1.73] (p=1.000) | +1.26 [+0.47, +2.09] (p=0.081) |
+| stable_B_session | +0.96 [-0.60, +2.57] (p=1.000) | +1.75 [+0.75, +2.90] (p=0.059) | +0.76 [-0.56, +2.18] (p=1.000) | +1.08 [+0.46, +1.73] (p=0.036)* |
+| stable_C_subject | -0.70 [-2.47, +1.44] (p=1.000) | +1.79 [+0.46, +3.53] (p=0.156) | +0.19 [-1.07, +1.65] (p=1.000) | +1.47 [+0.70, +2.37] (p=0.014)* |
+| stable_D_robust | -0.27 [-2.29, +2.20] (p=1.000) | +1.73 [+0.41, +3.15] (p=0.191) | +0.66 [-0.73, +2.26] (p=1.000) | +1.30 [+0.50, +2.12] (p=0.076) |
+| stable_E_adaptive | -0.51 [-1.74, +0.83] (p=1.000) | +1.47 [+0.49, +2.59] (p=0.174) | +0.62 [-0.19, +1.44] (p=1.000) | +1.09 [+0.52, +1.80] (p=0.007)* |
+| stable_F_domain | +1.77 [-0.05, +3.99] (p=1.000) | +1.23 [+0.16, +2.68] (p=0.266) | -0.05 [-0.80, +0.63] (p=1.000) | +0.93 [+0.43, +1.49] (p=0.014)* |
+
+### W2. Pulse-contour (physiological) features: association, stability, added value
+
+| Site | Feature group | Target | Median |within-subj r| day 1 | Median sign agreement day1/day2 | Median rest ICC |
+|---|---|---|---|---|---|
+| ear | 3.0_hr_shape | dbp | 0.14 | 0.63 | 0.69 |
+| ear | 3.0_hr_shape | sbp | 0.22 | 0.71 | 0.69 |
+| ear | 4.0_physio | dbp | 0.07 | 0.55 | 0.62 |
+| ear | 4.0_physio | sbp | 0.09 | 0.71 | 0.62 |
+| ear | pca_composite | dbp | 0.10 | 0.66 | 0.62 |
+| ear | pca_composite | sbp | 0.10 | 0.65 | 0.62 |
+| finger | 3.0_hr_shape | dbp | 0.04 | 0.57 | 0.72 |
+| finger | 3.0_hr_shape | sbp | 0.06 | 0.61 | 0.72 |
+| finger | 4.0_physio | dbp | 0.05 | 0.51 | 0.72 |
+| finger | 4.0_physio | sbp | 0.12 | 0.63 | 0.72 |
+| finger | pca_composite | dbp | 0.08 | 0.56 | 0.74 |
+| finger | pca_composite | sbp | 0.09 | 0.63 | 0.74 |
+
+Strongest 4.0 contour features:
+
+| Site | Target | Feature | Within-subj r day 1 [95% CI] | Day 2 | Sign agreement | Rest ICC |
+|---|---|---|---|---|---|---|
+| ear | sbp | ear_upstroke_10_90 | +0.35 [+0.29, +0.47] | +0.29 | 0.87 | 0.72 |
+| ear | sbp | ear_decay_tau | -0.23 [-0.32, -0.14] | -0.16 | 0.77 | 0.41 |
+| finger | dbp | finger_beat_template_corr | -0.20 [-0.29, -0.07] | -0.12 | 0.74 | 0.38 |
+| ear | dbp | ear_upstroke_10_90 | +0.19 [+0.13, +0.32] | +0.21 | 0.74 | 0.72 |
+| finger | sbp | finger_decay_tau | -0.18 [-0.22, -0.06] | -0.02 | 0.54 | 0.35 |
+| finger | dbp | finger_beat_amp_cv | +0.18 [+0.08, +0.22] | +0.13 | 0.66 | 0.58 |
+| finger | sbp | finger_beat_template_corr | -0.17 [-0.30, -0.07] | -0.16 | 0.80 | 0.38 |
+| finger | sbp | finger_notch_t | +0.16 [+0.05, +0.25] | +0.05 | 0.63 | 0.64 |
+| ear | sbp | ear_beat_template_corr | -0.15 [-0.21, -0.07] | -0.09 | 0.71 | 0.48 |
+| ear | dbp | ear_decay_tau | -0.14 [-0.21, -0.10] | -0.09 | 0.77 | 0.41 |
+| ear | dbp | ear_beat_amp_cv | +0.12 [+0.05, +0.17] | +0.12 | 0.68 | 0.55 |
+| finger | dbp | finger_upstroke_10_90 | +0.11 [-0.01, +0.16] | +0.03 | 0.66 | 0.78 |
+
+Within-day change models (reference every 300 s), subject-level sign-flip tests, Holm per site × target:
+
+| Site | Target | Comparison | Δ MAE [95% CI] (Holm p) |
+|---|---|---|---|
+| ear | sbp | delta_hr_shape vs mean_change | -0.74 [-1.29, -0.23] (p=0.029)* |
+| ear | sbp | delta_physio vs mean_change | -0.21 [-0.74, +0.41] (p=0.521) |
+| ear | sbp | delta_hr_shape_physio vs mean_change | -0.82 [-1.37, -0.31] (p=0.021)* |
+| ear | sbp | delta_hr_shape_physio vs delta_hr_shape | -0.08 [-0.18, +0.01] (p=0.202) |
+| ear | dbp | delta_hr_shape vs mean_change | +0.01 [-0.32, +0.36] (p=1.000) |
+| ear | dbp | delta_physio vs mean_change | -0.06 [-0.28, +0.20] (p=1.000) |
+| ear | dbp | delta_hr_shape_physio vs mean_change | -0.02 [-0.38, +0.36] (p=1.000) |
+| ear | dbp | delta_hr_shape_physio vs delta_hr_shape | -0.03 [-0.10, +0.06] (p=1.000) |
+| finger | sbp | delta_hr_shape vs mean_change | -0.30 [-0.85, +0.26] (p=0.373) |
+| finger | sbp | delta_physio vs mean_change | -0.21 [-0.52, +0.08] (p=0.373) |
+| finger | sbp | delta_hr_shape_physio vs mean_change | -0.55 [-1.11, +0.01] (p=0.192) |
+| finger | sbp | delta_hr_shape_physio vs delta_hr_shape | -0.24 [-0.47, -0.04] (p=0.142) |
+| finger | dbp | delta_hr_shape vs mean_change | -0.21 [-0.60, +0.18] (p=0.972) |
+| finger | dbp | delta_physio vs mean_change | -0.01 [-0.16, +0.15] (p=1.000) |
+| finger | dbp | delta_hr_shape_physio vs mean_change | -0.23 [-0.62, +0.16] (p=0.972) |
+| finger | dbp | delta_hr_shape_physio vs delta_hr_shape | -0.02 [-0.10, +0.05] (p=1.000) |
+
+### W3. Graded PPG quality vs real prediction error (Auricle, population ridge, SBP)
+
+| site | good | unreliable | missing | degraded | n_windows |
+|---|---|---|---|---|---|
+| ear | 63.9% | 14.7% | 11.4% | 10.0% | 30841 |
+| finger | 68.1% | 18.3% | 1.2% | 12.4% | 30841 |
+
+| Site | Error | Class | Share of scored windows | Subject MAE | Window MAE | n subj | n windows |
+|---|---|---|---|---|---|---|---|
+| ear | ae | good | 70.9% | 14.84 | 14.89 | 39 | 10831 |
+| ear | ae | degraded | 10.7% | 17.34 | 15.21 | 39 | 1638 |
+| ear | ae | unreliable | 13.5% | 20.95 | 17.48 | 39 | 2055 |
+| ear | ae_cal | good | 72.5% | 12.90 | 13.53 | 39 | 10621 |
+| ear | ae_cal | degraded | 11.2% | 14.11 | 13.59 | 39 | 1633 |
+| ear | ae_cal | unreliable | 13.8% | 17.59 | 16.34 | 39 | 2017 |
+| finger | ae | good | 68.5% | 16.24 | 16.10 | 41 | 10999 |
+| finger | ae | degraded | 14.0% | 17.73 | 15.86 | 41 | 2244 |
+| finger | ae | unreliable | 17.4% | 24.68 | 21.59 | 41 | 2796 |
+| finger | ae_cal | good | 68.0% | 13.02 | 13.10 | 41 | 10768 |
+| finger | ae_cal | degraded | 14.2% | 15.30 | 13.96 | 41 | 2244 |
+| finger | ae_cal | unreliable | 17.7% | 24.21 | 22.99 | 41 | 2796 |
+
+| Site | Error | Comparison | Δ subject MAE [95% CI] (Holm p) |
+|---|---|---|---|
+| ear | ae | degraded vs good | +2.50 [+0.85, +4.22] (p=0.005)* |
+| ear | ae | unreliable vs good | +6.11 [+2.93, +9.57] (p=0.001)* |
+| ear | ae_cal | degraded vs good | +1.21 [-0.12, +2.60] (p=0.089) |
+| ear | ae_cal | unreliable vs good | +4.70 [+1.83, +7.72] (p=0.006)* |
+| finger | ae | degraded vs good | +1.49 [-0.09, +3.06] (p=0.084) |
+| finger | ae | unreliable vs good | +8.44 [+5.45, +11.45] (p=0.000)* |
+| finger | ae_cal | degraded vs good | +2.28 [+0.98, +3.63] (p=0.002)* |
+| finger | ae_cal | unreliable vs good | +11.19 [+8.56, +13.76] (p=0.000)* |
+
+Retention (keep windows with score ≥ threshold):
+
+| Site | Error | Min score | Windows kept | Subject MAE | Subjects ≥ 10 windows |
+|---|---|---|---|---|---|
+| ear | ae | 0.0 | 100.0% | 15.93 | 39 |
+| ear | ae | 25.0 | 91.6% | 15.56 | 39 |
+| ear | ae | 50.0 | 81.4% | 15.08 | 39 |
+| ear | ae | 75.0 | 80.4% | 15.05 | 39 |
+| ear | ae | 90.0 | 70.9% | 14.84 | 39 |
+| ear | ae | 99.9 | 70.9% | 14.84 | 39 |
+| ear | ae_cal | 0.0 | 100.0% | 13.80 | 39 |
+| ear | ae_cal | 25.0 | 93.9% | 13.42 | 39 |
+| ear | ae_cal | 50.0 | 83.4% | 12.99 | 39 |
+| ear | ae_cal | 75.0 | 82.3% | 12.95 | 39 |
+| ear | ae_cal | 90.0 | 72.5% | 12.90 | 39 |
+| ear | ae_cal | 99.9 | 72.5% | 12.90 | 39 |
+| finger | ae | 0.0 | 100.0% | 17.48 | 41 |
+| finger | ae | 25.0 | 95.7% | 17.02 | 41 |
+| finger | ae | 50.0 | 82.3% | 16.26 | 41 |
+| finger | ae | 75.0 | 81.7% | 16.24 | 41 |
+| finger | ae | 90.0 | 68.5% | 16.24 | 41 |
+| finger | ae | 99.9 | 68.5% | 16.24 | 41 |
+| finger | ae_cal | 0.0 | 100.0% | 15.28 | 41 |
+| finger | ae_cal | 25.0 | 95.7% | 14.66 | 41 |
+| finger | ae_cal | 50.0 | 82.0% | 13.35 | 41 |
+| finger | ae_cal | 75.0 | 81.4% | 13.28 | 41 |
+| finger | ae_cal | 90.0 | 68.0% | 13.02 | 41 |
+| finger | ae_cal | 99.9 | 68.0% | 13.02 | 41 |
+
+| site | error | within_subject_spearman_median | frac_subjects_negative | n_subjects |
+|---|---|---|---|---|
+| ear | ae | -0.095 | 0.692 | 39 |
+| ear | ae_cal | -0.125 | 0.718 | 39 |
+| finger | ae | -0.085 | 0.683 | 41 |
+| finger | ae_cal | -0.173 | 0.902 | 41 |
+
+### W4. Calibration strategies on identical splits (MAE, mmHg)
+
+| Site | Target | Scenario | population | training_mean | last_cuff | historical_mean | offset_2.0 | regularized_ppg_3.0 | bayes_reference_hier | bayes_ppg_hier |
+|---|---|---|---|---|---|---|---|---|---|---|
+| ear | dbp | cross_day_plus_one | 9.81 | 9.77 | 11.15 | 9.89 | 12.11 | 10.12 | 9.95 | 10.72 |
+| ear | dbp | cross_day_transfer | 9.81 | 9.77 | 11.71 | 10.85 | 11.53 | 10.39 | 9.10 | 9.22 |
+| ear | dbp | within_day_k1 | 10.97 | 10.73 | 10.20 | 10.20 | 10.82 | 8.84 | 9.19 | 9.41 |
+| ear | dbp | within_day_k3 | 11.00 | 10.77 | 8.76 | 8.37 | 8.42 | 8.08 | 8.19 | 8.20 |
+| ear | sbp | cross_day_plus_one | 15.09 | 15.68 | 13.58 | 13.78 | 13.67 | 12.23 | 12.55 | 12.22 |
+| ear | sbp | cross_day_transfer | 15.06 | 15.64 | 18.53 | 15.71 | 15.17 | 13.85 | 14.42 | 13.43 |
+| ear | sbp | within_day_k1 | 14.98 | 15.27 | 16.55 | 16.55 | 16.13 | 12.79 | 14.27 | 14.03 |
+| ear | sbp | within_day_k3 | 14.96 | 15.26 | 15.08 | 13.28 | 12.13 | 11.47 | 12.79 | 11.78 |
+| finger | dbp | cross_day_plus_one | 10.14 | 9.88 | 10.94 | 9.38 | 12.65 | 10.22 | 9.64 | 10.84 |
+| finger | dbp | cross_day_transfer | 10.14 | 9.88 | 10.57 | 10.32 | 10.54 | 9.86 | 9.20 | 9.37 |
+| finger | dbp | within_day_k1 | 11.48 | 10.90 | 9.55 | 9.55 | 9.73 | 9.08 | 8.86 | 9.14 |
+| finger | dbp | within_day_k3 | 11.64 | 11.00 | 8.46 | 8.44 | 8.56 | 8.46 | 8.28 | 8.47 |
+| finger | sbp | cross_day_plus_one | 16.01 | 15.65 | 13.88 | 13.10 | 14.67 | 13.77 | 12.65 | 13.28 |
+| finger | sbp | cross_day_transfer | 15.99 | 15.61 | 16.21 | 15.18 | 15.14 | 14.66 | 14.15 | 14.57 |
+| finger | sbp | within_day_k1 | 15.50 | 15.89 | 15.48 | 15.48 | 15.75 | 13.57 | 14.05 | 14.25 |
+| finger | sbp | within_day_k3 | 15.64 | 16.02 | 14.10 | 13.71 | 13.07 | 12.67 | 13.36 | 12.83 |
+
+Key paired comparisons (subject level; Holm within each site × target × scenario family):
+
+| Site | Target | Scenario | Comparison | Δ MAE [95% CI] (Holm p) |
+|---|---|---|---|---|
+| ear | sbp | cross_day_plus_one | bayes_ppg_hier vs bayes_reference_hier | -0.11 [-1.10, +0.87] (p=1.000) |
+| ear | sbp | cross_day_plus_one | bayes_reference_hier vs last_cuff | -1.00 [-2.24, +0.03] (p=0.509) |
+| ear | sbp | cross_day_plus_one | bayes_ppg_hier vs regularized_ppg_3.0 | +0.02 [-0.98, +1.05] (p=1.000) |
+| ear | sbp | cross_day_transfer | bayes_ppg_hier vs bayes_reference_hier | -0.75 [-1.56, +0.07] (p=0.374) |
+| ear | sbp | cross_day_transfer | bayes_reference_hier vs last_cuff | -4.03 [-7.24, -1.17] (p=0.085) |
+| ear | sbp | cross_day_transfer | bayes_ppg_hier vs regularized_ppg_3.0 | -0.39 [-1.26, +0.50] (p=0.411) |
+| ear | sbp | within_day_k1 | bayes_ppg_hier vs bayes_reference_hier | -0.41 [-1.50, +0.78] (p=0.879) |
+| ear | sbp | within_day_k1 | bayes_reference_hier vs last_cuff | -2.34 [-3.20, -1.55] (p=0.001)* |
+| ear | sbp | within_day_k1 | bayes_ppg_hier vs regularized_ppg_3.0 | +1.17 [+0.37, +1.99] (p=0.029)* |
+| ear | sbp | within_day_k3 | bayes_ppg_hier vs bayes_reference_hier | -1.09 [-1.91, -0.32] (p=0.025)* |
+| ear | sbp | within_day_k3 | bayes_reference_hier vs last_cuff | -1.98 [-4.12, -0.17] (p=0.104) |
+| ear | sbp | within_day_k3 | bayes_ppg_hier vs regularized_ppg_3.0 | +0.27 [-0.05, +0.61] (p=0.140) |
+| ear | dbp | cross_day_plus_one | bayes_ppg_hier vs bayes_reference_hier | +0.50 [-0.27, +1.34] (p=0.944) |
+| ear | dbp | cross_day_plus_one | bayes_reference_hier vs last_cuff | -1.17 [-1.96, -0.39] (p=0.031)* |
+| ear | dbp | cross_day_plus_one | bayes_ppg_hier vs regularized_ppg_3.0 | +0.61 [+0.02, +1.21] (p=0.281) |
+| ear | dbp | cross_day_transfer | bayes_ppg_hier vs bayes_reference_hier | +0.15 [-0.42, +0.71] (p=0.611) |
+| ear | dbp | cross_day_transfer | bayes_reference_hier vs last_cuff | -2.81 [-4.46, -1.36] (p=0.006)* |
+| ear | dbp | cross_day_transfer | bayes_ppg_hier vs regularized_ppg_3.0 | -1.07 [-2.14, -0.05] (p=0.172) |
+| ear | dbp | within_day_k1 | bayes_ppg_hier vs bayes_reference_hier | +0.10 [-0.59, +0.69] (p=0.779) |
+| ear | dbp | within_day_k1 | bayes_reference_hier vs last_cuff | -0.98 [-1.57, -0.39] (p=0.014)* |
+| ear | dbp | within_day_k1 | bayes_ppg_hier vs regularized_ppg_3.0 | +0.49 [-0.03, +1.02] (p=0.323) |
+| ear | dbp | within_day_k3 | bayes_ppg_hier vs bayes_reference_hier | -0.01 [-0.64, +0.53] (p=1.000) |
+| ear | dbp | within_day_k3 | bayes_reference_hier vs last_cuff | -0.59 [-1.86, +0.44] (p=1.000) |
+| ear | dbp | within_day_k3 | bayes_ppg_hier vs regularized_ppg_3.0 | +0.11 [-0.12, +0.32] (p=1.000) |
+| finger | sbp | cross_day_plus_one | bayes_ppg_hier vs bayes_reference_hier | +0.68 [-0.44, +1.80] (p=0.756) |
+| finger | sbp | cross_day_plus_one | bayes_reference_hier vs last_cuff | -0.95 [-1.97, -0.03] (p=0.358) |
+| finger | sbp | cross_day_plus_one | bayes_ppg_hier vs regularized_ppg_3.0 | -0.40 [-1.51, +0.66] (p=0.943) |
+| finger | sbp | cross_day_transfer | bayes_ppg_hier vs bayes_reference_hier | +0.47 [-0.56, +1.64] (p=0.913) |
+| finger | sbp | cross_day_transfer | bayes_reference_hier vs last_cuff | -2.31 [-4.73, -0.20] (p=0.451) |
+| finger | sbp | cross_day_transfer | bayes_ppg_hier vs regularized_ppg_3.0 | -0.25 [-1.04, +0.61] (p=0.913) |
+| finger | sbp | within_day_k1 | bayes_ppg_hier vs bayes_reference_hier | +0.03 [-1.22, +1.34] (p=0.965) |
+| finger | sbp | within_day_k1 | bayes_reference_hier vs last_cuff | -1.30 [-2.02, -0.65] (p=0.001)* |
+| finger | sbp | within_day_k1 | bayes_ppg_hier vs regularized_ppg_3.0 | +0.59 [-0.14, +1.32] (p=0.544) |
+| finger | sbp | within_day_k3 | bayes_ppg_hier vs bayes_reference_hier | -0.90 [-2.04, +0.18] (p=0.366) |
+| finger | sbp | within_day_k3 | bayes_reference_hier vs last_cuff | -0.94 [-2.50, +0.40] (p=0.450) |
+| finger | sbp | within_day_k3 | bayes_ppg_hier vs regularized_ppg_3.0 | +0.24 [-0.14, +0.60] (p=0.450) |
+| finger | dbp | cross_day_plus_one | bayes_ppg_hier vs bayes_reference_hier | +0.92 [+0.36, +1.54] (p=0.011)* |
+| finger | dbp | cross_day_plus_one | bayes_reference_hier vs last_cuff | -1.23 [-1.92, -0.53] (p=0.003)* |
+| finger | dbp | cross_day_plus_one | bayes_ppg_hier vs regularized_ppg_3.0 | +0.55 [-0.00, +1.15] (p=0.333) |
+| finger | dbp | cross_day_transfer | bayes_ppg_hier vs bayes_reference_hier | +0.09 [-0.55, +0.76] (p=0.795) |
+| finger | dbp | cross_day_transfer | bayes_reference_hier vs last_cuff | -1.64 [-3.01, -0.38] (p=0.144) |
+| finger | dbp | cross_day_transfer | bayes_ppg_hier vs regularized_ppg_3.0 | -0.45 [-1.16, +0.23] (p=0.407) |
+| finger | dbp | within_day_k1 | bayes_ppg_hier vs bayes_reference_hier | +0.17 [-0.32, +0.70] (p=1.000) |
+| finger | dbp | within_day_k1 | bayes_reference_hier vs last_cuff | -0.64 [-1.12, -0.18] (p=0.091) |
+| finger | dbp | within_day_k1 | bayes_ppg_hier vs regularized_ppg_3.0 | +0.12 [-0.37, +0.60] (p=1.000) |
+| finger | dbp | within_day_k3 | bayes_ppg_hier vs bayes_reference_hier | +0.08 [-0.23, +0.43] (p=1.000) |
+| finger | dbp | within_day_k3 | bayes_reference_hier vs last_cuff | -0.26 [-1.09, +0.49] (p=1.000) |
+| finger | dbp | within_day_k3 | bayes_ppg_hier vs regularized_ppg_3.0 | +0.03 [-0.19, +0.23] (p=1.000) |
+
+90 % prediction intervals for `bayes_ppg_hier`:
+
+| Site | Target | Scenario | Interval | Coverage | Mean width (mmHg) | Winkler | 10th-pct subject coverage |
+|---|---|---|---|---|---|---|---|
+| ear | sbp | cross_day_plus_one | gaussian_model | 0.86 | 44.71 | 73.11 | 0.65 |
+| ear | sbp | cross_day_plus_one | conformal_scaled | 0.89 | 50.59 | 73.47 | 0.73 |
+| ear | sbp | cross_day_plus_one | conformal_const | 0.89 | 50.76 | 74.07 | 0.74 |
+| ear | sbp | cross_day_plus_one | quantile_gb | 0.68 | 35.16 | 103.73 | 0.42 |
+| ear | sbp | cross_day_transfer | gaussian_model | 0.91 | 58.63 | 77.43 | 0.77 |
+| ear | sbp | cross_day_transfer | conformal_scaled | 0.90 | 57.74 | 78.02 | 0.77 |
+| ear | sbp | cross_day_transfer | conformal_const | 0.90 | 57.74 | 78.02 | 0.77 |
+| ear | sbp | cross_day_transfer | quantile_gb | 0.80 | 50.32 | 93.30 | 0.49 |
+| ear | sbp | within_day_k1 | gaussian_model | 0.80 | 45.10 | 83.59 | 0.55 |
+| ear | sbp | within_day_k1 | conformal_scaled | 0.90 | 59.29 | 77.68 | 0.73 |
+| ear | sbp | within_day_k1 | conformal_const | 0.90 | 60.36 | 78.79 | 0.73 |
+| ear | sbp | within_day_k1 | quantile_gb | 0.71 | 36.27 | 92.05 | 0.43 |
+| ear | sbp | within_day_k3 | gaussian_model | 0.84 | 41.04 | 71.48 | 0.63 |
+| ear | sbp | within_day_k3 | conformal_scaled | 0.90 | 51.43 | 68.71 | 0.79 |
+| ear | sbp | within_day_k3 | conformal_const | 0.90 | 52.66 | 70.12 | 0.79 |
+| ear | sbp | within_day_k3 | quantile_gb | 0.75 | 35.42 | 83.15 | 0.52 |
+| ear | dbp | cross_day_plus_one | gaussian_model | 0.82 | 32.64 | 63.90 | 0.41 |
+| ear | dbp | cross_day_plus_one | conformal_scaled | 0.90 | 45.53 | 63.66 | 0.70 |
+| ear | dbp | cross_day_plus_one | conformal_const | 0.90 | 46.43 | 64.41 | 0.69 |
+| ear | dbp | cross_day_plus_one | quantile_gb | 0.68 | 23.54 | 80.27 | 0.45 |
+| ear | dbp | cross_day_transfer | gaussian_model | 0.94 | 44.11 | 56.70 | 0.92 |
+| ear | dbp | cross_day_transfer | conformal_scaled | 0.91 | 37.97 | 55.92 | 0.78 |
+| ear | dbp | cross_day_transfer | conformal_const | 0.91 | 37.97 | 55.92 | 0.78 |
+| ear | dbp | cross_day_transfer | quantile_gb | 0.79 | 30.56 | 59.71 | 0.62 |
+| ear | dbp | within_day_k1 | gaussian_model | 0.87 | 32.88 | 54.43 | 0.68 |
+| ear | dbp | within_day_k1 | conformal_scaled | 0.91 | 36.87 | 54.27 | 0.78 |
+| ear | dbp | within_day_k1 | conformal_const | 0.91 | 37.34 | 54.78 | 0.81 |
+| ear | dbp | within_day_k1 | quantile_gb | 0.73 | 26.52 | 63.63 | 0.44 |
+| ear | dbp | within_day_k3 | gaussian_model | 0.88 | 29.76 | 49.50 | 0.67 |
+| ear | dbp | within_day_k3 | conformal_scaled | 0.90 | 32.66 | 49.17 | 0.75 |
+| ear | dbp | within_day_k3 | conformal_const | 0.91 | 33.13 | 49.77 | 0.75 |
+| ear | dbp | within_day_k3 | quantile_gb | 0.73 | 23.70 | 60.92 | 0.50 |
+| finger | sbp | cross_day_plus_one | gaussian_model | 0.83 | 47.03 | 77.38 | 0.63 |
+| finger | sbp | cross_day_plus_one | conformal_scaled | 0.89 | 56.38 | 76.37 | 0.74 |
+| finger | sbp | cross_day_plus_one | conformal_const | 0.89 | 56.88 | 76.25 | 0.72 |
+| finger | sbp | cross_day_plus_one | quantile_gb | 0.74 | 40.47 | 91.30 | 0.54 |
+| finger | sbp | cross_day_transfer | gaussian_model | 0.90 | 61.90 | 81.68 | 0.77 |
+| finger | sbp | cross_day_transfer | conformal_scaled | 0.89 | 59.81 | 81.87 | 0.73 |
+| finger | sbp | cross_day_transfer | conformal_const | 0.89 | 59.81 | 81.87 | 0.73 |
+| finger | sbp | cross_day_transfer | quantile_gb | 0.81 | 53.96 | 91.73 | 0.52 |
+| finger | sbp | within_day_k1 | gaussian_model | 0.82 | 47.17 | 81.77 | 0.50 |
+| finger | sbp | within_day_k1 | conformal_scaled | 0.90 | 60.66 | 77.19 | 0.76 |
+| finger | sbp | within_day_k1 | conformal_const | 0.91 | 61.35 | 78.61 | 0.76 |
+| finger | sbp | within_day_k1 | quantile_gb | 0.73 | 41.39 | 99.50 | 0.36 |
+| finger | sbp | within_day_k3 | gaussian_model | 0.82 | 43.22 | 77.10 | 0.64 |
+| finger | sbp | within_day_k3 | conformal_scaled | 0.90 | 54.87 | 73.20 | 0.79 |
+| finger | sbp | within_day_k3 | conformal_const | 0.90 | 55.87 | 74.37 | 0.78 |
+| finger | sbp | within_day_k3 | quantile_gb | 0.74 | 40.02 | 96.50 | 0.39 |
+| finger | dbp | cross_day_plus_one | gaussian_model | 0.80 | 32.23 | 63.77 | 0.43 |
+| finger | dbp | cross_day_plus_one | conformal_scaled | 0.92 | 46.68 | 59.90 | 0.77 |
+| finger | dbp | cross_day_plus_one | conformal_const | 0.92 | 47.71 | 60.83 | 0.75 |
+| finger | dbp | cross_day_plus_one | quantile_gb | 0.67 | 24.37 | 83.00 | 0.39 |
+| finger | dbp | cross_day_transfer | gaussian_model | 0.93 | 43.38 | 55.88 | 0.89 |
+| finger | dbp | cross_day_transfer | conformal_scaled | 0.90 | 38.67 | 55.76 | 0.77 |
+| finger | dbp | cross_day_transfer | conformal_const | 0.90 | 38.67 | 55.76 | 0.77 |
+| finger | dbp | cross_day_transfer | quantile_gb | 0.81 | 32.26 | 57.99 | 0.62 |
+| finger | dbp | within_day_k1 | gaussian_model | 0.87 | 32.39 | 52.34 | 0.66 |
+| finger | dbp | within_day_k1 | conformal_scaled | 0.90 | 35.98 | 52.38 | 0.71 |
+| finger | dbp | within_day_k1 | conformal_const | 0.90 | 36.78 | 53.05 | 0.70 |
+| finger | dbp | within_day_k1 | quantile_gb | 0.75 | 27.40 | 62.80 | 0.51 |
+| finger | dbp | within_day_k3 | gaussian_model | 0.87 | 29.57 | 51.27 | 0.75 |
+| finger | dbp | within_day_k3 | conformal_scaled | 0.90 | 33.75 | 50.74 | 0.78 |
+| finger | dbp | within_day_k3 | conformal_const | 0.90 | 34.21 | 51.35 | 0.80 |
+| finger | dbp | within_day_k3 | quantile_gb | 0.74 | 26.02 | 60.92 | 0.52 |
+
+Coverage at nominal 50/80/90/95 % (calibration error = mean |empirical − nominal|):
+
+| Site | Target | Scenario | Interval | 50 % | 80 % | 90 % | 95 % | Cal. error |
+|---|---|---|---|---|---|---|---|---|
+| ear | sbp | cross_day_plus_one | model | 0.46 | 0.77 | 0.87 | 0.91 | 0.04 |
+| ear | sbp | cross_day_plus_one | scaled | 0.50 | 0.80 | 0.90 | 0.95 | 0.00 |
+| ear | sbp | cross_day_plus_one | const | 0.50 | 0.80 | 0.90 | 0.95 | 0.00 |
+| ear | sbp | cross_day_transfer | model | 0.56 | 0.82 | 0.90 | 0.94 | 0.02 |
+| ear | sbp | cross_day_transfer | scaled | 0.49 | 0.79 | 0.89 | 0.95 | 0.01 |
+| ear | sbp | cross_day_transfer | const | 0.49 | 0.79 | 0.89 | 0.95 | 0.01 |
+| ear | sbp | within_day_k1 | model | 0.42 | 0.70 | 0.80 | 0.86 | 0.09 |
+| ear | sbp | within_day_k1 | scaled | 0.50 | 0.80 | 0.90 | 0.95 | 0.00 |
+| ear | sbp | within_day_k1 | const | 0.50 | 0.80 | 0.90 | 0.95 | 0.00 |
+| ear | sbp | within_day_k3 | model | 0.48 | 0.74 | 0.83 | 0.88 | 0.05 |
+| ear | sbp | within_day_k3 | scaled | 0.50 | 0.80 | 0.90 | 0.95 | 0.00 |
+| ear | sbp | within_day_k3 | const | 0.50 | 0.80 | 0.90 | 0.95 | 0.00 |
+| ear | dbp | cross_day_plus_one | model | 0.42 | 0.69 | 0.79 | 0.85 | 0.10 |
+| ear | dbp | cross_day_plus_one | scaled | 0.50 | 0.80 | 0.88 | 0.92 | 0.01 |
+| ear | dbp | cross_day_plus_one | const | 0.51 | 0.80 | 0.88 | 0.91 | 0.02 |
+| ear | dbp | cross_day_transfer | model | 0.61 | 0.87 | 0.93 | 0.95 | 0.05 |
+| ear | dbp | cross_day_transfer | scaled | 0.51 | 0.80 | 0.90 | 0.94 | 0.01 |
+| ear | dbp | cross_day_transfer | const | 0.51 | 0.80 | 0.90 | 0.94 | 0.01 |
+| ear | dbp | within_day_k1 | model | 0.45 | 0.76 | 0.86 | 0.92 | 0.04 |
+| ear | dbp | within_day_k1 | scaled | 0.50 | 0.80 | 0.90 | 0.95 | 0.00 |
+| ear | dbp | within_day_k1 | const | 0.50 | 0.80 | 0.90 | 0.95 | 0.00 |
+| ear | dbp | within_day_k3 | model | 0.49 | 0.78 | 0.87 | 0.92 | 0.02 |
+| ear | dbp | within_day_k3 | scaled | 0.50 | 0.80 | 0.90 | 0.95 | 0.00 |
+| ear | dbp | within_day_k3 | const | 0.50 | 0.80 | 0.90 | 0.95 | 0.00 |
+| finger | sbp | cross_day_plus_one | model | 0.46 | 0.73 | 0.83 | 0.90 | 0.06 |
+| finger | sbp | cross_day_plus_one | scaled | 0.51 | 0.79 | 0.89 | 0.94 | 0.01 |
+| finger | sbp | cross_day_plus_one | const | 0.51 | 0.79 | 0.89 | 0.94 | 0.01 |
+| finger | sbp | cross_day_transfer | model | 0.53 | 0.81 | 0.91 | 0.95 | 0.01 |
+| finger | sbp | cross_day_transfer | scaled | 0.51 | 0.80 | 0.90 | 0.94 | 0.01 |
+| finger | sbp | cross_day_transfer | const | 0.51 | 0.80 | 0.90 | 0.94 | 0.01 |
+| finger | sbp | within_day_k1 | model | 0.44 | 0.70 | 0.81 | 0.88 | 0.08 |
+| finger | sbp | within_day_k1 | scaled | 0.50 | 0.80 | 0.90 | 0.95 | 0.00 |
+| finger | sbp | within_day_k1 | const | 0.50 | 0.80 | 0.90 | 0.95 | 0.00 |
+| finger | sbp | within_day_k3 | model | 0.45 | 0.72 | 0.82 | 0.88 | 0.07 |
+| finger | sbp | within_day_k3 | scaled | 0.50 | 0.80 | 0.90 | 0.95 | 0.00 |
+| finger | sbp | within_day_k3 | const | 0.50 | 0.80 | 0.90 | 0.95 | 0.00 |
+| finger | dbp | cross_day_plus_one | model | 0.41 | 0.67 | 0.78 | 0.84 | 0.11 |
+| finger | dbp | cross_day_plus_one | scaled | 0.50 | 0.81 | 0.90 | 0.94 | 0.01 |
+| finger | dbp | cross_day_plus_one | const | 0.51 | 0.80 | 0.90 | 0.93 | 0.01 |
+| finger | dbp | cross_day_transfer | model | 0.58 | 0.86 | 0.93 | 0.95 | 0.04 |
+| finger | dbp | cross_day_transfer | scaled | 0.50 | 0.79 | 0.90 | 0.95 | 0.00 |
+| finger | dbp | cross_day_transfer | const | 0.50 | 0.79 | 0.90 | 0.95 | 0.00 |
+| finger | dbp | within_day_k1 | model | 0.47 | 0.76 | 0.86 | 0.92 | 0.04 |
+| finger | dbp | within_day_k1 | scaled | 0.50 | 0.79 | 0.89 | 0.94 | 0.01 |
+| finger | dbp | within_day_k1 | const | 0.50 | 0.79 | 0.90 | 0.95 | 0.00 |
+| finger | dbp | within_day_k3 | model | 0.47 | 0.75 | 0.86 | 0.91 | 0.04 |
+| finger | dbp | within_day_k3 | scaled | 0.50 | 0.80 | 0.90 | 0.95 | 0.00 |
+| finger | dbp | within_day_k3 | const | 0.50 | 0.80 | 0.90 | 0.95 | 0.00 |
+
+Adaptive recalibration interval (posterior after one reading; 90 % half-width):
+
+| Site | Target | Base | Half-width threshold (mmHg) | Half-width right after a reading | Time until threshold |
+|---|---|---|---|---|---|
+| ear | dbp | pmean | 10.0 | 12.49 | exceeded at the reading |
+| ear | dbp | pmean | 15.0 | 12.49 | 303 s |
+| ear | dbp | pred | 10.0 | 13.20 | exceeded at the reading |
+| ear | dbp | pred | 15.0 | 13.20 | 186 s |
+| ear | sbp | pmean | 10.0 | 18.08 | exceeded at the reading |
+| ear | sbp | pmean | 15.0 | 18.08 | exceeded at the reading |
+| ear | sbp | pred | 10.0 | 17.10 | exceeded at the reading |
+| ear | sbp | pred | 15.0 | 17.10 | exceeded at the reading |
+| finger | dbp | pmean | 10.0 | 12.01 | exceeded at the reading |
+| finger | dbp | pmean | 15.0 | 12.01 | 294 s |
+| finger | dbp | pred | 10.0 | 12.81 | exceeded at the reading |
+| finger | dbp | pred | 15.0 | 12.81 | 236 s |
+| finger | sbp | pmean | 10.0 | 16.90 | exceeded at the reading |
+| finger | sbp | pmean | 15.0 | 16.90 | exceeded at the reading |
+| finger | sbp | pred | 10.0 | 18.08 | exceeded at the reading |
+| finger | sbp | pred | 15.0 | 18.08 | exceeded at the reading |
+
+### W5. External validation on VitalDB (zero-shot, independent patients, adaptation kept apart)
+
+| Experiment | Test set | Target | Method | MAE | Bias | n patients |
+|---|---|---|---|---|---|---|
+| E1 | vitaldb_v3 | sbp | E1_auricle_ridge_zero_shot | 19.06 | -11.71 | 40 |
+| E1 | vitaldb_v3 | sbp | E1_auricle_training_mean | 16.03 | -1.32 | 40 |
+| E1 | vitaldb_ext | sbp | E1_auricle_ridge_zero_shot | 19.63 | -12.79 | 57 |
+| E1 | vitaldb_ext | sbp | E1_auricle_training_mean | 16.51 | -5.88 | 57 |
+| E1 | vitaldb_ext | sbp | E1_vitaldb_v3_ridge | 14.30 | -4.54 | 57 |
+| E1 | vitaldb_ext | sbp | E1_vitaldb_v3_mean | 16.33 | -4.55 | 57 |
+| control | vitaldb_v3 | sbp | last_reference | 18.26 | -5.49 | 34 |
+| control | vitaldb_v3 | sbp | historical_mean | 18.21 | -6.08 | 34 |
+| E2 | vitaldb_v3 | sbp | E2_mean_change_auricle | 18.24 | -5.39 | 34 |
+| E2 | vitaldb_v3 | sbp | E2_delta_hr_shape_auricle_zero_shot | 18.38 | -5.91 | 34 |
+| control | vitaldb_ext | sbp | last_reference | 21.31 | -11.12 | 48 |
+| control | vitaldb_ext | sbp | historical_mean | 19.79 | -10.48 | 48 |
+| E2 | vitaldb_ext | sbp | E2_mean_change_auricle | 21.27 | -11.03 | 48 |
+| E2 | vitaldb_ext | sbp | E2_delta_hr_shape_auricle_zero_shot | 20.99 | -11.30 | 48 |
+| E3 | vitaldb_ext | sbp | E3_population_mean_v3 | 16.37 | -5.76 | 48 |
+| E3 | vitaldb_ext | sbp | E3_mean_change_v3 | 21.29 | -11.08 | 48 |
+| E3 | vitaldb_ext | sbp | E3_delta_hr_shape_v3 | 19.72 | -10.98 | 48 |
+| E3 | vitaldb_ext | sbp | E3_delta_hr_shape_pat_v3 | 19.85 | -11.71 | 48 |
+| E4 | vitaldb_ext | sbp | E4_delta_hr_shape_pooled_adapted | 19.77 | -11.42 | 48 |
+| E1 | vitaldb_v3 | dbp | E1_auricle_ridge_zero_shot | 12.69 | 7.72 | 40 |
+| E1 | vitaldb_v3 | dbp | E1_auricle_training_mean | 12.16 | 6.68 | 40 |
+| E1 | vitaldb_ext | dbp | E1_auricle_ridge_zero_shot | 13.71 | 10.58 | 57 |
+| E1 | vitaldb_ext | dbp | E1_auricle_training_mean | 12.22 | 8.35 | 57 |
+| E1 | vitaldb_ext | dbp | E1_vitaldb_v3_ridge | 9.12 | 1.60 | 57 |
+| E1 | vitaldb_ext | dbp | E1_vitaldb_v3_mean | 9.88 | 1.67 | 57 |
+| control | vitaldb_v3 | dbp | last_reference | 11.14 | 2.29 | 34 |
+| control | vitaldb_v3 | dbp | historical_mean | 9.75 | 2.10 | 34 |
+| E2 | vitaldb_v3 | dbp | E2_mean_change_auricle | 11.16 | 2.48 | 34 |
+| E2 | vitaldb_v3 | dbp | E2_delta_hr_shape_auricle_zero_shot | 10.93 | 2.14 | 34 |
+| control | vitaldb_ext | dbp | last_reference | 11.53 | 2.53 | 48 |
+| control | vitaldb_ext | dbp | historical_mean | 10.39 | 2.71 | 48 |
+| E2 | vitaldb_ext | dbp | E2_mean_change_auricle | 11.57 | 2.73 | 48 |
+| E2 | vitaldb_ext | dbp | E2_delta_hr_shape_auricle_zero_shot | 11.05 | 2.61 | 48 |
+| E3 | vitaldb_ext | dbp | E3_population_mean_v3 | 9.70 | 0.77 | 48 |
+| E3 | vitaldb_ext | dbp | E3_mean_change_v3 | 11.42 | 1.89 | 48 |
+| E3 | vitaldb_ext | dbp | E3_delta_hr_shape_v3 | 10.58 | 2.03 | 48 |
+| E3 | vitaldb_ext | dbp | E3_delta_hr_shape_pat_v3 | 10.48 | 1.72 | 48 |
+| E4 | vitaldb_ext | dbp | E4_delta_hr_shape_pooled_adapted | 10.63 | 2.27 | 48 |
+
+| Target | Test set | Comparison | Δ MAE [95% CI] (Holm p) |
+|---|---|---|---|
+| sbp | vitaldb_v3 | auricle ridge vs auricle training mean | +3.18 [+1.62, +4.72] (p=0.004)* |
+| sbp | vitaldb_ext | auricle ridge vs auricle training mean | +3.57 [+2.18, +5.06] (p=0.001)* |
+| sbp | vitaldb_ext | vitaldb_v3 ridge vs vitaldb_v3 mean (in-domain, new patients) | -2.11 [-3.27, -1.07] (p=0.002)* |
+| sbp | vitaldb_v3 | E2_delta_hr_shape_auricle_zero_shot vs E2_mean_change_auricle | +0.68 [-0.09, +1.41] (p=0.741) |
+| sbp | vitaldb_v3 | E2_delta_hr_shape_auricle_zero_shot vs last_reference | +0.65 [-0.11, +1.38] (p=0.756) |
+| sbp | vitaldb_ext | E2_delta_hr_shape_auricle_zero_shot vs E2_mean_change_auricle | -0.24 [-1.55, +0.91] (p=1.000) |
+| sbp | vitaldb_ext | E2_delta_hr_shape_auricle_zero_shot vs last_reference | -0.28 [-1.59, +0.87] (p=1.000) |
+| sbp | vitaldb_ext | E3_delta_hr_shape_v3 vs E3_mean_change_v3 | -0.79 [-2.07, +0.60] (p=1.000) |
+| sbp | vitaldb_ext | E3_delta_hr_shape_pat_v3 vs E3_mean_change_v3 | -0.40 [-2.15, +1.43] (p=1.000) |
+| sbp | vitaldb_ext | E3_delta_hr_shape_v3 vs last_reference | -0.81 [-2.09, +0.58] (p=1.000) |
+| sbp | vitaldb_ext | E3_population_mean_v3 vs last_reference | -5.87 [-8.69, -3.33] (p=0.001)* |
+| sbp | vitaldb_ext | historical_mean vs last_reference | -1.53 [-3.53, +0.51] (p=0.985) |
+| sbp | vitaldb_ext | E4_delta_hr_shape_pooled_adapted vs E3_delta_hr_shape_v3 | -0.13 [-0.89, +0.60] (p=1.000) |
+| sbp | vitaldb_ext | E4_delta_hr_shape_pooled_adapted vs E3_mean_change_v3 | -0.91 [-1.77, +0.00] (p=0.573) |
+| dbp | vitaldb_v3 | auricle ridge vs auricle training mean | +0.46 [-0.09, +1.04] (p=0.479) |
+| dbp | vitaldb_ext | auricle ridge vs auricle training mean | +1.05 [+0.42, +1.77] (p=0.039)* |
+| dbp | vitaldb_ext | vitaldb_v3 ridge vs vitaldb_v3 mean (in-domain, new patients) | -0.74 [-1.42, -0.01] (p=0.337) |
+| dbp | vitaldb_v3 | E2_delta_hr_shape_auricle_zero_shot vs E2_mean_change_auricle | -0.17 [-0.53, +0.21] (p=1.000) |
+| dbp | vitaldb_v3 | E2_delta_hr_shape_auricle_zero_shot vs last_reference | -0.15 [-0.52, +0.22] (p=1.000) |
+| dbp | vitaldb_ext | E2_delta_hr_shape_auricle_zero_shot vs E2_mean_change_auricle | -0.50 [-0.94, -0.02] (p=0.337) |
+| dbp | vitaldb_ext | E2_delta_hr_shape_auricle_zero_shot vs last_reference | -0.47 [-0.91, +0.01] (p=0.337) |
+| dbp | vitaldb_ext | E3_delta_hr_shape_v3 vs E3_mean_change_v3 | -0.87 [-1.54, -0.24] (p=0.127) |
+| dbp | vitaldb_ext | E3_delta_hr_shape_pat_v3 vs E3_mean_change_v3 | -0.97 [-1.64, -0.27] (p=0.093) |
+| dbp | vitaldb_ext | E3_delta_hr_shape_v3 vs last_reference | -0.94 [-1.61, -0.31] (p=0.088) |
+| dbp | vitaldb_ext | E3_population_mean_v3 vs last_reference | -1.94 [-3.78, -0.20] (p=0.337) |
+| dbp | vitaldb_ext | historical_mean vs last_reference | -0.95 [-2.03, +0.15] (p=0.478) |
+| dbp | vitaldb_ext | E4_delta_hr_shape_pooled_adapted vs E3_delta_hr_shape_v3 | +0.03 [-0.43, +0.44] (p=1.000) |
+| dbp | vitaldb_ext | E4_delta_hr_shape_pooled_adapted vs E3_mean_change_v3 | -0.85 [-1.35, -0.35] (p=0.040)* |
+
+Bland–Altman (repeated measures, E1):
+
+| Test set | Target | Method | Bias | LoA low | LoA high | SD between patients | SD within patient | n |
+|---|---|---|---|---|---|---|---|---|
+| vitaldb_v3 | sbp | E1_auricle_ridge_zero_shot | -11.71 | -54.18 | 30.77 | 14.95 | 15.69 | 40 |
+| vitaldb_v3 | sbp | E1_auricle_training_mean | -1.32 | -41.34 | 38.70 | 13.35 | 15.45 | 40 |
+| vitaldb_ext | sbp | E1_auricle_ridge_zero_shot | -12.79 | -56.61 | 31.03 | 14.83 | 16.73 | 57 |
+| vitaldb_ext | sbp | E1_auricle_training_mean | -5.88 | -46.39 | 34.64 | 12.07 | 16.78 | 57 |
+| vitaldb_ext | sbp | E1_vitaldb_v3_ridge | -4.54 | -39.91 | 30.84 | 10.78 | 14.48 | 57 |
+| vitaldb_ext | sbp | E1_vitaldb_v3_mean | -4.55 | -45.07 | 35.96 | 12.07 | 16.78 | 57 |
+| vitaldb_v3 | dbp | E1_auricle_ridge_zero_shot | 7.72 | -18.26 | 33.70 | 10.25 | 8.40 | 40 |
+| vitaldb_v3 | dbp | E1_auricle_training_mean | 6.68 | -18.89 | 32.25 | 9.86 | 8.55 | 40 |
+| vitaldb_ext | dbp | E1_auricle_ridge_zero_shot | 10.58 | -14.19 | 35.36 | 8.95 | 8.93 | 57 |
+| vitaldb_ext | dbp | E1_auricle_training_mean | 8.35 | -15.61 | 32.32 | 8.29 | 8.99 | 57 |
+| vitaldb_ext | dbp | E1_vitaldb_v3_ridge | 1.60 | -21.04 | 24.23 | 8.33 | 8.00 | 57 |
+| vitaldb_ext | dbp | E1_vitaldb_v3_mean | 1.67 | -22.29 | 25.64 | 8.29 | 8.99 | 57 |
+
+### W6. Streaming cost and export (desktop CPU only; no embedded hardware was available)
+
+| fs_hz | quality_grading | windows_evaluated | feature_ms_p50 | feature_ms_p95 | model_ms_p50 | model_ms_p95 | throughput_windows_per_s | realtime_factor | cpu_utilisation | peak_python_mem_mb | feature_ms_p50_3.0 | model_ms_p50_3.0 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 100 | False | 59 | 6.44 | 12.88 | 3.861 | 7.357 | 75.6 | 384.3 | 0.9 | 0.21 | 12.61 | 3.18 |
+| 100 | True | 59 | 9.37 | 14.87 | 3.713 | 6.381 | 69.6 | 354.0 | 0.87 | 0.16 | 12.61 | 3.18 |
+| 1000 | False | 59 | 11.57 | 12.85 | 6.035 | 7.064 | 55.9 | 284.2 | 0.96 | 0.8 | 24.66 | 6.096 |
+| 1000 | True | 59 | 16.68 | 18.32 | 5.614 | 6.451 | 44.3 | 225.2 | 0.99 | 0.8 | 24.66 | 6.096 |
+
+| fs_hz | buffer_samples | chunk_samples | np_roll_us_per_push | ring_buffer_us_per_push | identical_last_10s |
+|---|---|---|---|---|---|
+| 100 | 3000 | 32 | 8.17 | 0.63 | True |
+| 1000 | 30000 | 320 | 15.74 | 0.66 | True |
+
+| target | precision | n_windows | max_abs_diff_mmHg | p99_abs_diff_mmHg | us_per_window_batched |
+|---|---|---|---|---|---|
+| sbp | float64 | 22789 | 2.8e-14 | 1.4e-14 | 0.2641 |
+| sbp | float32 | 22789 | 2.1e-05 | 1.1e-05 | 0.1912 |
+| sbp | float16 | 22789 | 0.11 | 0.062 | 0.3034 |
+| sbp | int8 | 22789 | 8.7 | 6.7 | 0.116 |
+| dbp | float64 | 22789 | 1.4e-14 | 1.4e-14 | 0.268 |
+| dbp | float32 | 22789 | 9.2e-06 | 6.8e-06 | 0.2059 |
+| dbp | float16 | 22789 | 0.07 | 0.044 | 0.3378 |
+| dbp | int8 | 22789 | 9.3 | 6.9 | 0.1525 |
+
+<!-- END V4 -->
+
+![Cross-day shift](figures/v4_cross_day_shift.png)
+![Quality retention](figures/v4_quality_retention.png)
+![Interval coverage](figures/v4_interval_coverage.png)
+![External validation](figures/v4_external.png)
+
+### Interpretation (4.0)
+
+**Cross-day prediction (W1): the failure is explained, but not fixed.**
+- **Features move more between days than within a day.** The median shift is about 0.75 robust SD across days
+  vs about 0.5 within day 1. The excess is significant for 35 of 39 ear features and 28 of 39 finger features
+  (HR + 3.0 shape + 4.0 contour set).
+- **The resting pulse shape itself changes between days.** The rest template is less similar day-to-day than
+  within day 1 for 69 % (ear) and 79 % (finger) of subjects (Wilcoxon p = 0.002 and 0.0005).
+- **Pulse amplitude typically changes by a factor of about 1.65–1.67.**
+- **These shifts are largely unrelated to BP.** Across subjects, the between-day change in a feature correlates
+  with the between-day change in resting SBP at a median |r| of only 0.12 (ear) and 0.09 (finger). The *direction* of the ear
+  features that track BP within a day is mostly preserved across days (88 % sign agreement), but the BP-related
+  part is small next to the BP-unrelated shift.
+- **The most plausible causes are measurement-related:** sensor re-placement, contact pressure and gain, and
+  perfusion state. Temperature is not recorded in Auricle and could not be tested. The PPG is AC-coupled, so a
+  perfusion index is not available either.
+- **No normalisation helped.** Session, subject, robust, adaptive and domain (moment-matching) normalisation, and a
+  training-fold "stable features" subset, were all tested. **None beat the `mean_change` control.** Six
+  combinations were significantly *worse* after Holm correction, all for DBP: ear HR + shape + contour with
+  session (+4.6 mmHg) or robust (+2.9) normalisation, and four finger stable-subset variants (+0.9 to +1.5). Removing a
+  session offset from the features cannot separate a nuisance shift from a real BP shift, because an unlabelled
+  warm-up contains both.
+- **Conclusion:** with this sensor setup, cross-day generalisation is limited by measurement non-stationarity,
+  not by the model. Fixed sensor placement and contact force, or an explicit per-session optical reference, would
+  have to come first.
+
+**Physiological features (W2).** Most contour landmarks are weaker within-person SBP correlates than the 3.0 shape
+set (median |r| about 0.09 vs 0.22 at the ear). The exception is the 10–90 % upstroke time at the ear (r ≈ 0.36,
+same sign on both days in 87 % of subjects, resting ICC 0.72), which is closely related to the existing
+systolic-time features. Adding the contour set to the 3.0 features did not improve change models (ear SBP
+−0.08 mmHg, not significant). PCA composites were no more stable than single features. **For DBP, no feature set
+beat the control in any setting.** Physiological plausibility did not translate into predictive value.
+
+**Signal quality (W3).** At the ear, 64 % of windows grade `good`, 10 % `degraded`, 15 % `unreliable` and 11 %
+`missing` (mostly the recordings with a detached ear sensor). At the finger the split is 68 / 12 / 18 / 1 %. The
+graded score separates real errors:
+- unreliable windows have markedly larger offset-calibrated SBP errors than good windows (about +4.7 mmHg at the
+  ear and +11 mmHg at the finger, Holm-significant);
+- degraded windows are moderately worse (+1.2 mmHg at the ear, not significant after Holm; +2.3 mmHg at the
+  finger, significant);
+- rejecting `unreliable` and `missing` windows (score ≥ 50) keeps about 82 % of the scored windows and lowers
+  subject MAE by about 0.8 mmHg (ear) and 1.9 mmHg (finger). Also rejecting `degraded` windows costs about another
+  12 % of data for under 0.4 mmHg;
+- the continuous score correlates only weakly with error within a person (median ρ −0.1 to −0.17).
+
+So the score is a useful **gate** (good/degraded usable, unreliable/missing rejected). It is not a fine-grained
+confidence measure.
+
+**Personalised vs reference-only estimation (W4).**
+- **The hierarchical model helps even without PPG.** It shrinks cuff readings towards the population and carries
+  the person-level offset across days with the shrinkage factor σ_b²/(σ_b²+σ_c²). This alone beats "repeat the
+  last cuff reading" substantially (for example ear SBP −2.3 mmHg within day after one reading and −4.0 mmHg
+  across days), which is a pure statistics gain.
+- **Adding PPG to the same model helps only in one place:** ear SBP within a day with 3 readings
+  (−1.09 mmHg [−1.91, −0.32], Holm p = 0.025). Across days, and at the finger, PPG added nothing. For finger DBP
+  with a new day-2 reading it was significantly worse (+0.92 mmHg). Most of the gain any personalisation shows here
+  therefore comes from cuff readings and shrinkage, not from PPG.
+
+**Uncertainty (W4).**
+- **The Gaussian posterior intervals under-cover within a day** (about 0.80–0.84 at nominal 0.90).
+- **Normalised conformal intervals restore nominal coverage** (0.89–0.92 in every scenario, including across
+  days). However, they are about 50–60 mmHg wide in total for SBP (±25–30 mmHg), and 10 % of subjects have coverage
+  below about 0.70–0.79. Making the width adaptive (scaled) gives almost the same intervals as a constant width.
+- **Quantile gradient boosting under-covers badly** (0.67–0.81), so it is unsafe across subjects.
+- **The width reflects real variability.** Even immediately after a reading, the hierarchical model's 90 %
+  half-width for SBP is about 17–18 mmHg. Auricle's protocol deliberately moves BP (exercise, cold pressor,
+  Valsalva), so these widths reflect real within-session variability. No interval method can make them clinically
+  narrow without giving up coverage, which was not done.
+
+**External validation (W5).**
+- **Zero-shot absolute BP from the Auricle model fails** on surgical patients. It is significantly *worse* than the
+  Auricle training mean (about +3.2 to +3.6 mmHg SBP, bias about −12 mmHg).
+- **Real NIBP readings carried forward are again worse than the population mean,** now on 60 *independent*
+  patients (−5.9 mmHg, Holm p = 0.001). This replicates the 3.0 cuff-vs-arterial-line discrepancy.
+- **The Auricle change model applied zero-shot adds nothing.**
+- **VitalDB-trained change models evaluated on new patients without refitting** show the same direction as within
+  Auricle (SBP −0.79, DBP −0.87 mmHg vs `mean_change`). Neither survives Holm correction (p = 1.0 and 0.13).
+- **Pooled adaptation (Auricle + VitalDB-v3 training) is labelled separately.** It reaches Holm significance for
+  DBP against the control (−0.85 mmHg, p = 0.040) but not for SBP, and is not better than VitalDB-only training.
+  This is a borderline, adaptation-only result, not zero-shot generalisation.
+- **Within the surgical domain, absolute PPG information transfers to new patients.** A ridge fitted on the 40
+  VitalDB-v3 patients predicts the 60 new patients' arterial SBP better than the v3 mean (−2.1 mmHg, Holm
+  p = 0.002; MAE 14.3 vs 16.3). This is cross-patient information inside one clinical setting (plausibly the
+  anaesthesia/vasodilation state). It does not cross between datasets: the Auricle model fails on VitalDB, and
+  2.0/3.0 found no such information in healthy subjects.
+
+**Deployment (W6).**
+- **Faster on a desktop CPU:** in the committed run, median feature extraction is 6.4 ms at 100 Hz (3.0:
+  12.6 ms) and 11.6 ms at 1 kHz (3.0: 24.7 ms), with identical outputs. A ring-buffer push is 13–24× cheaper than
+  the 3.0 shift (0.6 vs 8–16 µs). Desktop timings vary between runs: an earlier run of the same code measured
+  10.4 ms at 100 Hz, and the model step varies between 3 and 6 ms across runs. Treat the ratios, not the
+  absolute numbers, as the result.
+- **Quality grading adds about 3–5 ms per window. Peak Python memory stays below 1 MB.**
+- **Export:** the linear model exports to JSON and a C header that reproduce scikit-learn exactly in float32.
+  Naive int8 weight quantisation is not acceptable.
+- **No embedded measurements exist.**
+
+### 2.0 → 3.0 → 4.0 at a glance
+
+| Question | 2.0 | 3.0 | 4.0 |
+|---|---|---|---|
+| Absolute BP for unseen subjects | no population model beat the mean (0/64 paired tests better) | deep models (CNN, GRU, CNN-LSTM, TCN, Transformer) no better | Auricle model zero-shot on VitalDB is *worse* than a constant; within VitalDB, SBP for new patients −2.1 mmHg vs mean |
+| Within-session information beyond the last reference | engine never beat "repeat last reading" | change models −0.6 to −1.2 mmHg (ear SBP, uncorrected CIs) | **survives Holm** in two independent analyses (−0.74 and −1.09 mmHg); contour features add nothing |
+| Cross-day | day-1 calibration does not hold | no change model beats the control | **explained** by BP-unrelated feature shift; six normalisations tested, none helps, six combinations significantly worse |
+| Personalisation | gains come from the cuff readings | shrinkage beats cuff alone; PPG +0.8 mmHg vs no-PPG control | hierarchical no-PPG calibration beats last cuff by 1–4 mmHg; PPG adds −1.09 mmHg in one setting only |
+| Uncertainty | — | conformal 90 % ≈ ±25–30 mmHg | Gaussian under-covers; conformal nominal but ±25–30 mmHg; quantile boosting under-covers |
+| Signal quality | binary SQI gate | + rail-clipping and flat-line gates | 4-class graded score; rejecting unreliable/missing keeps 82–83 % and lowers MAE by 0.8–1.9 mmHg |
+| External data | Foggia, PPG-BP: large bias | VitalDB 40 cases (real cuffs) | + 60 independent VitalDB patients; zero-shot and adaptation reported separately |
+| Real time (desktop) | interface | streaming, 12.6 ms features / window | 6.4 ms, ring buffer, quality grading, float32 export (C header) |
+
+### Answer to the 4.0 objective
+
+| Setting | PPG information beyond references? |
+|---|---|
+| Within session, same people (Auricle ear, SBP) | **Yes, small and reproducible**: about 0.7–1.1 mmHg, survives multiplicity correction in two independent analyses |
+| Within session, finger / DBP | Not demonstrated after correction |
+| Cross-day (same people, new session) | **No.** Explained by BP-unrelated feature shift; no normalisation fixes it |
+| Cross-subject, absolute BP | **No** (2.0, 3.0 and 4.0; zero-shot external is worse than a constant) |
+| External, independent patients with real cuffs (VitalDB), change beyond the cuff | Direction consistent; **not significant** for zero-shot or VitalDB-only; DBP borderline with pooled adaptation |
+| External, absolute BP across datasets (Auricle → VitalDB) | **No** (worse than a constant) |
+| Absolute BP for new patients within one clinical domain (VitalDB → VitalDB) | **Yes for SBP** (−2.1 mmHg vs mean), but MAE remains 14 mmHg |
+| Reference-only (statistical) personalisation | **Yes, larger than any PPG effect** (shrinkage + person-level offset) |
+
+PPG-based BP estimation did **not** generalise beyond individual recording sessions in these data. RakshPulse
+remains a research prototype and is **not** a clinically validated BP monitor. The highest-value next step is
+data with a controlled, repeatable sensor placement across days. Without it, no algorithm in this repository can
+be expected to transfer a calibration from one day to the next.

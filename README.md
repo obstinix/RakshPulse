@@ -30,6 +30,13 @@ high-altitude settings, built around the MAX30102 optical sensor.
 | 3.0: beyond-reference study, calibration-count study, feature stability, GRU / CNN-LSTM / TCN / Transformer / PLS | ✅ Evaluated with matched controls ([RESEARCH_FINDINGS § 3.0](docs/RESEARCH_FINDINGS.md#rakshpulse-30-information-beyond-the-reference-reading)) |
 | 3.0: streaming estimator (chunked input, SQI, aggregation, signal-lost, JSONL log) + latency benchmark | ✅ Implemented and measured on desktop CPU ([HARDWARE_INTEGRATION](docs/HARDWARE_INTEGRATION.md#streaming-interface-rakshpulse-30-srcrakshpulseinferencestreamingpy)) |
 | 3.0: experiment provenance registry (dataset hashes, commit, versions, splits) | ✅ `results/runs/` |
+| 4.0: cross-day shift diagnostics + six leakage-safe normalisations | ✅ Evaluated: shift explained, no normalisation helps ([RESEARCH_FINDINGS § 4.0](docs/RESEARCH_FINDINGS.md#rakshpulse-40-generalisation-physiology-quality-calibration-uncertainty-external-validation)) |
+| 4.0: pulse-contour features (notch, diastolic peak, upstroke, decay, beat variability) | ✅ Built for all windows; no added predictive value |
+| 4.0: graded PPG quality score (good / degraded / unreliable / missing) | ✅ Evaluated against real errors |
+| 4.0: hierarchical Bayesian calibration with matched no-PPG control; conformal / quantile intervals | ✅ Evaluated on identical splits |
+| 4.0: external validation on 60 further, independent VitalDB patients | ✅ Zero-shot, independent-patient and adaptation results reported separately |
+| 4.0: subject-level statistics (permutation, Holm/BH, effect sizes, Bland–Altman) + result audit | ✅ `evaluation/statistics.py`, `scripts/audit_v4.py` |
+| 4.0: ring-buffer streaming, in-stream quality, float32 C-header export, driver-free sensor interface | ✅ Desktop-verified; **no embedded hardware tested** |
 | Behind-ear validation | ❌ **Not done.** No behind-ear data exists yet ([docs/DOMAIN_ADAPTATION.md](docs/DOMAIN_ADAPTATION.md)) |
 | ESP32 / ONNX / TFLite deployment | ❌ Planned. Footprint measured only |
 | Clinical validation (ISO 81060-2 / IEEE 1708) | ❌ Not started |
@@ -77,7 +84,21 @@ high-altitude settings, built around the MAX30102 optical sensor.
     arterial line by about 13 mmHg MAE. Deep sequence models (GRU, CNN-LSTM, TCN, Transformer) did not beat the
     baselines. This refines finding 10 without overturning it. See
     [RESEARCH_FINDINGS § 3.0](docs/RESEARCH_FINDINGS.md#rakshpulse-30-information-beyond-the-reference-reading).
-12. The realistic path forward is **per-user cuff calibration plus behind-ear data collection**.
+12. **RakshPulse 4.0, generalisation:**
+    - **Within-session signal confirmed.** The ear within-session SBP signal survives subject-level permutation
+      tests with Holm correction in two independent analyses (−0.74 and −1.09 mmHg).
+    - **Cross-day prediction still fails, now with an explanation.** PPG features shift between days far more
+      than within a day, the resting pulse shape changes, and amplitude changes about 1.65×; these shifts are
+      largely unrelated to BP. None of six normalisations helped, and six combinations were significantly worse.
+    - **Reference-only personalisation helps more than PPG.** Statistical hierarchical calibration using only
+      cuff readings beats repeating the last reading by 1–4 mmHg; PPG adds to it in one setting only.
+    - **Uncertainty stays wide.** Conformal intervals reach 90 % coverage only at about ±25–30 mmHg.
+    - **External results are mixed.** On 60 independent surgical patients, the Auricle model fails zero-shot.
+      A VitalDB-trained model predicts new patients' absolute SBP better than the mean (−2.1 mmHg), but MAE
+      stays about 14 mmHg. Change-model gains beyond real cuff readings are not significant after correction.
+    See [RESEARCH_FINDINGS § 4.0](docs/RESEARCH_FINDINGS.md#rakshpulse-40-generalisation-physiology-quality-calibration-uncertainty-external-validation).
+13. The realistic path forward is **per-user cuff calibration plus behind-ear data collection with a controlled,
+    repeatable sensor placement across days**.
    It is not a bigger model on fingertip data.
 
 ## Installation
@@ -135,6 +156,18 @@ python scripts/run_feature_analysis.py
 python scripts/run_deep_benchmark.py                        # ~8 min CPU
 python scripts/benchmark_inference.py
 python scripts/write_findings.py
+
+# RakshPulse 4.0 (the extension needs the 60 .vital files listed in data/metadata/vitaldb_selection_ext.csv)
+python -m rakshpulse.data export-physio --jobs 3
+python -m rakshpulse.data.vitaldb_dataset build --set ext --jobs 3
+python scripts/run_cross_day_generalization.py
+python scripts/run_physio_features.py
+python scripts/run_quality_study.py                        # grades all windows first (cached, ~1 min)
+python scripts/run_calibration_uncertainty.py              # needs the quality cache
+python scripts/run_external_validation.py
+python scripts/run_deployment_v4.py
+python scripts/plot_v4.py && python scripts/write_findings.py
+python scripts/audit_v4.py                                 # provenance, checksums, splits, leakage, tables
 
 # 3. reference inference bundle
 python scripts/train_final.py --feature-set ppg_ir_red+demo --model ridge
@@ -221,6 +254,7 @@ notebooks/    01_ppg_exploration.ipynb
 docs/         requirements, dataset research, preprocessing, models, evaluation, domain adaptation, hardware
 data/auricle/ populated Auricle CSV dataset (waveform NPZ + raw WFDB on GitHub Releases)
 data/vitaldb/ 40-case VitalDB subset, derived CSV tables (raw .vital files git-ignored)
+data/vitaldb_ext/ 4.0: 60 further, disjoint VitalDB cases (independent validation patients)
 data/         other raw data git-ignored; provenance/manifests committed
 results/      metrics CSV/JSON (committed); results/runs/ provenance registry; per-window caches git-ignored
 ```
