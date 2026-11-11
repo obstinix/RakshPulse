@@ -38,6 +38,41 @@ from .model_loader import ModelBundle
 from .predictor import InputError
 
 WINDOW_S = 10.0
+
+
+class RingBuffer:
+    """Fixed-size circular sample buffer. ``write`` is O(chunk) (no whole-buffer shift as with ``np.roll``);
+    ``last(n)`` returns the newest ``n`` samples in time order (one copy, at evaluation time only)."""
+
+    def __init__(self, size: int):
+        self.data = np.zeros(size)
+        self.pos = 0  # next write index
+        self.filled = 0
+
+    def write(self, x: np.ndarray) -> None:
+        x = np.asarray(x, float)
+        n, size = x.size, self.data.size
+        if n >= size:
+            self.data[:] = x[-size:]
+            self.pos, self.filled = 0, size
+            return
+        end = self.pos + n
+        if end <= size:
+            self.data[self.pos : end] = x
+        else:
+            k = size - self.pos
+            self.data[self.pos :] = x[:k]
+            self.data[: n - k] = x[k:]
+        self.pos = end % size
+        self.filled = min(self.filled + n, size)
+
+    def last(self, n: int) -> np.ndarray:
+        start = (self.pos - n) % self.data.size
+        if start < self.pos:
+            return self.data[start : self.pos].copy()
+        return np.concatenate([self.data[start:], self.data[: self.pos]])
+
+
 FLAT_STD = 1e-9  # relative flat-signal check is done on the window's own scale below
 
 
@@ -58,6 +93,8 @@ class StreamEvent:
     baseline_deviation: dict = field(default_factory=dict)
     feature_ms: float = 0.0
     model_ms: float = 0.0
+    quality_class: str | None = None  # 4.0 graded quality (only when grade_quality=True)
+    quality_score: float | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -76,6 +113,7 @@ class StreamingEstimator:
         lost_after: int = 3,
         history: int = 1000,
         log_path: str | Path | None = None,
+        grade_quality: bool = False,
     ):
         try:
             self.fs = validate_sampling_rate(fs)
@@ -87,8 +125,9 @@ class StreamingEstimator:
         self.engine, self.baseline = engine, baseline
         self.hop_n = int(round(hop_s * self.fs))
         self.win_n = int(round(WINDOW_S * self.fs))
-        self.buf = np.zeros(int(round(buffer_s * self.fs)))
-        self.filled = 0
+        self.ring = RingBuffer(int(round(buffer_s * self.fs)))
+        self.grade_quality = grade_quality
+        self._quality: tuple[str, float] | None = None
         self.since_last = 0
         self.t_last: float | None = None
         self.aggregate_s, self.lost_after = aggregate_s, lost_after
@@ -113,9 +152,7 @@ class StreamingEstimator:
         while start < x.size:
             take = min(self.hop_n - self.since_last, x.size - start)
             piece = x[start : start + take]
-            self.buf = np.roll(self.buf, -piece.size)
-            self.buf[-piece.size :] = piece
-            self.filled = min(self.filled + piece.size, self.buf.size)
+            self.ring.write(piece)
             self.since_last += piece.size
             start += take
             if self.since_last >= self.hop_n:
@@ -127,10 +164,10 @@ class StreamingEstimator:
 
     # ------------------------------------------------------------------------------------------ core
     def _evaluate(self, t: float) -> StreamEvent:
-        if self.filled < self.win_n:
+        if self.ring.filled < self.win_n:
             ev = StreamEvent(timestamp=t, accepted=False, status="warming_up", rejection_reasons=["buffer_filling"])
             return self._emit(ev)
-        w = self.buf[-self.win_n :]
+        w = self.ring.last(self.win_n)
         t0 = time.perf_counter()
         reasons: list[str] = []
         if not np.isfinite(w).all():
@@ -138,8 +175,17 @@ class StreamingEstimator:
         elif np.std(w) <= max(FLAT_STD, 1e-6 * (np.abs(w).mean() + 1e-12)):
             reasons.append("no_signal_flatline")
         feats = None
+        self._quality = ("missing", 0.0) if reasons else None
         if not reasons:
             f, proc = extract_features({"ir": w}, self.fs, has_dc=False)
+            if self.grade_quality:
+                from ..preprocessing.filtering import TARGET_FS, resample
+                from ..preprocessing.quality_score import score_window
+
+                raw100 = resample(w, self.fs, TARGET_FS) if self.fs != TARGET_FS else w
+                # flat_sd=0: the stream's own flat-line check above already decided "missing" in device units
+                q = score_window(proc["ir"].filtered, raw100, TARGET_FS, flat_sd=0.0)
+                self._quality = (q.quality_class, q.score)
             if proc["ir"].sqi.acceptable:
                 feats = {f"{self.site}_{k}": f[f"ir_{k}"] for k in PER_CHANNEL}
             else:
@@ -196,6 +242,8 @@ class StreamingEstimator:
         return ev
 
     def _emit(self, ev: StreamEvent) -> StreamEvent:
+        if self.grade_quality and ev.status != "warming_up" and getattr(self, "_quality", None):
+            ev.quality_class, ev.quality_score = self._quality
         self.history.append(ev)
         if self.log_path is not None:
             self.log_path.parent.mkdir(parents=True, exist_ok=True)
