@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +19,7 @@ B, E = "<!-- BEGIN AUTO -->", "<!-- END AUTO -->"
 BP_, EP_ = "<!-- BEGIN PERSONALIZATION -->", "<!-- END PERSONALIZATION -->"
 PERS = ROOT / "results" / "personalization"
 BV, EV = "<!-- BEGIN V3 -->", "<!-- END V3 -->"
+BW, EW = "<!-- BEGIN V4 -->", "<!-- END V4 -->"
 
 
 def ci(s) -> str:
@@ -400,6 +402,373 @@ def v3_block() -> str:
     return "\n".join(out)
 
 
+def _dp(r, p_col: str = "p_holm") -> str:
+    """Δ [CI] (Holm p) with * when the Holm-adjusted p < 0.05."""
+    if r is None:
+        return "—"
+    p = r.get(p_col, float("nan"))
+    star = "*" if pd.notna(p) and p < 0.05 else ""
+    ptxt = f" (p={p:.3f})" if pd.notna(p) else ""
+    return f"{r['mean_diff']:+.2f} [{r['ci_low']:+.2f}, {r['ci_high']:+.2f}]{ptxt}{star}"
+
+
+def v4_block() -> str:
+    """RakshPulse 4.0 tables (cross-day shift, physiology, quality, calibration/uncertainty, external, deployment)."""
+    out = []
+    R = ROOT / "results"
+    cd = R / "cross_day_v4"
+    if (cd / "paired.csv").exists():
+        sf, ss, pr = (pd.read_csv(cd / f"{n}.csv") for n in ("shift_features", "shift_subjects", "paired"))
+        rows = []
+        for site, g in sf.groupby("site"):
+            s = ss[ss.site == site].dropna(subset=["template_corr_cross_day"])
+            rows.append(
+                [
+                    site,
+                    f2(g.cross_shift_z_median.median()),
+                    f2(g.within_shift_z_median.median()),
+                    f"{int((g.shift_excess_p < 0.05).sum())}/{len(g)}",
+                    f2(g.between_day_spearman_dfeature_dsbp.abs().median()),
+                    f"{(s.template_corr_within_day > s.template_corr_cross_day).mean():.2f}",
+                    f"{np.exp(s.log_amp_ratio.abs().median()):.2f}×",
+                    int(len(s)),
+                ]
+            )
+        out += [
+            "### W1. Why cross-day generalisation fails: distribution shift (resting windows)",
+            "",
+            table(
+                pd.DataFrame(
+                    rows,
+                    columns=[
+                        "Site",
+                        "Cross-day shift (median, robust SD)",
+                        "Within-day shift (null)",
+                        "Features with excess cross-day shift (p<0.05)",
+                        "Median |r| Δfeature vs ΔSBP between days",
+                        "Subjects with lower day1/day2 template similarity",
+                        "Median pulse-amplitude change",
+                        "n subj",
+                    ],
+                )
+            ),
+            "",
+            "Cross-day change models after normalisation (Δ MAE vs `mean_change`, mmHg; Holm-adjusted p within each "
+            "site × target family; * = adjusted p < 0.05):",
+            "",
+        ]
+        pr = pr[pr.comparison.str.startswith("delta_") & pr.comparison.str.endswith("vs mean_change")].copy()
+        pr["model"] = pr.comparison.str.replace(" vs mean_change", "").str.replace("delta_", "")
+        rows = []
+        for model, g in pr.groupby("model", sort=False):
+            cells = []
+            for site in ("ear", "finger"):
+                for target in ("sbp", "dbp"):
+                    q = g[(g.site == site) & (g.target == target)]
+                    cells.append(_dp(q.iloc[0]) if len(q) else "—")
+            rows.append([model, *cells])
+        out += [
+            table(
+                pd.DataFrame(rows, columns=["Features_normalisation", "Ear SBP", "Ear DBP", "Finger SBP", "Finger DBP"])
+            ),
+            "",
+        ]
+    ph = R / "physio_features"
+    if (ph / "features.csv").exists():
+        f, p = pd.read_csv(ph / "features.csv"), pd.read_csv(ph / "predictive.csv")
+        s = (
+            f.assign(abs_r=f.within_r_day1.abs())
+            .groupby(["site", "kind", "target"])[["abs_r", "sign_agreement", "rest_icc_day1_day2"]]
+            .median()
+            .reset_index()
+        )
+        s[["abs_r", "sign_agreement", "rest_icc_day1_day2"]] = s[["abs_r", "sign_agreement", "rest_icc_day1_day2"]].map(
+            f2
+        )
+        top = f[(f.kind == "4.0_physio")].assign(a=f.within_r_day1.abs()).sort_values("a", ascending=False)
+        top = top.groupby(["site", "target"]).head(3)
+        trows = [
+            [
+                r.site,
+                r.target,
+                r.feature,
+                f"{r.within_r_day1:+.2f} [{r.within_r_day1_ci_low:+.2f}, {r.within_r_day1_ci_high:+.2f}]",
+                f"{r.within_r_day2:+.2f}",
+                f2(r.sign_agreement),
+                f2(r.rest_icc_day1_day2),
+            ]
+            for r in top.itertuples()
+        ]
+        prow = [[r["site"], r["target"], r["comparison"], _dp(r)] for _, r in p.iterrows()]
+        out += [
+            "### W2. Pulse-contour (physiological) features: association, stability, added value",
+            "",
+            table(
+                s.set_axis(
+                    [
+                        "Site",
+                        "Feature group",
+                        "Target",
+                        "Median |within-subj r| day 1",
+                        "Median sign agreement day1/day2",
+                        "Median rest ICC",
+                    ],
+                    axis=1,
+                )
+            ),
+            "",
+            "Strongest 4.0 contour features:",
+            "",
+            table(
+                pd.DataFrame(
+                    trows,
+                    columns=[
+                        "Site",
+                        "Target",
+                        "Feature",
+                        "Within-subj r day 1 [95% CI]",
+                        "Day 2",
+                        "Sign agreement",
+                        "Rest ICC",
+                    ],
+                )
+            ),
+            "",
+            "Within-day change models (reference every 300 s), subject-level sign-flip tests, Holm per site × target:",
+            "",
+            table(pd.DataFrame(prow, columns=["Site", "Target", "Comparison", "Δ MAE [95% CI] (Holm p)"])),
+            "",
+        ]
+    qv = R / "quality_v4"
+    if (qv / "class_summary.csv").exists():
+        cs, pq, rt, se, dist = (
+            pd.read_csv(qv / f"{n}.csv")
+            for n in ("class_summary", "paired", "retention", "score_error", "class_distribution")
+        )
+        dist = dist.copy()
+        for c in ("good", "degraded", "unreliable", "missing"):
+            if c in dist:
+                dist[c] = dist[c].map(lambda v: f"{v:.1%}")
+        cs = cs.assign(
+            window_share=cs.window_share.map(lambda v: f"{v:.1%}"),
+            subject_mae=cs.subject_mae.map(f2),
+            window_mae=cs.window_mae.map(f2),
+        )
+        rt = rt.assign(
+            window_share_kept=rt.window_share_kept.map(lambda v: f"{v:.1%}"), subject_mae=rt.subject_mae.map(f2)
+        )
+        out += [
+            "### W3. Graded PPG quality vs real prediction error (Auricle, population ridge, SBP)",
+            "",
+            table(dist),
+            "",
+            table(
+                cs.set_axis(
+                    [
+                        "Site",
+                        "Error",
+                        "Class",
+                        "Share of scored windows",
+                        "Subject MAE",
+                        "Window MAE",
+                        "n subj",
+                        "n windows",
+                    ],
+                    axis=1,
+                )
+            ),
+            "",
+            table(
+                pd.DataFrame(
+                    [[r["site"], r["error"], r["comparison"], _dp(r)] for _, r in pq.iterrows()],
+                    columns=["Site", "Error", "Comparison", "Δ subject MAE [95% CI] (Holm p)"],
+                )
+            ),
+            "",
+            "Retention (keep windows with score ≥ threshold):",
+            "",
+            table(
+                rt.set_axis(
+                    ["Site", "Error", "Min score", "Windows kept", "Subject MAE", "Subjects ≥ 10 windows"], axis=1
+                )
+            ),
+            "",
+            table(se.round(3)),
+            "",
+        ]
+    cv = R / "calibration_v4"
+    if (cv / "point.csv").exists():
+        pt, pp, iv, lv, rc = (
+            pd.read_csv(cv / f"{n}.csv") for n in ("point", "paired", "intervals", "levels", "recal_interval")
+        )
+        meth = [
+            "population",
+            "training_mean",
+            "last_cuff",
+            "historical_mean",
+            "offset_2.0",
+            "regularized_ppg_3.0",
+            "bayes_reference_hier",
+            "bayes_ppg_hier",
+        ]
+        v = pt[pt.method.isin(meth)].pivot_table(index=["site", "target", "scenario"], columns="method", values="mae")
+        v = v[[m for m in meth if m in v.columns]].map(f2).reset_index()
+        keyc = [
+            "bayes_ppg_hier vs bayes_reference_hier",
+            "bayes_reference_hier vs last_cuff",
+            "bayes_ppg_hier vs regularized_ppg_3.0",
+        ]
+        prow = [
+            [r["site"], r["target"], r["scenario"], r["comparison"], _dp(r)]
+            for _, r in pp.iterrows()
+            if r["comparison"] in keyc
+        ]
+        ivs = iv[iv.method == "bayes_ppg_hier"].copy()
+        ivs = ivs[
+            ["site", "target", "scenario", "interval", "coverage", "mean_width", "winkler", "subject_coverage_p10"]
+        ]
+        ivs[["coverage", "mean_width", "winkler", "subject_coverage_p10"]] = ivs[
+            ["coverage", "mean_width", "winkler", "subject_coverage_p10"]
+        ].map(f2)
+        lvs = lv[(lv.method == "bayes_ppg_hier")][
+            ["site", "target", "scenario", "interval", "cov_0.5", "cov_0.8", "cov_0.9", "cov_0.95", "calibration_error"]
+        ].copy()
+        lvs = pd.concat([lvs.iloc[:, :4], lvs.iloc[:, 4:].map(f2)], axis=1)
+        rc = rc.assign(
+            halfwidth_at_reading=rc.halfwidth_at_reading.map(f2),
+            seconds_until_threshold=rc.seconds_until_threshold.map(
+                lambda v: "exceeded at the reading" if pd.isna(v) else ("never" if np.isinf(v) else f"{v:.0f} s")
+            ),
+        )
+        out += [
+            "### W4. Calibration strategies on identical splits (MAE, mmHg)",
+            "",
+            table(v.rename(columns={"site": "Site", "target": "Target", "scenario": "Scenario"})),
+            "",
+            "Key paired comparisons (subject level; Holm within each site × target × scenario family):",
+            "",
+            table(pd.DataFrame(prow, columns=["Site", "Target", "Scenario", "Comparison", "Δ MAE [95% CI] (Holm p)"])),
+            "",
+            "90 % prediction intervals for `bayes_ppg_hier`:",
+            "",
+            table(
+                ivs.set_axis(
+                    [
+                        "Site",
+                        "Target",
+                        "Scenario",
+                        "Interval",
+                        "Coverage",
+                        "Mean width (mmHg)",
+                        "Winkler",
+                        "10th-pct subject coverage",
+                    ],
+                    axis=1,
+                )
+            ),
+            "",
+            "Coverage at nominal 50/80/90/95 % (calibration error = mean |empirical − nominal|):",
+            "",
+            table(
+                lvs.set_axis(
+                    ["Site", "Target", "Scenario", "Interval", "50 %", "80 %", "90 %", "95 %", "Cal. error"], axis=1
+                )
+            ),
+            "",
+            "Adaptive recalibration interval (posterior after one reading; 90 % half-width):",
+            "",
+            table(
+                rc.set_axis(
+                    [
+                        "Site",
+                        "Target",
+                        "Base",
+                        "Half-width threshold (mmHg)",
+                        "Half-width right after a reading",
+                        "Time until threshold",
+                    ],
+                    axis=1,
+                )
+            ),
+            "",
+        ]
+    ex = R / "external_v4"
+    if (ex / "metrics.csv").exists():
+        m, pe = pd.read_csv(ex / "metrics.csv"), pd.read_csv(ex / "paired.csv")
+        mm = m[["experiment", "test_set", "target", "method", "mae", "bias", "n_subjects"]].copy()
+        mm[["mae", "bias"]] = mm[["mae", "bias"]].map(f2)
+        out += [
+            "### W5. External validation on VitalDB (zero-shot, independent patients, adaptation kept apart)",
+            "",
+            table(mm.set_axis(["Experiment", "Test set", "Target", "Method", "MAE", "Bias", "n patients"], axis=1)),
+            "",
+            table(
+                pd.DataFrame(
+                    [[r["target"], r["test_set"], r["comparison"], _dp(r)] for _, r in pe.iterrows()],
+                    columns=["Target", "Test set", "Comparison", "Δ MAE [95% CI] (Holm p)"],
+                )
+            ),
+            "",
+        ]
+        ba = ex / "bland_altman.csv"
+        if ba.exists():
+            b = pd.read_csv(ba)[
+                [
+                    "test_set",
+                    "target",
+                    "method",
+                    "bias",
+                    "loa_low",
+                    "loa_high",
+                    "sd_between_subject",
+                    "sd_within_subject",
+                    "n_subjects",
+                ]
+            ]
+            b = pd.concat([b.iloc[:, :3], b.iloc[:, 3:8].map(f2), b.iloc[:, 8:]], axis=1)
+            out += [
+                "Bland–Altman (repeated measures, E1):",
+                "",
+                table(
+                    b.set_axis(
+                        [
+                            "Test set",
+                            "Target",
+                            "Method",
+                            "Bias",
+                            "LoA low",
+                            "LoA high",
+                            "SD between patients",
+                            "SD within patient",
+                            "n",
+                        ],
+                        axis=1,
+                    )
+                ),
+                "",
+            ]
+    dv = R / "deployment_v4"
+    if (dv / "streaming_benchmark.csv").exists():
+        sb, bb, eq = (
+            pd.read_csv(dv / f"{n}.csv") for n in ("streaming_benchmark", "buffer_benchmark", "export_equivalence")
+        )
+        eq = eq.assign(
+            max_abs_diff_mmHg=eq.max_abs_diff_mmHg.map(lambda v: f"{v:.2g}"),
+            p99_abs_diff_mmHg=eq.p99_abs_diff_mmHg.map(lambda v: f"{v:.2g}"),
+        )
+        out += [
+            "### W6. Streaming cost and export (desktop CPU only; no embedded hardware was available)",
+            "",
+            table(sb),
+            "",
+            table(bb),
+            "",
+            table(eq),
+            "",
+        ]
+    return "\n".join(out)
+
+
 def _replace_block(text: str, begin: str, end: str, body: str) -> str:
     if begin not in text:
         text = text.rstrip() + f"\n\n{begin}\n{end}\n"
@@ -707,6 +1076,7 @@ def main() -> int:
     if (PERS / "population_models.csv").exists():
         text = _replace_block(text, BP_, EP_, personalization_block())
         text = _replace_block(text, BV, EV, v3_block())
+        text = _replace_block(text, BW, EW, v4_block())
     DOC.write_text(text, encoding="utf-8")
     print(f"wrote {DOC.relative_to(ROOT)} ({len(auto)} chars of tables)")
     return 0

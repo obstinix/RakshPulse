@@ -70,6 +70,8 @@ side is responsible for collecting trusted reference readings (validated cuff) a
 `engine.update(...)`. The engine never treats PPG alone as evidence that a calibration is valid. The Auricle-trained
 bundle comes from earlobe Nonin PPG, not behind-ear MAX30102 data. Retraining on device data is required.
 
+
+
 ## Streaming interface (RakshPulse 3.0, `src/rakshpulse/inference/streaming.py`)
 
 `StreamingEstimator(bundle, fs, engine=None, baseline=None, hop_s=5, buffer_s=30, aggregate_s=30, lost_after=3,
@@ -91,3 +93,24 @@ Measured cost on a desktop CPU is in RESEARCH_FINDINGS.md V6 (`scripts/benchmark
 feature and model latency at 100 and 1000 Hz, throughput, real-time factor, CPU utilisation, peak Python memory).
 These are **not** microcontroller numbers.
 
+## RakshPulse 4.0: hardware-readiness changes (desktop-verified only)
+
+- **Sensor interface** (`src/rakshpulse/inference/sensor.py`): a driver-free `PPGSource` protocol (`fs` plus
+  `chunks()` yielding `(samples, timestamp_of_last_sample)`), an `ArraySource` for replaying recordings in
+  FIFO-sized bursts, and `run_stream(source, estimator)`. A MAX30102 integration implements `PPGSource` outside
+  the inference core. The module docstring has notes on IR channel, sample rate, FIFO draining, DC and inverted
+  pulse.
+- **Ring buffer**: `StreamingEstimator` now writes into an O(chunk) circular buffer instead of shifting the whole
+  buffer on every push (`np.roll`). The window is copied only when it is evaluated. Results are identical
+  (test `test_ring_buffer_matches_a_shifting_buffer`; the 3.0 streaming tests are unchanged and pass).
+- **Faster features**: skewness and kurtosis now use NumPy (identical to scipy to within 3.6e-15), because
+  scipy's wrapper dominated the per-beat cost.
+- **In-stream quality**: `StreamingEstimator(..., grade_quality=True)` adds `quality_class` / `quality_score`
+  to every event. It costs a few ms per window on a desktop CPU (see RESEARCH_FINDINGS W6).
+- **Export path**: `results/deployment_v4/auricle_population_ear_ridge.{json,h}`. float32 reproduces scikit-learn
+  to within 1e-4 mmHg and float16 to within about 0.1 mmHg. Naive per-tensor int8 weight quantisation causes
+  errors of several mmHg and is **not** recommended. Use float32 on an FPU-equipped MCU (ESP32-S3, Cortex-M4F).
+- **Not done:** no embedded hardware was available, so there are no MCU latency, memory or power numbers. All
+  timings in RESEARCH_FINDINGS W6 are desktop CPU. The feature extractor itself (filtering, beat segmentation)
+  has not been ported to C. That port, and bit-exactness checks on recorded MAX30102 files, are the next
+  integration steps.

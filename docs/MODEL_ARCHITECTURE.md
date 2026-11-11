@@ -115,3 +115,34 @@ ear PPG ─► 10 s windows ─► SQI gate ─► HR + pulse-shape features ─
   history.
 - **RealtimeEstimator** (`src/rakshpulse/inference/realtime.py`): hardware-independent. Accepts ear PPG (required),
   finger PPG (quality-reported only), sampling rate, timestamp, and optional engine and baseline.
+
+## RakshPulse 4.0 components
+
+- **Graded quality score** (`src/rakshpulse/preprocessing/quality_score.py`) puts every window into one of four
+  classes and gives it a 0–100 score:
+  - `good`;
+  - `degraded` (passes the original gate but misses a pre-specified margin);
+  - `unreliable` (fails the original gate, or is rail-clipped);
+  - `missing` (non-finite samples, flat or detached sensor, no beats).
+
+  The score combines eight components: template correlation, cardiac power ratio (SNR), IBI CV (irregular pulse),
+  spike fraction (motion), baseline power ratio, broadband noise ratio, amplitude relative to the stream
+  (perfusion/contact) and plateau fraction (saturation). Margins were fixed before evaluation.
+- **Pulse-contour features** (`src/rakshpulse/features/physiological.py`) are computed on the median unit-beat
+  template: dicrotic notch time/height (with an inflection fallback), diastolic peak, systolic–diastolic interval,
+  inflection-point area, 10–90 % upstroke, diastolic decay constant, beat amplitude CV and beat-template similarity.
+- **Cross-day normalisation** (`src/rakshpulse/evaluation/domain_shift.py`) offers six causal, label-free
+  options: raw, session warm-up median, subject day-1 z-score, robust (median/MAD, winsorised), adaptive (time
+  EWMA), and domain moment-matching from a day-2 warm-up. It also provides shift diagnostics.
+- **HierarchicalCalibrator** (`src/rakshpulse/personalization/hierarchical.py`) models the residual of a base
+  prediction as person offset + session offset + within-session drift (capped linear variogram).
+  - Hyper-parameters come from training subjects by method of moments.
+  - Readings from earlier days and from the current session enter one exact Gaussian posterior. This yields a
+    correction and a predictive SD that grows with time since the last reading.
+  - Using the training-mean BP as the base gives the matched no-PPG control (`bayes_reference_hier`).
+- **Statistics** (`src/rakshpulse/evaluation/statistics.py`) work at subject level: paired bootstrap CI,
+  sign-flip permutation p (exact for ≤ 16 subjects), Wilcoxon, Cohen's d_z, Holm and Benjamini–Hochberg,
+  repeated-measures Bland–Altman, subject-weighted error distribution and ICC(3,1).
+- **Export** (`src/rakshpulse/inference/export.py`) folds the linear bundle (impute → scale → ridge) into one
+  weight vector and bias per target. It is written as JSON and a C99 header. No ML runtime is needed, so ONNX was
+  not required (it is not installed here and was not tested).

@@ -1,0 +1,97 @@
+"""RakshPulse 4.0 figures, drawn only from the committed result CSVs (results/*_v4/).
+
+docs/figures/v4_quality_retention.png: share of windows kept vs subject MAE as the quality threshold rises.
+docs/figures/v4_interval_coverage.png: coverage vs mean width of 90 % intervals per method and scenario.
+docs/figures/v4_external.png: MAE of controls vs change models on the independent VitalDB patients.
+(The cross-day shift figure is drawn by run_cross_day_generalization.py.)
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt  # noqa: E402
+import pandas as pd  # noqa: E402
+
+ROOT = Path(__file__).resolve().parents[1]
+R, FIG = ROOT / "results", ROOT / "docs" / "figures"
+
+
+def quality() -> None:
+    rt = pd.read_csv(R / "quality_v4" / "retention.csv")
+    fig, ax = plt.subplots(figsize=(6, 4.2))
+    for (site, err), g in rt.groupby(["site", "error"]):
+        ax.plot(
+            g.window_share_kept * 100,
+            g.subject_mae,
+            marker="o",
+            label=f"{site}, {'calibrated' if err == 'ae_cal' else 'absolute'}",
+        )
+        for _, r in g.iterrows():
+            ax.annotate(
+                f"≥{r.min_score:g}",
+                (r.window_share_kept * 100, r.subject_mae),
+                fontsize=7,
+                textcoords="offset points",
+                xytext=(3, 3),
+            )
+    ax.invert_xaxis()
+    ax.set(
+        xlabel="windows kept (%)",
+        ylabel="subject-level SBP MAE (mmHg)",
+        title="Rejecting low-quality windows (quality score threshold)",
+    )
+    ax.grid(alpha=0.3)
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    fig.savefig(FIG / "v4_quality_retention.png", dpi=130)
+    plt.close(fig)
+
+
+def intervals() -> None:
+    iv = pd.read_csv(R / "calibration_v4" / "intervals.csv")
+    iv = iv[(iv.target == "sbp") & (iv.method == "bayes_ppg_hier")]
+    fig, ax = plt.subplots(figsize=(6.4, 4.4))
+    marks = {"gaussian_model": "o", "conformal_scaled": "s", "conformal_const": "^", "quantile_gb": "x"}
+    for (interval, site), g in iv.groupby(["interval", "site"]):
+        ax.scatter(g.mean_width, g.coverage, marker=marks.get(interval, "o"), label=f"{interval} ({site})", alpha=0.75)
+    ax.axhline(0.9, color="k", lw=0.8, ls="--")
+    ax.set(
+        xlabel="mean 90 % interval width (mmHg)",
+        ylabel="empirical coverage",
+        title="SBP prediction intervals: coverage vs width (all scenarios)",
+    )
+    ax.grid(alpha=0.3)
+    ax.legend(fontsize=7, ncol=2)
+    fig.tight_layout()
+    fig.savefig(FIG / "v4_interval_coverage.png", dpi=130)
+    plt.close(fig)
+
+
+def external() -> None:
+    m = pd.read_csv(R / "external_v4" / "metrics.csv")
+    m = m[(m.test_set == "vitaldb_ext") & ~m.method.str.startswith("E1")]
+    fig, ax = plt.subplots(1, 2, figsize=(11, 4.2), sharey=False)
+    for a, target in zip(ax, ("sbp", "dbp"), strict=True):
+        g = m[m.target == target].sort_values("mae")
+        a.barh(
+            g.method,
+            g.mae,
+            color=["tab:gray" if not x.startswith(("E2_delta", "E3_delta", "E4")) else "tab:blue" for x in g.method],
+        )
+        a.set(xlabel="MAE vs arterial line (mmHg)", title=f"{target.upper()}: 60 independent VitalDB patients")
+        a.grid(alpha=0.3, axis="x")
+    fig.tight_layout()
+    fig.savefig(FIG / "v4_external.png", dpi=130)
+    plt.close(fig)
+
+
+if __name__ == "__main__":
+    FIG.mkdir(parents=True, exist_ok=True)
+    quality()
+    intervals()
+    external()
+    print("figures written to", FIG)

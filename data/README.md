@@ -139,6 +139,48 @@ Key statistics: 160.9 h; 24,847 label-valid windows, 21,662 also SQI-accepted; a
 (median within-case SD 15.6); median age 57.5. The monitor's PLETH lags its ECG by about 0.4–0.5 s, so PAT here
 uses a 300–1000 ms search range. Absolute PAT is therefore not physiological; only within-case *changes* are used.
 
+
+## RakshPulse 4.0 additions
+
+### `data/auricle/features_physio.csv`
+
+Pulse-contour landmarks per window and site (`ear_*`, `finger_*`): `notch_present`, `notch_t`, `notch_h`,
+`dia_peak_h`, `dia_peak_t`, `sys_dia_dt`, `ipa`, `upstroke_10_90`, `decay_tau`, `beat_amp_cv`,
+`beat_template_corr`. These are computed on the median unit-beat template of the processed 100 Hz window. Times
+are beat fractions and heights are relative to the systolic peak. Build with
+`python -m rakshpulse.data export-physio --jobs 3`. The per-window templates are cached in
+`data/interim/auricle_templates.npz` (git-ignored, regenerable).
+
+### VitalDB extension (`data/vitaldb_ext/`)
+
+60 further VitalDB v1.0.0 cases (CC BY 4.0) were drawn at random (seed 1) from the 2,881 eligible cases,
+**excluding** all 40 cases of the 3.0 subset. They are used only as independent validation patients: models
+fitted on the 3.0 cases are evaluated on them without refitting (RESEARCH_FINDINGS W5). The tables and their
+format are the same as for `data/vitaldb/`.
+
+```bash
+python -m rakshpulse.data.vitaldb_dataset select --extension --n 60 --seed 1
+python -m rakshpulse.data.physionet vitaldb --records <files listed in data/metadata/vitaldb_selection_ext.csv>
+python -m rakshpulse.data.vitaldb_dataset build --set ext --jobs 3
+```
+
+Key statistics: 222.0 h; 29,898 label-valid and SQI-accepted windows; 920 NIBP readings; arterial SBP
+122.1 ± 21.1 mmHg (median within-case SD 16.1); median age 60.5. Provenance (`data/metadata/provenance.json`)
+lists all 106 downloaded VitalDB files (40 + 60 cases + metadata) with a download history.
+
+### How the datasets differ (they are not interchangeable)
+
+| | Auricle (healthy cohort) | VitalDB (3.0 subset and 4.0 extension) |
+|---|---|---|
+| Population | 42 healthy adults, 19–57 y (median 23) | surgical patients under anaesthesia, median age 57.5 / 60.5 |
+| PPG sensor / site | transmissive PPG at the finger and the earlobe, simultaneous | monitor finger plethysmogram (SNUADC/PLETH) |
+| Sampling | 1 kHz (resampled to 100 Hz for features) | 500 Hz (resampled to 100 Hz) |
+| BP reference | CNAP continuous non-invasive (with reliability mask) and arm cuff | invasive arterial line (truth) and intermittent NIBP cuff (reference readings) |
+| Reference timing | continuous; references simulated on a grid | real NIBP every ~14–18 min on average |
+| Conditions | lab protocol: rest, breath hold, Valsalva, exercise, cold pressor; 2 days | induction, maintenance, vasoactive drugs; one session per patient |
+| Format | WFDB (+ standardised CSV/NPZ) | `.vital` (+ standardised CSV) |
+| Notes | AC-coupled PPG: no perfusion index | PLETH lags ECG ~0.4–0.5 s, so absolute PAT is not physiological |
+
 ## Other datasets (earlier Guilin study)
 
 | key | Source | Licence | Raw size | Role |

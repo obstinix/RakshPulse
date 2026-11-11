@@ -204,6 +204,21 @@ being evidence that the pipeline works at the ear.
   not bypassed).
 - Search coverage is limited to English-language sources and to what the search tools indexed.
 
+
+## 13b. RakshPulse 4.0 external-dataset review
+
+| Candidate | Access / licence | Decision |
+|---|---|---|
+| More VitalDB cases | open, CC BY 4.0 (verified 3.0) | **Used**: 60 further cases disjoint from the 3.0 subset (independent patients, real NIBP + arterial line) |
+| MIMIC-IV Waveform v0.1 | open, ODbL | Not used: about 200 records, no curated intermittent-cuff pairing; ICU monitor PPG like VitalDB, so little added independence |
+| MIMIC-III Waveform Matched / MIMIC-III-Ext | credentialed (PhysioNet credentialing + CITI) | Not used: requires credentials that this project does not hold. Access restrictions are not bypassed |
+| CardioWave-Portable | credentialed | Not used, for the same reason |
+| PPG-BP (figshare, CC0) | open | Already used as an external test in 1.0 (one cuff reading per subject, 2.1 s segments). It cannot test "beyond a reference" because there are no repeated readings |
+| BIDMC | open | No BP labels |
+
+The only genuinely different recording environment reachable without credentials remains VitalDB (surgical, invasive
+reference). No open dataset with ear or behind-ear PPG and repeated cuff references was found beyond Auricle.
+
 ## 14. References and official links
 
 - Guilin dual-wave: https://data.mendeley.com/datasets/pz2zzr8vhm/1 (doi:10.17632/pz2zzr8vhm.1)
