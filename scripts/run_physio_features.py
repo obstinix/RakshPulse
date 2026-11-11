@@ -123,7 +123,7 @@ def composites(d: pd.DataFrame, cols: list[str], site: str) -> pd.DataFrame:
     )
 
 
-def predictive(d: pd.DataFrame, site: str) -> list[dict]:
+def predictive(d: pd.DataFrame, site: str, splits: dict | None = None) -> list[dict]:
     hr_shape = [f"{site}_hr"] + [f"{site}_{c}" for c in st.SHAPE_FEATURES]
     physio = [f"{site}_{c}" for c in PHYSIO_FEATURES]
     fsets = {"hr_shape": hr_shape, "physio": physio, "hr_shape_physio": hr_shape + physio}
@@ -133,6 +133,8 @@ def predictive(d: pd.DataFrame, site: str) -> list[dict]:
         y = f"{target}_mmHg"
         refs = grid_refs(d, 300.0, cols, y)
         pairs = make_pairs(d, refs, cols, y)
+        if splits is not None:  # the exact subject folds evaluate() uses internally (recorded for provenance)
+            splits.update({f"{site}:{target}:{k}": v for k, v in st.subject_folds(pairs.subject_id, pairs.y).items()})
         _, _, pred = evaluate(pairs, fsets, d.groupby("subject_id")[y].mean(), n_boot=200, seed=SEED)
         errs = {m: subject_errors(pred.assign(yhat=pred[m])) for m in ["mean_change"] + [f"delta_{k}" for k in fsets]}
         fam = []
@@ -164,7 +166,7 @@ def main() -> int:
     t0 = time.time()
     OUT.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(SEED)
-    feats, comps, preds = [], [], []
+    feats, comps, preds, splits = [], [], [], {}
     for site in ("ear", "finger"):
         d = load(site)
         hr_shape = [f"{site}_hr"] + [f"{site}_{c}" for c in st.SHAPE_FEATURES]
@@ -174,7 +176,7 @@ def main() -> int:
         cmp = composites(d, hr_shape + physio, site)
         comps.append(cmp)
         feats += describe(d, list(cmp.component), site, "pca_composite", rng)
-        preds += predictive(d, site)
+        preds += predictive(d, site, splits)
         log.info("%s done", site)
     f = pd.DataFrame(feats)
     f.to_csv(OUT / "features.csv", index=False, float_format="%.4f")
@@ -194,6 +196,7 @@ def main() -> int:
         },
         model_config={"delta_model": "RidgeCV on feature changes (3.0 evaluate)"},
     )
+    run.splits.update(splits)
     run.add_metrics(pr)
     run.finish()
     summ = (

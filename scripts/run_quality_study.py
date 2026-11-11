@@ -171,6 +171,7 @@ def predict_all(site: str, q: pd.DataFrame) -> pd.DataFrame:
         d.loc[rest, "yhat_cal"] = d.loc[rest, "yhat"] - (cal.yhat - cal.y).mean()
     d["ae_cal"] = (d.yhat_cal - d.y).abs()
     d["site"] = site
+    d.attrs["folds"] = folds
     return d
 
 
@@ -265,6 +266,7 @@ def main() -> int:
             qs = q[q.site == site]
             dist.append({"site": site, **qs.quality_class.value_counts(normalize=True).to_dict(), "n_windows": len(qs)})
             d = predict_all(site, q)
+            run.splits.update({f"{site}:{k}": v for k, v in d.attrs["folds"].items()})
             a, b, c, e = analyse(d)
             summ, par, ret, se = summ + a, par + b, ret + c, se + e
     for name, rows in (
