@@ -146,3 +146,36 @@ ear PPG ─► 10 s windows ─► SQI gate ─► HR + pulse-shape features ─
 - **Export** (`src/rakshpulse/inference/export.py`) folds the linear bundle (impute → scale → ridge) into one
   weight vector and bias per target. It is written as JSON and a C99 header. No ML runtime is needed, so ONNX was
   not required (it is not installed here and was not tested).
+
+## RakshPulse 5.0 software architecture
+
+```
+                 ┌───────────────────────────── rakshpulse CLI (src/rakshpulse/cli.py) ─────────────────────────────┐
+ sensor sources  │ acquisition/            datastore/               preprocessing/          features/               │
+ ─────────────── │ simulator.py ─┐         store.py (CSV sessions,  pipeline.py (chunked,   feature_pipeline.py      │
+ SimulatedSensor │ sources.py ───┼─► ingest.py ─► manifest, valid.) ─► gaps, jitter, quality ─► (1.0, unchanged)  │
+ ReplaySource    │ (SampleBlock, │   (TimestampSync,  association.py   status + reasons)      physiological.py (4.0) │
+ TextStream/     │  MAX30102Cfg, │    gaps, drift,   (cuff ↔ window)                                                │
+ SerialSource    │  LineFormat)  │    Recorder)                                                                     │
+                 │                                                                                                 │
+                 │ models/registry.py (train/CV/version) ◄─ evaluation/splits.py (leakage-checked)                 │
+                 │ models/domain_adaptation.py (session std, CORAL)   models/model_factory.py, cnn.py, sequence.py │
+                 │ personalization/strategies.py (policy, 7 strategies) ◄─ hierarchical.py (4.0), engine.py (2.0)  │
+                 │ inference/engine.py (streaming, gating, uncertainty, calibration) ─► export.py (float32 C header)│
+                 │ evaluation/statistics.py (subject bootstrap, permutation, Holm/BH, Bland–Altman)                 │
+                 └─────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+Design rules:
+1. **One processing path.** The offline pipeline and the streaming engine call the same `window_features`, so
+   training and live data cannot drift apart.
+2. **Hardware independence.** Sources produce `SampleBlock`s and everything downstream sees timestamped rows.
+   A new device is a new source class, not an architectural change.
+3. **Nothing is silently dropped or overwritten.** Gaps are logged, windows carry their rejection reasons, raw
+   files are created exclusively and hashed, and derived files refuse to overwrite.
+4. **Leakage is a runtime error.** Splits and calibration splits raise if a subject, session or calibration reading
+   would reach the evaluation set.
+5. **Simulated data is labelled** at every layer (`sensor_type=simulator`, the `simulated` column, CLI warnings,
+   and `train` refuses all-simulated tables by default).
+6. **4.0 compatibility.** Feature names and definitions are unchanged. 5.0 adds modules and does not modify any 4.0
+   module (checked by `scripts/audit_v4.py`).

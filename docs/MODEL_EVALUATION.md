@@ -309,6 +309,24 @@ Summary:
 - **External:** zero-shot cross-dataset prediction fails. Within VitalDB, absolute SBP transfers to new patients
   (−2.1 mmHg vs mean), but change gains beyond real cuffs are not significant.
 
+
+## I. RakshPulse 5.0: evaluation framework
+
+Reusable implementation of the 4.0 rules, used by the CLI and `scripts/run_v5_experiments.py`.
+- **Splits** (`evaluation/splits.py`): subject-independent, session-independent (unseen or seen subjects) and
+  strict cross-day. Each fold is checked by `check_no_leakage`.
+- **Calibration** (`personalization/strategies.py`):
+  - readings and windows within ±`exclude_s` of them are never evaluated;
+  - *calibration fit* (error at the readings) is reported apart from *independent prediction* error;
+  - retention is reported as error by time since the last reading, and expiry by a `CalibrationPolicy`.
+- **Metrics:** MAE, RMSE, mean error, SD of error, Pearson r, subject-level MAE with subject-bootstrap CI,
+  within-subject correlation, repeated-measures Bland–Altman, interval coverage and width, rejection rate (window
+  status shares), and latency and peak Python memory (desktop only).
+- **Comparisons:** subject-level sign-flip permutation tests with Holm correction within each declared family.
+  PPG value is claimed only against the matched no-PPG control (`cuff_hierarchical`).
+- **Simulated data** validates software behaviour (timing, gaps, quality decisions, sensitivity of features to
+  acquisition perturbations). It never enters a BP accuracy claim.
+
 ## Interpretation
 
 1. **Single-site PPG morphology carries little SBP information in this cohort.** No PPG-only

@@ -37,6 +37,11 @@ high-altitude settings, built around the MAX30102 optical sensor.
 | 4.0: external validation on 60 further, independent VitalDB patients | ✅ Zero-shot, independent-patient and adaptation results reported separately |
 | 4.0: subject-level statistics (permutation, Holm/BH, effect sizes, Bland–Altman) + result audit | ✅ `evaluation/statistics.py`, `scripts/audit_v4.py` |
 | 4.0: ring-buffer streaming, in-stream quality, float32 C-header export, driver-free sensor interface | ✅ Desktop-verified; **no embedded hardware tested** |
+| 5.0: acquisition (red/IR simulator, MAX30102 config, serial/replay sources, timestamp sync, gap detection, recorder) | ✅ Implemented, tested with simulated input |
+| 5.0: CSV dataset store (sessions, cuff readings, manifest checksums, validation, import/export, reference association) | ✅ Implemented ([DATA_COLLECTION_PROTOCOL](docs/DATA_COLLECTION_PROTOCOL.md)) |
+| 5.0: configurable chunked pipeline, calibration strategies + policy, leakage-checked splits, model registry, inference engine | ✅ Implemented ([USER_GUIDE](docs/USER_GUIDE.md)) |
+| 5.0: `rakshpulse` CLI (doctor, simulate, record, reference, inspect, preprocess, features, train, calibrate, evaluate, infer, export) | ✅ Implemented |
+| 5.0: MAX30102 integration contract and acceptance checklist | ✅ Documented ([HARDWARE_INTEGRATION](docs/HARDWARE_INTEGRATION.md#connecting-a-max30102-rakshpulse-50-instructions-for-the-hardware-team)); **awaiting hardware** |
 | Behind-ear validation | ❌ **Not done.** No behind-ear data exists yet ([docs/DOMAIN_ADAPTATION.md](docs/DOMAIN_ADAPTATION.md)) |
 | ESP32 / ONNX / TFLite deployment | ❌ Planned. Footprint measured only |
 | Clinical validation (ISO 81060-2 / IEEE 1708) | ❌ Not started |
@@ -97,7 +102,16 @@ high-altitude settings, built around the MAX30102 optical sensor.
       A VitalDB-trained model predicts new patients' absolute SBP better than the mean (−2.1 mmHg), but MAE
       stays about 14 mmHg. Change-model gains beyond real cuff readings are not significant after correction.
     See [RESEARCH_FINDINGS § 4.0](docs/RESEARCH_FINDINGS.md#rakshpulse-40-generalisation-physiology-quality-calibration-uncertainty-external-validation).
-13. The realistic path forward is **per-user cuff calibration plus behind-ear data collection with a controlled,
+13. **RakshPulse 5.0, cross-day follow-up:**
+    - **Unsupervised adaptation does not help across days.** Per-session standardisation and CORAL were no
+      better than plain ridge, which was itself no better than the mean.
+    - **PPG + cuff vs cuff-only across days stays non-significant** (−1.26 mmHg SBP, Holm p = 0.19).
+    - **Calibrations decay within minutes:** SBP error grows from about 9 to about 13 mmHg within 20–40 minutes
+      of the last reading.
+    - **Simulation (tool validation only)** shows the features are gain-invariant but sensitive to contact
+      amplitude and pulse morphology.
+    See [RESEARCH_FINDINGS § 5.0](docs/RESEARCH_FINDINGS.md#rakshpulse-50-software-platform-and-cross-day-follow-up).
+14. The realistic path forward is **per-user cuff calibration plus behind-ear data collection with a controlled,
     repeatable sensor placement across days**.
    It is not a bigger model on fingertip data.
 
@@ -108,7 +122,24 @@ git clone https://github.com/obstinix/RakshPulse.git && cd RakshPulse
 python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"                                 # core + pytest + ruff
 pip install torch --index-url https://download.pytorch.org/whl/cpu   # optional, for the CNN
+pip install -e ".[serial]"                              # optional, USB-serial MAX30102 input
+rakshpulse doctor                                       # environment check + simulated self-test
 ```
+
+## Quick start (5.0 platform, simulated data)
+
+```bash
+rakshpulse simulate --out demo --subjects 6 --sessions 2 --duration 240   # SIMULATED, clearly flagged
+rakshpulse inspect --dataset demo --validate
+rakshpulse preprocess --dataset demo
+rakshpulse features --dataset demo --out demo_table.csv
+rakshpulse train --table demo_table.csv --allow-simulated --split cross_day --train-sessions D1
+rakshpulse infer --model models/<version>.joblib --source sim --duration 120
+```
+
+Simulated results describe the software, never blood pressure. For real recordings see
+[docs/USER_GUIDE.md](docs/USER_GUIDE.md), [docs/DATA_COLLECTION_PROTOCOL.md](docs/DATA_COLLECTION_PROTOCOL.md) and
+the MAX30102 section of [docs/HARDWARE_INTEGRATION.md](docs/HARDWARE_INTEGRATION.md).
 
 ## Reproduce everything
 
@@ -167,7 +198,8 @@ python scripts/run_calibration_uncertainty.py              # needs the quality c
 python scripts/run_external_validation.py
 python scripts/run_deployment_v4.py
 python scripts/plot_v4.py && python scripts/write_findings.py
-python scripts/audit_v4.py                                 # provenance, checksums, splits, leakage, tables
+python scripts/run_v5_experiments.py                       # 5.0: X1-X4 + platform benchmarks
+python scripts/audit_v4.py                                 # 4.0 + 5.0: provenance, checksums, splits, leakage, tables
 
 # 3. reference inference bundle
 python scripts/train_final.py --feature-set ppg_ir_red+demo --model ridge
@@ -241,13 +273,19 @@ errors, not clinical confidence intervals.
   hypertensive subjects. That is not enough to show BP *tracking*.
 - **Generalisation:** external tests show large bias in older cohorts.
 - **Motion:** no accelerometer in the data or on the MAX30102. Motion robustness is untested.
+- **No hardware data yet (5.0):** the acquisition, storage and inference platform has been exercised only with
+  simulated sensors and replayed public data. MAX30102 behaviour (noise, ambient light, contact pressure, die
+  temperature), embedded latency, memory and power, and any behind-ear model are still untested.
+- **Cross-day transfer:** no method tried in 3.0–5.0 (normalisation, domain adaptation, hierarchical
+  calibration) carries information across recording days. Calibrations decay within minutes.
 - **Standards:** ISO 81060-2 / BHS statistics are reported for orientation only. Compliance is
   **not** claimed. See [docs/MODEL_EVALUATION.md](docs/MODEL_EVALUATION.md#validation-requirements-before-any-real-world-use).
 
 ## Repository layout
 
 ```
-src/rakshpulse/{data,preprocessing,features,models,evaluation,inference,personalization,experiments}
+src/rakshpulse/{acquisition,datastore,data,preprocessing,features,models,evaluation,inference,personalization,experiments}
+src/rakshpulse/cli.py  the `rakshpulse` command
 scripts/      reproducible experiment entry points
 tests/        pytest suite (synthetic fixtures; no dataset needed)
 notebooks/    01_ppg_exploration.ipynb
