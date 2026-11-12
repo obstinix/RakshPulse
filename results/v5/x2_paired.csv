@@ -1,0 +1,7 @@
+experiment,target,comparison,n_units,mean_diff,ci_low,ci_high,cohen_dz,p_perm,p_wilcoxon,p_holm
+X2,sbp,ridge vs mean (subject_independent_all_sessions),32,-0.8718,-1.7237,-0.0608,-0.3506,0.0565,0.0770,0.1695
+X2,sbp,ridge vs mean (cross_day_unseen_subjects),32,-0.6512,-1.7346,0.4098,-0.2042,0.2558,0.3309,0.2558
+X2,sbp,ridge vs mean (cross_session_seen_subjects),32,-1.0592,-2.1288,0.0300,-0.3239,0.0781,0.0770,0.1695
+X2,dbp,ridge vs mean (subject_independent_all_sessions),32,-0.6682,-1.3561,0.0040,-0.3235,0.0758,0.1776,0.2274
+X2,dbp,ridge vs mean (cross_day_unseen_subjects),32,-0.3364,-1.2170,0.5415,-0.1258,0.4991,0.6379,0.4991
+X2,dbp,ridge vs mean (cross_session_seen_subjects),32,-0.5354,-1.2737,0.1724,-0.2434,0.1848,0.2386,0.3696

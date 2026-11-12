@@ -1,4 +1,4 @@
-"""RakshPulse 4.0 result audit: provenance, checksums, splits, leakage and table regeneration.
+"""RakshPulse 4.0 + 5.0 result audit: provenance, checksums, splits, leakage and table regeneration.
 
 Checks (each prints PASS/FAIL; exit code 1 on any FAIL):
 1. every 4.0 run in results/runs/runs.csv has status completed, a code-clean commit (git_dirty_code False) that
@@ -32,6 +32,8 @@ SCRIPT_OF = {
     "calibration_uncertainty_v4": "scripts/run_calibration_uncertainty.py",
     "external_validation_v4": "scripts/run_external_validation.py",
     "deployment_v4": "scripts/run_deployment_v4.py",
+    "v5_cross_day_calibration": "scripts/run_v5_experiments.py",
+    "v5_simulation_and_benchmarks": "scripts/run_v5_experiments.py",
 }
 NEEDS_SPLITS = {
     "cross_day_generalization_v4",
@@ -39,6 +41,7 @@ NEEDS_SPLITS = {
     "quality_score_v4",
     "calibration_uncertainty_v4",
     "external_validation_v4",
+    "v5_cross_day_calibration",
 }
 V3_COMMIT = "b783b76"
 failures: list[str] = []
@@ -118,6 +121,13 @@ def main() -> int:
     doc = (ROOT / "docs" / "RESEARCH_FINDINGS.md").read_text(encoding="utf-8")
     a_, b_ = doc.index(wf.BW) + len(wf.BW), doc.index(wf.EW)
     check(doc[a_:b_].strip() == wf.v4_block().strip(), "W1–W6 tables equal a fresh render from the CSVs")
+    if wf.B5 in doc:
+        a5, b5 = doc.index(wf.B5) + len(wf.B5), doc.index(wf.E5)
+        check(doc[a5:b5].strip() == wf.v5_block().strip(), "Y1–Y5 (5.0) tables equal a fresh render from the CSVs")
+    check(
+        not git("diff", "--name-only", "--diff-filter=MDR", "d225972", "HEAD", "--", "src"),
+        "5.0 added modules only: no 4.0 source module modified or deleted",
+    )
     print(f"\n{len(failures)} failure(s)")
     return 1 if failures else 0
 

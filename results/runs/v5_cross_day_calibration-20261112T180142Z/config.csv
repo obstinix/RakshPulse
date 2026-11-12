@@ -1,0 +1,38 @@
+key,value
+run_id,v5_cross_day_calibration-20261112T180142Z
+name,v5_cross_day_calibration
+seed,0
+started_utc,2026-11-12T18:01:42+00:00
+duration_s,44.8
+status,completed
+phase_duration_s:x1,12.68
+phase_duration_s:x2,6.55
+phase_duration_s:x3,25.56
+git_commit,78ed2cbe6f7cab457e56cb9827eaa5a9fc4bc3e1
+git_dirty,True
+git_dirty_code,False
+python,3.11.9
+platform,Windows-10-10.0.26300-SP0
+numpy,2.4.6
+scipy,1.17.1
+pandas,3.0.6
+scikit-learn,1.9.1
+xgboost,3.2.0
+lightgbm,4.7.0
+torch,2.15.0+cpu
+wfdb,4.3.1
+vitaldb,1.7.2
+dataset:data/auricle/windows.csv,be0832d93d2ca380bca2931c26d4178a5526aa1ce575bc75016006f61601e0f4
+dataset:data/auricle/features.csv,5c8517a57e55724e0881d014344a7c3faa4d6f6436801d6d410bdfb0d3777036
+dataset:results/predictions/personalization_pop_ear_mean_dbp.csv.gz,7f4d03c15b984b022a7243384af45a8bf24befce18e07bda37b3222e4a837f5b
+dataset:results/predictions/personalization_pop_ear_mean_sbp.csv.gz,2e0d94b9e7cc72c961f172d8c36edaea3bb0013d1bb5e85607c4f0e4a6de0571
+dataset:results/predictions/personalization_pop_ear_ridge_dbp.csv.gz,ed87b31734e1525547410cd1fa80c7b440109a1791e6b145f704f1c2139c3a67
+dataset:results/predictions/personalization_pop_ear_ridge_sbp.csv.gz,e4a8ac8386e085e04d67f1d0d663f937820067ed027e0b0734e725d142c64613
+dataset_version:auricle,"PhysioNet 1.0.0, standardised tables 2.0"
+config:x1,strict cross-day ridge alpha=100; session-std / CORAL on unlabelled day-2 features
+config:x2,subject / cross_day / session-seen protocols
+config:x3,policy engine on 2.0 OOF
+config:n_boot,2000
+feature_config:features,ear HR + 27 shape (3.0 hr_shape)
+model_config:model,ridge alpha=100
+model_config:calibration,personalization.strategies

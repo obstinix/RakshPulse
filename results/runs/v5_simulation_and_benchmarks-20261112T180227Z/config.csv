@@ -1,0 +1,25 @@
+key,value
+run_id,v5_simulation_and_benchmarks-20261112T180227Z
+name,v5_simulation_and_benchmarks
+seed,21
+started_utc,2026-11-12T18:02:27+00:00
+duration_s,67.0
+status,completed
+phase_duration_s:x4,13.85
+phase_duration_s:benchmarks,53.15
+git_commit,78ed2cbe6f7cab457e56cb9827eaa5a9fc4bc3e1
+git_dirty,True
+git_dirty_code,False
+python,3.11.9
+platform,Windows-10-10.0.26300-SP0
+numpy,2.4.6
+scipy,1.17.1
+pandas,3.0.6
+scikit-learn,1.9.1
+xgboost,3.2.0
+lightgbm,4.7.0
+torch,2.15.0+cpu
+wfdb,4.3.1
+vitaldb,1.7.2
+config:x4,"SIMULATED perturbations, 300 s each, seed 21"
+config:b,"desktop CPU, simulated input"

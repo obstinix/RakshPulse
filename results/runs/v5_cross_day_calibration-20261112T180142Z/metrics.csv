@@ -1,0 +1,17 @@
+experiment,target,mode,method,mae,rmse,bias,sd_error,pooled_pearson,pooled_spearman,within_subject_pearson_median,within_subject_spearman_median,subject_bias_sd,n_subjects,n_windows
+X1,sbp,absolute,training_mean,15.828,20.733,-4.1084,20.323,-0.22769,-0.18986,,,16.122,32,5858
+X1,sbp,absolute,ridge,15.058,19.368,-5.0264,18.706,0.37573,0.32927,0.30842,0.22111,14.797,32,5858
+X1,sbp,absolute,ridge_session_std,15.401,20.253,-4.1084,19.834,0.22107,0.22834,0.40622,0.36684,16.122,32,5858
+X1,sbp,absolute,ridge_coral,16.117,20.929,-4.1084,20.523,0.1461,0.10803,0.25871,0.14267,16.122,32,5858
+X1,sbp,day1_cuff_transferred,combined_ridge,13.476,17.684,-3.506,17.334,0.51239,0.4804,0.30842,0.22111,13.257,32,5858
+X1,sbp,day1_cuff_transferred,cuff_hierarchical,14.899,19.478,-3.4609,19.17,0.31288,0.30503,,,15.112,32,5858
+X1,sbp,day1_cuff_transferred,combined_ridge_session_std,14.17,18.542,-3.2046,18.264,0.42632,0.41512,0.40622,0.36684,14.576,32,5858
+X1,sbp,day1_cuff_transferred,combined_ridge_coral,15.1,19.553,-2.9356,19.333,0.32784,0.31712,0.25871,0.14267,15.059,32,5858
+X1,dbp,absolute,training_mean,10.074,13.867,-0.72183,13.849,-0.38636,-0.3842,,,11.247,32,5858
+X1,dbp,absolute,ridge,9.5292,12.96,-1.4361,12.881,0.28603,0.20152,0.10189,0.1179,10.03,32,5858
+X1,dbp,absolute,ridge_session_std,10.113,13.839,-0.72183,13.821,-0.0023242,0.013987,0.15869,0.23016,11.247,32,5858
+X1,dbp,absolute,ridge_coral,10.409,14.21,-0.72183,14.193,-0.051793,-0.06707,0.10067,0.081534,11.247,32,5858
+X1,dbp,day1_cuff_transferred,combined_ridge,9.2546,12.551,-1.5065,12.461,0.37261,0.32479,0.10189,0.1179,9.6642,32,5858
+X1,dbp,day1_cuff_transferred,cuff_hierarchical,9.2546,12.888,-1.3559,12.817,0.2893,0.30974,,,10.162,32,5858
+X1,dbp,day1_cuff_transferred,combined_ridge_session_std,9.3825,12.925,-1.1913,12.871,0.28953,0.30237,0.15869,0.23016,10.182,32,5858
+X1,dbp,day1_cuff_transferred,combined_ridge_coral,9.754,13.329,-0.99749,13.293,0.22896,0.24918,0.10067,0.081534,10.342,32,5858

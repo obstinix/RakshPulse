@@ -20,6 +20,7 @@ BP_, EP_ = "<!-- BEGIN PERSONALIZATION -->", "<!-- END PERSONALIZATION -->"
 PERS = ROOT / "results" / "personalization"
 BV, EV = "<!-- BEGIN V3 -->", "<!-- END V3 -->"
 BW, EW = "<!-- BEGIN V4 -->", "<!-- END V4 -->"
+B5, E5 = "<!-- BEGIN V5 -->", "<!-- END V5 -->"
 
 
 def ci(s) -> str:
@@ -769,6 +770,121 @@ def v4_block() -> str:
     return "\n".join(out)
 
 
+def v5_block() -> str:
+    """RakshPulse 5.0 tables (results/v5): cross-day adaptation, protocols, retention/expiry, simulation, benchmarks."""
+    R = ROOT / "results" / "v5"
+    if not (R / "x1_cross_day_adaptation.csv").exists():
+        return ""
+    out = []
+    x1, x1p = pd.read_csv(R / "x1_cross_day_adaptation.csv"), pd.read_csv(R / "x1_paired.csv")
+    t = x1[["target", "mode", "method", "mae", "subject_bias_sd", "within_subject_pearson_median", "n_subjects"]].copy()
+    t[["mae", "subject_bias_sd", "within_subject_pearson_median"]] = t[
+        ["mae", "subject_bias_sd", "within_subject_pearson_median"]
+    ].map(f2)
+    out += [
+        "### Y1. Cross-day domain adaptation (strict: training subjects' day 1 → unseen subjects' day 2; Auricle ear)",
+        "",
+        table(t.set_axis(["Target", "Mode", "Method", "MAE", "Subject bias SD", "Within-subj r", "n subj"], axis=1)),
+        "",
+        table(
+            pd.DataFrame(
+                [[r["target"], r["comparison"], _dp(r)] for _, r in x1p.iterrows()],
+                columns=["Target", "Comparison", "Δ subject MAE [95% CI] (Holm p)"],
+            )
+        ),
+        "",
+    ]
+    x2, x2p = pd.read_csv(R / "x2_protocols.csv"), pd.read_csv(R / "x2_paired.csv")
+    t = x2[["target", "protocol", "model", "mae", "n_subjects", "n_windows"]].copy()
+    t["mae"] = t.mae.map(f2)
+    out += [
+        "### Y2. Same model, different evaluation protocols (ridge vs training mean)",
+        "",
+        table(t.set_axis(["Target", "Protocol", "Model", "MAE", "n subj", "n windows"], axis=1)),
+        "",
+        table(
+            pd.DataFrame(
+                [[r["target"], r["comparison"], _dp(r)] for _, r in x2p.iterrows()],
+                columns=["Target", "Comparison", "Δ subject MAE [95% CI] (Holm p)"],
+            )
+        ),
+        "",
+    ]
+    ret, exp = pd.read_csv(R / "x3_retention.csv"), pd.read_csv(R / "x3_expiry.csv")
+    order = {
+        "[0.0, 300.0)": "0–5",
+        "[300.0, 600.0)": "5–10",
+        "[600.0, 1200.0)": "10–20",
+        "[1200.0, 2400.0)": "20–40",
+        "calibration_fit_at_readings": "fit at readings",
+    }
+    ret = ret[ret.minutes_since_reading.isin(order)].assign(
+        minutes_since_reading=lambda d: d.minutes_since_reading.map(order)
+    )
+    v = ret.pivot_table(index=["target", "strategy"], columns="minutes_since_reading", values="subject_mae")
+    v = v[[c for c in ["0–5", "5–10", "10–20", "20–40", "fit at readings"] if c in v.columns]].map(f2).reset_index()
+    e = exp.copy()
+    e[["share_windows_valid", "mae_valid", "mae_expired"]] = e[["share_windows_valid", "mae_valid", "mae_expired"]].map(
+        f2
+    )
+    out += [
+        "### Y3. Calibration retention within a session (3 readings at the start; subject MAE by minutes since the "
+        "last reading; 2.0 out-of-fold predictions; independent windows only, except the last column)",
+        "",
+        table(v.rename(columns={"target": "Target", "strategy": "Strategy"})),
+        "",
+        "Expiry policy: share of windows still valid and their error vs expired windows:",
+        "",
+        table(e.set_axis(["Target", "Strategy", "Expiry (min)", "Share valid", "MAE valid", "MAE expired"], axis=1)),
+        "",
+    ]
+    x4 = pd.read_csv(R / "x4_simulated_perturbations.csv")
+    x4 = x4.assign(
+        usable_share=x4.usable_share.map(f2),
+        median_quality_score=x4.median_quality_score.map(f2),
+        median_abs_shift_sd=x4.median_abs_shift_sd.map(f2),
+        max_abs_shift_sd=x4.max_abs_shift_sd.map(f2),
+    )
+    out += [
+        "### Y4. SIMULATED acquisition perturbations (software/tool validation only; not physiological evidence)",
+        "",
+        table(
+            x4[
+                [
+                    "perturbation",
+                    "usable_share",
+                    "median_quality_score",
+                    "median_abs_shift_sd",
+                    "max_abs_shift_sd",
+                    "n_features_shift_gt_2sd",
+                    "most_affected",
+                ]
+            ].set_axis(
+                [
+                    "Perturbation",
+                    "Usable share",
+                    "Median quality",
+                    "Median |shift| (SD)",
+                    "Max |shift| (SD)",
+                    "Features > 2 SD",
+                    "Most affected",
+                ],
+                axis=1,
+            )
+        ),
+        "",
+    ]
+    b = pd.read_csv(R / "benchmarks.csv")
+    b = b.assign(value=b.value.map(lambda v: f"{v:,.2f}"))[["stage", "metric", "value"]]
+    out += [
+        "### Y5. Platform benchmarks (desktop CPU, simulated input; not embedded measurements)",
+        "",
+        table(b.set_axis(["Stage", "Metric", "Value"], axis=1)),
+        "",
+    ]
+    return "\n".join(out)
+
+
 def _replace_block(text: str, begin: str, end: str, body: str) -> str:
     if begin not in text:
         text = text.rstrip() + f"\n\n{begin}\n{end}\n"
@@ -1077,6 +1193,8 @@ def main() -> int:
         text = _replace_block(text, BP_, EP_, personalization_block())
         text = _replace_block(text, BV, EV, v3_block())
         text = _replace_block(text, BW, EW, v4_block())
+        if B5 in text:
+            text = _replace_block(text, B5, E5, v5_block())
     DOC.write_text(text, encoding="utf-8")
     print(f"wrote {DOC.relative_to(ROOT)} ({len(auto)} chars of tables)")
     return 0

@@ -1,0 +1,9 @@
+perturbation,simulated,usable_share,median_quality_score,median_abs_shift_sd,max_abs_shift_sd,most_affected,n_features_shift_gt_2sd,n_features
+baseline,True,1.0000,100.0000,0.0000,0.0000,ir_hr;ir_sys_ratio;ir_w10_sd_ratio,0,28
+contact_perfusion_x0.5,True,1.0000,100.0000,0.4723,2.1222,ir_w90_n;ir_apg_b_a;ir_w10_n,1,28
+contact_perfusion_x2,True,1.0000,100.0000,0.3454,2.7888,ir_apg_c_a;ir_aging_index;ir_apg_e_a,2,28
+adc_gain_dc_x1.5,True,1.0000,100.0000,0.0057,0.1401,ir_t_apg_b_n;ir_aging_index;ir_w25_n,0,28
+baseline_wander_x5,True,1.0000,100.0000,0.0591,0.4018,ir_aging_index;ir_win_skew;ir_apg_b_a,0,28
+sensor_noise_x4,True,0.0000,89.0000,1.1552,4.1607,ir_w10_sd_ratio;ir_spec_entropy;ir_area_ratio,10,28
+reflection_0.30,True,1.0000,100.0000,0.4478,16.5752,ir_beat_skew;ir_beat_kurt;ir_win_skew,10,28
+reflection_0.60,True,1.0000,100.0000,0.3399,16.1438,ir_beat_skew;ir_beat_kurt;ir_win_skew,10,28
