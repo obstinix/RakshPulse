@@ -69,7 +69,8 @@ def main() -> int:
     for r in latest.itertuples():
         commit = r.git_commit
         anc = subprocess.run(["git", "merge-base", "--is-ancestor", commit, "HEAD"], cwd=ROOT).returncode == 0
-        changed = git("diff", "--name-only", commit, "HEAD", "--", "src", SCRIPT_OF[r.name], "pyproject.toml")
+        # files that existed at the run commit must be unchanged; newly added modules cannot alter an earlier run
+        changed = git("diff", "--name-only", "--diff-filter=MDR", commit, "HEAD", "--", "src", SCRIPT_OF[r.name])
         check(
             r.status == "completed" and str(r.git_dirty_code) == "False" and anc and not changed,
             f"{r.run_id}: completed, clean code at {commit}, unchanged since ({changed or 'no diff'})",
