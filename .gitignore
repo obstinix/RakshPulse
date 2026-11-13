@@ -13,11 +13,9 @@ data/raw/*
 data/extracted/*
 data/interim/*
 data/processed/*
-!data/**/.gitkeep
 
-# Trained model binaries (regenerable; small reference model is whitelisted explicitly)
+# Trained model binaries (regenerable); the shipped bundles are whitelisted at the end of this file
 models/*
-!models/.gitkeep
 
 # Project source PDFs (third-party/team documents, not redistributed)
 *.pdf
