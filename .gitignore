@@ -17,8 +17,9 @@ data/processed/*
 # Trained model binaries (regenerable); the shipped bundles are whitelisted at the end of this file
 models/*
 
-# Project source PDFs (third-party/team documents, not redistributed)
+# Project source PDFs (third-party/team documents, not redistributed); the generated hardware manual is published
 *.pdf
+!docs/RAKSHPULSE_HARDWARE_INTEGRATION_MANUAL.pdf
 
 # Secrets
 .env
