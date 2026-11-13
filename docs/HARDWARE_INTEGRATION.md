@@ -115,82 +115,8 @@ These are **not** microcontroller numbers.
   has not been ported to C. That port, and bit-exactness checks on recorded MAX30102 files, are the next
   integration steps.
 
-## Connecting a MAX30102 (RakshPulse 5.0): instructions for the hardware team
+## Connecting a MAX30102
 
-The software side is complete and hardware-independent:
-`acquisition/sources.py` → `acquisition/ingest.py` → `datastore/` → `preprocessing/pipeline.py` →
-`inference/engine.py`. Nothing in it talks I²C. The microcontroller (ESP32, STM32, Arduino, ...) reads the
-MAX30102 and streams text lines over USB-serial. The only contract between firmware and software is described
-below. **None of this has been tested on a physical MAX30102**, because no device was available to the software
-team.
-
-### 1. Sensor configuration (firmware)
-
-- SpO2 mode (red + IR). Record the settings in `MAX30102Config` (`rakshpulse record --sensor-config '{...}'`
-  validates them against the datasheet options: sample rate 50–3200 sps, pulse width 69/118/215/411 µs = 15–18-bit,
-  ADC range 2048–16384 nA, averaging 1–32, LED current 0–51 mA).
-- Suggested starting point: 100 sps output (`sample_rate_hz=100, sample_averaging=1`, or 400 with averaging 4),
-  411 µs (18-bit), ADC range 16384 nA. Set the LED currents so the raw DC sits well inside the ADC range: the
-  pipeline flags samples at the rails (`rail_clipping`) as unusable. The software's `--fs` must equal the
-  **output** rate (`sample_rate / averaging`). `record` refuses a mismatch.
-- Check the datasheet table of allowed sample-rate / pulse-width combinations. `MAX30102Config.validate()` warns
-  for combinations it cannot verify.
-
-### 2. Firmware output contract
-
-1. Drain the 32-sample FIFO often enough that it never overflows (at 100 sps, at least every ~300 ms). Each
-   sample holds a red and an IR value (3 bytes each in SpO2 mode). Assemble them as the datasheet's FIFO data
-   format specifies.
-2. Keep a **monotonic sample counter** (32-bit) that increments once per FIFO sample. If the FIFO overflow counter
-   reports lost samples, **add them to the counter** before the next sample. The software then logs them as gaps
-   instead of silently stretching time. This is the single most important requirement.
-3. Emit one ASCII line per sample, newline-terminated, for example `sample_index,red,ir`:
-   ```
-   10234,95321,118204
-   10235,95318,118199
-   ```
-   Optional extra fields (declare them with `--fields`): `device_time_us` (a device microsecond clock),
-   `temperature_c` (die temperature, repeated until the next temperature read), `ignore`. Lines starting with
-   `#` are treated as comments (use them for boot banners). Malformed lines are counted and skipped.
-4. Use a baud rate with ample headroom (115200 baud is about 10× what 100 sps needs).
-
-### 3. Connect and record
-
-```bash
-pip install -e .[serial]
-rakshpulse doctor
-rakshpulse record --out data/bench --subject BENCH --session T1 --source serial --port COM5 --baud 115200 \
-    --fs 100 --fields sample_index,red,ir --duration 120 \
-    --sensor-config '{"sample_rate_hz": 100, "pulse_width_us": 411, "adc_range_na": 16384}' \
-    --placement behind_ear --contact "bench test"
-rakshpulse inspect --dataset data/bench --validate
-rakshpulse preprocess --dataset data/bench
-```
-
-`record` prints `samples`, `missing_samples`, `gaps` and `drift_ppm` (device-clock error against the host clock).
-If the counter wraps at 16 bits, add `--counter-modulus 65536`.
-
-### 4. Acceptance checklist (bench, then on-body)
-
-| Check | Pass criterion |
-|---|---|
-| Validation | `inspect --validate`: all PASS |
-| Missing samples | < 0.1 % on the bench (gaps logged, never interpolated beyond 2 samples) |
-| Clock | `drift_ppm` within the crystal tolerance; otherwise fix `--fs` or the firmware timer |
-| ADC headroom | no `rail_clipping` reasons at rest |
-| Signal quality at rest | ≥ 80 % of windows `usable` (`derived/windows.csv`) |
-| Heart rate | `ir_hr` within ± 3 bpm of a reference ECG / pulse oximeter |
-| Detachment | removing the sensor produces `missing` (flat-line) windows within one window length |
-| Motion | deliberate motion produces `degraded` / `unusable` windows with reasons |
-| Streaming | `rakshpulse infer --source serial ...` produces timestamped predictions with latency recorded |
-
-### 5. What is still hardware-dependent
-
-- Measured behind-ear MAX30102 signal quality, ambient-light rejection (the sensor's ambient-light cancellation is
-  configured in firmware), contact-pressure effects and die-temperature behaviour. These can only be measured on
-  the device.
-- Any model trained on behind-ear MAX30102 data. All existing models come from other sensors and sites
-  (DOMAIN_ADAPTATION.md).
-- Embedded latency, memory and power. The desktop numbers in RESEARCH_FINDINGS are **not** embedded measurements.
-  The runtime-free float32 C header (`rakshpulse export`) is the starting point for on-device inference. The
-  feature extractor would still need porting.
+The complete, current procedure is in **[HARDWARE_HANDOFF.md](HARDWARE_HANDOFF.md)**: the serial contract, the
+reference firmware (`hardware/firmware/rakshpulse_max30102`), setup on Windows and Linux, `check-serial` /
+`record` / `analyze`, data formats, troubleshooting and the handoff checklist.

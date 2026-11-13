@@ -41,7 +41,9 @@ high-altitude settings, built around the MAX30102 optical sensor.
 | 5.0: CSV dataset store (sessions, cuff readings, manifest checksums, validation, import/export, reference association) | ✅ Implemented ([DATA_COLLECTION_PROTOCOL](docs/DATA_COLLECTION_PROTOCOL.md)) |
 | 5.0: configurable chunked pipeline, calibration strategies + policy, leakage-checked splits, model registry, inference engine | ✅ Implemented ([USER_GUIDE](docs/USER_GUIDE.md)) |
 | 5.0: `rakshpulse` CLI (doctor, simulate, record, reference, inspect, preprocess, features, train, calibrate, evaluate, infer, export) | ✅ Implemented |
-| 5.0: MAX30102 integration contract and acceptance checklist | ✅ Documented ([HARDWARE_INTEGRATION](docs/HARDWARE_INTEGRATION.md#connecting-a-max30102-rakshpulse-50-instructions-for-the-hardware-team)); **awaiting hardware** |
+| 5.1: MAX30102 handoff: reference firmware, serial contract, `check-serial`, examples, troubleshooting, checklist | ✅ [docs/HARDWARE_HANDOFF.md](docs/HARDWARE_HANDOFF.md); firmware **not compiled or run** (no board available); **awaiting hardware** |
+| 5.1: model contracts (required inputs, demographics, sensors, sampling rates, uncertainty validity); inference refuses missing/invalid inputs | ✅ Implemented and tested; `rakshpulse models` |
+| 5.1: robust serial acquisition (timeouts, reconnect, duplicates, device reboot, rate checks) and `analyze` command | ✅ Tested with simulated and loop-back serial ports |
 | Behind-ear validation | ❌ **Not done.** No behind-ear data exists yet ([docs/DOMAIN_ADAPTATION.md](docs/DOMAIN_ADAPTATION.md)) |
 | ESP32 / ONNX / TFLite deployment | ❌ Planned. Footprint measured only |
 | Clinical validation (ISO 81060-2 / IEEE 1708) | ❌ Not started |
@@ -126,6 +128,10 @@ pip install -e ".[serial]"                              # optional, USB-serial M
 rakshpulse doctor                                       # environment check + simulated self-test
 ```
 
+## Hardware team: start here
+
+Follow **[docs/HARDWARE_HANDOFF.md](docs/HARDWARE_HANDOFF.md)**: flash `hardware/firmware/rakshpulse_max30102`, then `rakshpulse check-serial`, `record`, `reference` and `analyze`. Every model currently runs on MAX30102 data in **demonstration** mode only: the numbers show the pipeline works and are not blood-pressure measurements.
+
 ## Quick start (5.0 platform, simulated data)
 
 ```bash
@@ -135,6 +141,7 @@ rakshpulse preprocess --dataset demo
 rakshpulse features --dataset demo --out demo_table.csv
 rakshpulse train --table demo_table.csv --allow-simulated --split cross_day --train-sessions D1
 rakshpulse infer --model models/<version>.joblib --source sim --duration 120
+rakshpulse models                                                         # installed models and their limits
 ```
 
 Simulated results describe the software, never blood pressure. For real recordings see

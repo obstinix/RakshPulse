@@ -1,4 +1,4 @@
-# RakshPulse 5.0 User Guide
+# RakshPulse User Guide (5.1)
 
 RakshPulse is a **research prototype**. It is not a medical device, and no output of this software is a clinically
 validated blood-pressure measurement. Simulated data is labelled everywhere and is never evidence about blood
@@ -28,7 +28,10 @@ live source ──────────────────────�
 
 | Command | What it does | Main outputs |
 |---|---|---|
-| `rakshpulse doctor` | checks Python, required/optional packages, runs a simulated self-test | exit code 0/1 |
+| `rakshpulse doctor` | checks Python, required/optional packages, the default model, runs a simulated self-test | exit code 0/1 |
+| `rakshpulse models [--sensor max30102 --fs 100 --verbose]` | lists model bundles, their contracts and the mode each would run in for a sensor | table |
+| `rakshpulse ports` / `check-serial --port P --fs F` | finds serial ports; reads a few seconds and checks the data contract (needs the board) | PASS/FAIL report |
+| `rakshpulse analyze --dataset DS --subject S --session D1 [--calibrate N]` | validate → process → predict → compare with cuff readings → export, for one session | `derived/predictions_<model>.csv` |
 | `rakshpulse simulate --out DS` | creates a **simulated** dataset (subjects × sessions, synthetic cuff readings) | `DS/sessions/...` |
 | `rakshpulse record --out DS --subject S --session D1 --source sim\|replay\|serial` | records a session | raw, gaps, metadata, manifest |
 | `rakshpulse reference --dataset DS --subject S --session D1 --time 120 --sbp 121 --dbp 79` | appends a cuff reading (append-only, re-hashed) | `reference_bp.csv` |
@@ -41,7 +44,9 @@ live source ──────────────────────�
 | `rakshpulse infer --model M --source ...` | streaming inference with quality gating, uncertainty and optional calibration | predictions CSV |
 | `rakshpulse export --model M --out DIR` | float32 JSON + C99 header of a linear model, with an equivalence check | `.json`, `.h` |
 
-Every command has `-h`. Errors are printed as `error: ...` with exit code 2.
+Every command has `-h`. Exit codes: `0` success, `1` a check failed / no trustworthy result, `2` invalid usage or input, `3` device or serial problem, `4` incompatible model. `--fs` (the effective sampling rate) is required for serial and replay sources: it is never assumed.
+
+**Model contracts and modes.** Every bundle declares its required inputs (features, demographics), the sensors it supports, the sampling rates and preprocessing it accepts, and whether its uncertainty interval is valid for a sensor (`inference/contract.py`). Inference refuses incompatible inputs (exit 4) and never imputes required inputs. Each prediction carries `inference_mode`: `validated` (no model yet), `experimental` (trained on this sensor type, cross-validated only) or `demonstration` (pipeline demo, **not BP**). The shipped `models/auricle_ear_ridge_v2.joblib` is demonstration-only for MAX30102.
 
 ## 3. Recording
 

@@ -1,0 +1,6 @@
+timestamp,first_missing_index,n_missing,detected_by
+0.35,35,1,counter
+29.41,2941,1,counter
+81.09,8109,1,counter
+85.47,8547,1,counter
+87.15,8715,1,counter
