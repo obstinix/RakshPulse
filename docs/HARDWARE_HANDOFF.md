@@ -120,7 +120,7 @@ Examples (simulated signals, for format reference only):
 - `hardware/examples/serial_stream_valid.txt`: what the firmware should print (banner + 500 samples);
 - `hardware/examples/serial_stream_malformed.txt`: lines the parser skips and counts (short lines, wrong delimiter,
   text, NaN, extra fields);
-- `hardware/examples/example_dataset/`: a complete 90 s session with three cuff readings. Try
+- `hardware/examples/example_dataset/`: a complete 90 s session with two simulated cuff readings. Try
   `rakshpulse analyze --dataset hardware/examples/example_dataset --subject SIM001 --session D1` on a copy.
 
 ## 6. Exit codes

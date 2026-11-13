@@ -1,4 +1,8 @@
-# Hardware Integration (status: proposed interface, not integrated)
+# Hardware Integration: Python Interfaces for Device Integration
+
+To connect a MAX30102 and record data, follow [HARDWARE_HANDOFF.md](HARDWARE_HANDOFF.md) or the illustrated
+[Hardware Integration Manual (PDF)](RAKSHPULSE_HARDWARE_INTEGRATION_MANUAL.pdf). This page documents the Python
+interfaces a device integration builds on.
 
 ## Status
 
@@ -7,7 +11,9 @@
 | Python inference API (`BPPredictor`) | **Implemented and tested** with synthetic and real dataset signals |
 | Accepts MAX30102 raw red/IR FIFO counts | **Implemented.** `raw_counts=True` handles DC offset and inverted pulses |
 | Tested on real MAX30102 behind-ear data | **Not done.** No such data exists yet |
-| Firmware / ESP32 port | **Not started** |
+| Serial acquisition, `check-serial`, `record`, `analyze` (5.1) | **Implemented and tested** with simulated and loop-back serial ports |
+| Reference streaming firmware (`hardware/firmware/rakshpulse_max30102`) | **Written, not yet compiled or run on a board** |
+| On-device (ESP32) inference | **Not started.** float32 C-header export exists for linear models |
 | Bluetooth / mobile app protocol | **Not specified** by the project documents |
 | Clinical validation | **Not started** |
 
@@ -16,7 +22,7 @@
 ```python
 from rakshpulse.inference.predictor import BPPredictor
 
-predictor = BPPredictor.from_file("models/rakshpulse_bp_v0.joblib")   # created by scripts/train_final.py
+predictor = BPPredictor.from_file("models/rakshpulse_bp_v0.joblib")   # created locally by scripts/train_final.py
 result = predictor.predict(
     red_signal=red_samples,      # 1-D array, raw MAX30102 counts (≥ 10 s; 30 s recommended)
     ir_signal=ir_samples,        # same length as red
