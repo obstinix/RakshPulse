@@ -399,7 +399,7 @@ def benchmarks() -> pd.DataFrame:
     rec = simulate(SimConfig(seed=32), 300)
     raw = pd.DataFrame({"timestamp": rec.t, "sample_index": rec.sample_index, "red": rec.red, "infrared": rec.ir})
     for hop in (1.0, 5.0):
-        eng = InferenceEngine(bundle, EngineConfig(hop_s=hop))
+        eng = InferenceEngine(bundle, EngineConfig(fs=100.0, sensor="unspecified", hop_s=hop))
         for i in range(0, len(raw), 32):
             eng.push(raw.iloc[i : i + 32])
         lat = eng.predictions().query("status != 'warming_up'").latency_ms
@@ -407,7 +407,7 @@ def benchmarks() -> pd.DataFrame:
             {"stage": f"inference_engine_hop_{hop:g}s", "metric": "latency_ms_p50", "value": float(lat.median())},
             {"stage": f"inference_engine_hop_{hop:g}s", "metric": "latency_ms_p95", "value": float(lat.quantile(0.95))},
         ]
-    eng = InferenceEngine(bundle, EngineConfig(hop_s=5.0))
+    eng = InferenceEngine(bundle, EngineConfig(fs=100.0, sensor="unspecified", hop_s=5.0))
     tracemalloc.start()
     for i in range(0, len(raw), 32):
         eng.push(raw.iloc[i : i + 32])
