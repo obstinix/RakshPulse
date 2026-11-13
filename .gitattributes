@@ -1,6 +1,8 @@
 * text=auto eol=lf
 *.png binary
 *.npz binary
+*.pdf binary
+*.joblib binary
 *.json text eol=lf
 # example recordings are hashed byte-for-byte in their manifest: keep their exact bytes on every OS
 hardware/examples/** -text
