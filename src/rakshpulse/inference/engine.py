@@ -1,21 +1,28 @@
-"""Hardware-independent streaming inference engine for red/IR PPG (RakshPulse 5.0).
+"""Hardware-independent inference for red/IR PPG: streaming (:class:`InferenceEngine`) and recorded sessions
+(:func:`predict_windows`), both behind the model contract (``inference/contract.py``).
 
-``InferenceEngine`` is a sink for :class:`~rakshpulse.acquisition.ingest.Recorder` rows (``timestamp,
-sample_index, red, infrared``). Every ``hop_s`` of new data it:
+Before any sample is accepted, the engine:
 
-1. takes the newest ``window_s`` of samples from ring buffers. A sample-counter gap inside the window is filled by
-   interpolation if it is ≤ ``max_fill_samples``; otherwise the window is rejected (``gap_in_window``);
-2. computes quality and features with **the same function as the offline pipeline**
-   (``preprocessing.pipeline.window_features``), so live and recorded data are processed identically;
-3. gates on quality (``statuses``, default usable + degraded) and predicts SBP/DBP with the model bundle.
-   ``feature_prefix_map`` maps pipeline names to bundle names (e.g. ``{"ir_": "ear_"}`` to run the 4.0
-   Auricle ear bundle on MAX30102 IR data; this crosses a sensor/site domain and is **not** validated);
-4. aggregates accepted windows (median over ``aggregate_s``) and attaches uncertainty:
-   * uncalibrated: the model's cross-subject conformal 90 % half-width (stored at training time), if present;
-   * calibrated: after :meth:`add_reference`, the hierarchical Bayesian posterior (``hier_params``) or, without
-     parameters, a plain offset correction with no interval. :class:`CalibrationPolicy` flags expiry;
-5. records timestamps, status, reasons and processing latency. Any exception while processing a window becomes an
-   ``error`` event with the message; the stream continues.
+* validates the bundle (schema, feature order, input dimension, contract version);
+* checks the model may run on this input: the sensor (→ mode ``validated`` / ``experimental`` /
+  ``demonstration``, or refused), the raw sampling rate, channels, preprocessing (window, band, target rate,
+  feature-set version) and required demographics. Problems raise :class:`IncompatibleModelError` at construction;
+  nothing is predicted.
+
+Every ``hop_s`` of new data it then:
+
+1. takes the newest ``window_s`` of samples from ring buffers. A counter gap inside the window is filled if it is
+   ≤ ``max_fill_samples``, otherwise the window is rejected (``gap_in_window``);
+2. computes quality and features with **the same function as the offline pipeline** (``window_features``);
+3. gates on quality (``statuses``) and builds the model input through ``build_feature_vector``:
+   * required features must be finite;
+   * imputable features are filled with the training median (bounded, and listed in ``imputed``);
+   * Inf/NaN never reach the model, and a window failing these checks gets status ``invalid_input``;
+4. predicts SBP and DBP, then aggregates accepted windows (median over ``aggregate_s``);
+5. attaches a 90 % interval **only** if the model has one valid for this sensor (``uncertainty_note`` otherwise),
+   and a calibration from plausible cuff readings (:meth:`add_reference`) with policy-based expiry;
+6. records the inference mode, status, reasons, timestamps and latency. An unexpected exception in one window
+   becomes an ``error`` event; the stream continues.
 """
 
 from __future__ import annotations
@@ -31,21 +38,32 @@ from ..evaluation.auricle_study import add_normalised_shape
 from ..personalization.hierarchical import HierarchicalCalibrator, HierParams
 from ..personalization.strategies import Z90, CalibrationPolicy, calibration_status
 from ..preprocessing.pipeline import STATUS, PipelineConfig, window_features
+from .contract import (
+    IncompatibleModelError,
+    InvalidInputError,
+    build_feature_vector,
+    check_compatibility,
+    validate_bundle,
+)
 from .model_loader import ModelBundle
 from .streaming import RingBuffer
+
+SBP_RANGE, DBP_RANGE = (50.0, 260.0), (25.0, 160.0)
 
 
 @dataclass
 class EngineConfig:
-    fs: float = 100.0
+    fs: float  # raw sampling rate of the incoming samples (Hz); never assumed
+    sensor: str = "max30102"  # input sensor key matched against the model contract
     window_s: float = 10.0
     hop_s: float = 5.0
     buffer_s: float = 30.0
     aggregate_s: float = 30.0
     statuses: tuple[str, ...] = ("usable", "degraded")
     max_fill_samples: int = 2
-    feature_prefix_map: dict = field(default_factory=dict)
+    feature_prefix_map: dict = field(default_factory=dict)  # only for legacy bundles without a contract
     session_id: str = "live"
+    demographics: dict | None = None
     policy: CalibrationPolicy = field(default_factory=CalibrationPolicy)
 
 
@@ -53,8 +71,9 @@ class EngineConfig:
 class Prediction:
     timestamp: float  # end of the evaluated window (session time, s)
     window_start: float
-    status: str  # usable | degraded | unusable | missing | warming_up | error
+    status: str  # usable | degraded | unusable | missing | invalid_input | warming_up | error
     reasons: str = ""
+    inference_mode: str = ""  # validated | experimental | demonstration
     quality_score: float = float("nan")
     sbp_window: float = float("nan")
     dbp_window: float = float("nan")
@@ -65,6 +84,7 @@ class Prediction:
     dbp_lo: float = float("nan")
     dbp_hi: float = float("nan")
     estimate_type: str = "none"  # none | population | calibrated
+    imputed: str = ""  # model inputs filled with training medians (window)
     calibration_valid: bool = False
     calibration_reason: str = "no_readings"
     n_aggregated: int = 0
@@ -74,19 +94,44 @@ class Prediction:
         return asdict(self)
 
 
+def window_feature_dict(f: dict) -> dict:
+    """Add the beat-duration-normalised shape features that model contracts reference."""
+    df = pd.DataFrame([f])
+    if "ir_beat_T" in df:
+        add_normalised_shape(df, "ir")
+    return df.iloc[0].to_dict()
+
+
 class InferenceEngine:
     def __init__(
         self,
         bundle: ModelBundle,
-        cfg: EngineConfig | None = None,
+        cfg: EngineConfig,
         pipeline: PipelineConfig | None = None,
         hier_params: dict[str, HierParams] | None = None,
     ):
-        self.bundle, self.cfg = bundle, cfg or EngineConfig()
-        c = self.cfg
+        c = self.cfg = cfg
+        if c.fs is None or not np.isfinite(c.fs) or c.fs <= 0:
+            raise ValueError("EngineConfig.fs (raw sampling rate) must be given explicitly")
         if c.hop_s <= 0 or c.window_s <= 0 or c.buffer_s < c.window_s:
             raise ValueError("need hop_s > 0, window_s > 0 and buffer_s >= window_s")
+        self.bundle = bundle
         self.pipeline = pipeline or PipelineConfig(fs=c.fs, window_s=c.window_s)
+        if abs(self.pipeline.fs - c.fs) > 1e-9:
+            raise ValueError(f"pipeline fs {self.pipeline.fs} != engine fs {c.fs}")
+        self.contract = validate_bundle(bundle, c.feature_prefix_map)
+        compat = check_compatibility(
+            self.contract,
+            c.sensor,
+            c.fs,
+            {"window_s": self.pipeline.window_s, "band_hz": list(self.pipeline.band)},
+            tuple(self.pipeline.channels),
+            c.demographics,
+        )
+        self.mode = compat["mode"]
+        self.demographics = compat["demographics"]
+        self.halfwidth = compat["uncertainty"]
+        self.uncertainty_note = compat["uncertainty_note"]
         n = int(round(c.buffer_s * c.fs))
         self.win_n, self.hop_n = int(round(c.window_s * c.fs)), int(round(c.hop_s * c.fs))
         self.buf = {k: RingBuffer(n) for k in ("t", "idx", "red", "ir")}
@@ -96,7 +141,17 @@ class InferenceEngine:
         self.history: list[Prediction] = []
         self.readings: list[dict] = []
         self.cal = {t: HierarchicalCalibrator(p) for t, p in (hier_params or {}).items()}
-        self.conformal = {t: bundle.validation.get(f"conformal_90_halfwidth_{t}", float("nan")) for t in ("sbp", "dbp")}
+
+    def describe(self) -> dict:
+        return {
+            "model_id": self.contract.get("model_id"),
+            "version": self.bundle.version,
+            "mode": self.mode,
+            "sensor": self.cfg.sensor,
+            "fs": self.cfg.fs,
+            "uncertainty": self.halfwidth or self.uncertainty_note,
+            "limitations": self.contract.get("limitations", []),
+        }
 
     # ------------------------------------------------------------------------------------------ input
     def push(self, rows: pd.DataFrame) -> list[Prediction]:
@@ -124,21 +179,32 @@ class InferenceEngine:
     __call__ = push  # Recorder sink
 
     def add_reference(self, timestamp: float, sbp: float, dbp: float, session_id: str | None = None) -> dict:
-        """Register a cuff reading. Its residual is taken against the nearest accepted window (± window_s)."""
+        """Register a cuff reading of this session. Implausible values, readings from another session and readings
+        without an accepted window within ``window_s`` are refused (never used for calibration)."""
+        try:
+            sbp, dbp, timestamp = float(sbp), float(dbp), float(timestamp)
+        except (TypeError, ValueError):
+            return {"accepted": False, "reason": "reading values must be numeric"}
+        if not (SBP_RANGE[0] <= sbp <= SBP_RANGE[1] and DBP_RANGE[0] <= dbp <= DBP_RANGE[1] and sbp > dbp):
+            return {"accepted": False, "reason": f"implausible reading SBP={sbp} DBP={dbp}"}
+        if session_id is not None and session_id != self.cfg.session_id:
+            return {"accepted": False, "reason": f"reading belongs to session {session_id}, not {self.cfg.session_id}"}
         cands = [
             p
             for p in self.history
-            if p.status in self.cfg.statuses and abs(p.timestamp - timestamp) <= self.cfg.window_s
+            if p.status in self.cfg.statuses
+            and np.isfinite(p.sbp_window)
+            and abs(p.timestamp - timestamp) <= self.cfg.window_s
         ]
         if not cands:
             return {"accepted": False, "reason": "no accepted window within window_s of the reading"}
         p = min(cands, key=lambda q: abs(q.timestamp - timestamp))
         self.readings.append(
             {
-                "t": float(timestamp),
-                "session_id": session_id or self.cfg.session_id,
-                "sbp": float(sbp),
-                "dbp": float(dbp),
+                "t": timestamp,
+                "session_id": self.cfg.session_id,
+                "sbp": sbp,
+                "dbp": dbp,
                 "pred_sbp": p.sbp_window,
                 "pred_dbp": p.dbp_window,
             }
@@ -146,14 +212,6 @@ class InferenceEngine:
         return {"accepted": True, "residual_sbp": sbp - p.sbp_window, "residual_dbp": dbp - p.dbp_window}
 
     # ------------------------------------------------------------------------------------------ core
-    def _features_to_bundle(self, f: dict) -> np.ndarray:
-        df = pd.DataFrame([f])
-        if "ir_beat_T" in df:
-            add_normalised_shape(df, "ir")
-        for a, b in self.cfg.feature_prefix_map.items():
-            df = df.rename(columns={c: b + c[len(a) :] for c in df.columns if c.startswith(a)})
-        return df.reindex(columns=self.bundle.features).to_numpy(float)
-
     def _evaluate(self) -> Prediction:
         t0 = time.perf_counter()
         b = self.buf
@@ -164,11 +222,17 @@ class InferenceEngine:
                     window_start=float("nan"),
                     status="warming_up",
                     reasons="buffer_filling",
+                    inference_mode=self.mode,
                 )
             )
         tt, idx = b["t"].last(self.win_n), b["idx"].last(self.win_n).astype(np.int64)
         red, ir = b["red"].last(self.win_n), b["ir"].last(self.win_n)
-        pred = Prediction(timestamp=float(tt[-1] + 1 / self.cfg.fs), window_start=float(tt[0]), status="error")
+        pred = Prediction(
+            timestamp=float(tt[-1] + 1 / self.cfg.fs),
+            window_start=float(tt[0]),
+            status="error",
+            inference_mode=self.mode,
+        )
         try:
             notes = []
             jumps = np.diff(idx)
@@ -187,10 +251,20 @@ class InferenceEngine:
             pred.quality_score = float(f["quality_score"])
             pred.reasons = "|".join(x for x in (f.get("reasons", ""), *notes) if x)
             if pred.status in self.cfg.statuses:
-                X = self._features_to_bundle(f)
+                try:
+                    X, imputed = build_feature_vector(self.contract, window_feature_dict(f), self.demographics)
+                except InvalidInputError as exc:
+                    pred.status = "invalid_input"
+                    pred.reasons = "|".join(x for x in (pred.reasons, f"invalid_input: {exc}") if x)
+                    return self._finish(pred, t0)
+                pred.imputed = ",".join(imputed)
                 pred.sbp_window = float(np.ravel(self.bundle.sbp.predict(X))[0])
                 pred.dbp_window = float(np.ravel(self.bundle.dbp.predict(X))[0])
-                self.recent.append((pred.timestamp, pred.sbp_window, pred.dbp_window))
+                if not (np.isfinite(pred.sbp_window) and np.isfinite(pred.dbp_window)):
+                    pred.status, pred.reasons = "error", "model returned a non-finite value"
+                    pred.sbp_window = pred.dbp_window = float("nan")
+                else:
+                    self.recent.append((pred.timestamp, pred.sbp_window, pred.dbp_window))
         except Exception as exc:  # keep streaming: report the failure on this window
             pred.status, pred.reasons = "error", f"{type(exc).__name__}: {exc}"
         return self._finish(pred, t0)
@@ -204,9 +278,10 @@ class InferenceEngine:
             pred.n_aggregated, pred.estimate_type = len(self.recent), "population"
             pred.sbp, pred.dbp = s, d
             for tgt, v in (("sbp", s), ("dbp", d)):
-                hw = self.conformal[tgt]
-                setattr(pred, f"{tgt}_lo", v - hw)
-                setattr(pred, f"{tgt}_hi", v + hw)
+                hw = self.halfwidth.get(tgt)
+                if hw is not None:  # only when the model has an interval valid for this sensor
+                    setattr(pred, f"{tgt}_lo", v - hw)
+                    setattr(pred, f"{tgt}_hi", v + hw)
             self._calibrate(pred)
         pred.latency_ms = (time.perf_counter() - t0) * 1000
         return self._emit(pred)
@@ -240,4 +315,60 @@ class InferenceEngine:
         return pred
 
     def predictions(self) -> pd.DataFrame:
-        return pd.DataFrame([p.to_dict() for p in self.history])
+        return pd.DataFrame([p.to_dict() for p in self.history], columns=list(Prediction.__dataclass_fields__))
+
+
+def predict_windows(
+    bundle: ModelBundle,
+    windows: pd.DataFrame,
+    sensor: str,
+    fs: float,
+    demographics: dict | None = None,
+    statuses: tuple[str, ...] = ("usable", "degraded"),
+    pipeline: PipelineConfig | None = None,
+) -> tuple[pd.DataFrame, dict]:
+    """Predict every window of a processed recording (``derived/windows.csv``) through the same contract checks
+    as streaming. Returns (per-window predictions, compatibility info). Raises IncompatibleModelError."""
+    pipeline = pipeline or PipelineConfig(fs=fs)
+    contract = validate_bundle(bundle)
+    compat = check_compatibility(
+        contract,
+        sensor,
+        fs,
+        {"window_s": pipeline.window_s, "band_hz": list(pipeline.band)},
+        tuple(pipeline.channels),
+        demographics,
+    )
+    rows = []
+    for _, w in windows.iterrows():
+        r = {
+            "window_id": w.get("window_id"),
+            "t_start_s": w.get("t_start_s"),
+            "t_end_s": w.get("t_end_s"),
+            "status": w.get("status"),
+            "reasons": w.get("reasons") if isinstance(w.get("reasons"), str) else "",
+            "inference_mode": compat["mode"],
+            "sbp": np.nan,
+            "dbp": np.nan,
+            "imputed": "",
+        }
+        if r["status"] in statuses:
+            try:
+                X, imputed = build_feature_vector(contract, w.to_dict(), compat["demographics"])
+                r["sbp"] = float(np.ravel(bundle.sbp.predict(X))[0])
+                r["dbp"] = float(np.ravel(bundle.dbp.predict(X))[0])
+                r["imputed"] = ",".join(imputed)
+            except InvalidInputError as exc:
+                r["status"], r["reasons"] = "invalid_input", "|".join(x for x in (r["reasons"], str(exc)) if x)
+        rows.append(r)
+    return pd.DataFrame(rows), {**compat, "contract": contract}
+
+
+__all__ = [
+    "EngineConfig",
+    "IncompatibleModelError",
+    "InferenceEngine",
+    "InvalidInputError",
+    "Prediction",
+    "predict_windows",
+]

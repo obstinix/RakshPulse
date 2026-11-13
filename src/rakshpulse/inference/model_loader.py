@@ -6,7 +6,10 @@ A model bundle is a joblib file with:
   * ``channels``: optical channels the model requires (e.g. ("ir", "red")),
   * ``uses_demographics``: whether age/sex/height/weight inputs are required,
   * ``validation``: subject-wise CV error statistics (used to report uncertainty),
-  * ``version``, ``trained_on``, ``created_utc``.
+  * ``version``, ``trained_on``, ``created_utc``,
+  * ``contract`` (5.1): feature schema, required inputs, supported sensors and modes, sampling rates,
+    preprocessing, uncertainty capability and limitations (``inference/contract.py``). Bundles without one get a
+    conservative demonstration-only legacy contract when loaded.
 
 Bundles are only loaded from paths the caller supplies. joblib/pickle can execute code,
 so only load bundles you created yourself.
@@ -33,6 +36,7 @@ class ModelBundle:
     validation: dict
     version: str
     trained_on: str = ""
+    contract: dict = field(default_factory=dict)  # see inference/contract.py; {} for bundles saved before 5.1
     created_utc: str = field(default_factory=lambda: dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"))
 
     def save(self, path: str | Path) -> Path:

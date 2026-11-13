@@ -404,7 +404,9 @@ def test_inference_engine_end_to_end(sim_table):
     _, t = sim_table
     b, _, _ = train_model(t, TrainConfig(hyperparams={"alpha": 10}))
     hp = {k: HierParams(100, 0, 10, 20, 0.01) for k in ("sbp", "dbp")}
-    eng = InferenceEngine(b, EngineConfig(hop_s=5, policy=CalibrationPolicy(expiry_s=40)), hier_params=hp)
+    eng = InferenceEngine(
+        b, EngineConfig(fs=100.0, sensor="simulator", hop_s=5, policy=CalibrationPolicy(expiry_s=40)), hier_params=hp
+    )
     rec = simulate(SimConfig(seed=11), 120)
     raw = _raw(rec)
     out = []
@@ -432,7 +434,7 @@ def test_inference_engine_end_to_end(sim_table):
         eng.push(raw.iloc[:5])  # time went backwards
     gap = raw.iloc[:1200].copy()
     gap.loc[gap.index >= 600, "sample_index"] += 50  # 50 missing samples inside the next windows
-    e2 = InferenceEngine(b, EngineConfig())
+    e2 = InferenceEngine(b, EngineConfig(fs=100.0, sensor="simulator"))
     st = [x.status for x in e2.push(gap)]
     assert "missing" in st and e2.predictions().reasons.str.contains("gap_in_window").any()
 
@@ -449,15 +451,15 @@ def test_inference_engine_reports_errors_and_maps_prefixes(sim_table):
             raise RuntimeError("model failure")
 
     b.sbp = Broken()
-    e = InferenceEngine(b, EngineConfig())
+    e = InferenceEngine(b, EngineConfig(fs=100.0, sensor="simulator"))
     rec = simulate(SimConfig(seed=12), 30)
     p = e.push(_raw(rec))
     assert p[-1].status == "error" and "model failure" in p[-1].reasons
     ear = type(b)(b.dbp, b.dbp, [c.replace("ir_", "ear_", 1) for c in b.features], ("ear",), False, {}, "ear-test")
-    e3 = InferenceEngine(ear, EngineConfig(feature_prefix_map={"ir_": "ear_"}))
+    e3 = InferenceEngine(ear, EngineConfig(fs=100.0, sensor="simulator", feature_prefix_map={"ir_": "ear_"}))
     assert np.isfinite(e3.push(_raw(rec))[-1].sbp_window)
     with pytest.raises(ValueError):
-        InferenceEngine(b, EngineConfig(hop_s=0))
+        InferenceEngine(b, EngineConfig(fs=100.0, sensor="simulator", hop_s=0))
 
 
 def test_replay_source_round_trip(tmp_path):

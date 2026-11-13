@@ -28,6 +28,7 @@ import pandas as pd
 from sklearn.model_selection import GridSearchCV, GroupKFold
 
 from ..evaluation.splits import SplitSpec, make_splits
+from ..inference.contract import CONTRACT_VERSION, CORE_REQUIRED, DEFAULT_PROCESSING
 from ..inference.model_loader import ModelBundle, load_bundle
 from .model_factory import make_model
 
@@ -52,6 +53,9 @@ EXCLUDE = {
     "ref_offset_s",
     "ir_rail_pct",
     "red_rail_pct",
+    "simulated",
+    "sensor_type",
+    "sampling_rate",
 }
 
 
@@ -169,8 +173,62 @@ def train_model(frame: pd.DataFrame, cfg: TrainConfig) -> tuple[ModelBundle, pd.
         validation,
         version=f"{cfg.name}-{stamp}-{data_sha[:8]}",
         trained_on="rakshpulse window table",
+        contract=make_contract(d, feats, models["sbp"], validation, cfg),
     )
     return bundle, pd.DataFrame(rows), oof
+
+
+def make_contract(d: pd.DataFrame, feats: list[str], fitted, validation: dict, cfg: TrainConfig) -> dict:
+    """Contract for a model trained on a RakshPulse window table (see ``inference/contract.py``).
+
+    Required features are those never missing in training (plus the core HR/shape features). The others are
+    imputable with the exact median the pipeline's imputer learned. The mode is ``experimental`` for the sensor
+    type(s) the table came from, or ``demonstration`` if any training session was simulated; never ``validated``."""
+    imp = fitted.named_steps.get("impute") if hasattr(fitted, "named_steps") else None
+    fills = list(getattr(imp, "statistics_", [np.nan] * len(feats)))
+    nan_rate = d[feats].isna().mean()
+    spec = []
+    for name, fill in zip(feats, fills, strict=True):
+        core = name.split("_", 1)[-1] in CORE_REQUIRED
+        spec.append(
+            {
+                "name": name,
+                "source": name,
+                "kind": "signal",
+                "required": bool(core or nan_rate[name] == 0),
+                "fill": float(fill),
+            }
+        )
+    sensors = sorted(set(d["sensor_type"].astype(str))) if "sensor_type" in d else ["unspecified"]
+    simulated = bool(d["simulated"].astype(bool).any()) if "simulated" in d else False
+    fs = d["sampling_rate"].astype(float) if "sampling_rate" in d else pd.Series([DEFAULT_PROCESSING["target_fs_hz"]])
+    unc_ok = all(np.isfinite(validation.get(f"conformal_90_halfwidth_{t}", np.nan)) for t in TARGETS)
+    return {
+        "contract_version": CONTRACT_VERSION,
+        "model_id": cfg.name,
+        "features": spec,
+        "channels": sorted({f.split("_")[0] for f in feats} & {"ir", "red"}) or ["ir"],
+        "demographics": [],
+        # the pipeline resamples to 100 Hz; accept raw rates within the range seen in training (± 10 %)
+        "fs_range_hz": [float(fs.min()) * 0.9, float(fs.max()) * 1.1],
+        "processing": dict(DEFAULT_PROCESSING),
+        "max_imputed_fraction": 0.25,
+        "validated_for": [],
+        "experimental_for": [] if simulated else sensors,
+        "demonstration_for": sorted(set(sensors) | {"simulator"}) if simulated else ["simulator"],
+        "uncertainty": {
+            "method": "cross_subject_conformal_90" if unc_ok else "none",
+            "halfwidth_90": {t: validation[f"conformal_90_halfwidth_{t}"] for t in TARGETS} if unc_ok else {},
+            "valid_for": sensors if unc_ok else [],
+        },
+        "calibration": {"supported": True},
+        "performance": {t: validation.get(f"oof_{t}", {}) for t in TARGETS},
+        "limitations": (["trained on SIMULATED data: demonstrates the software only"] if simulated else [])
+        + [
+            f"cross-validated ({cfg.split.kind} split) on {validation.get('n_subjects')} subjects; "
+            "not independently validated"
+        ],
+    }
 
 
 def _git() -> str:

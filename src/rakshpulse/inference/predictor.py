@@ -31,6 +31,13 @@ import pandas as pd
 from ..features.feature_pipeline import extract_features
 from ..preprocessing.filtering import validate_sampling_rate
 from ..preprocessing.segmentation import sliding_windows
+from .contract import (
+    IncompatibleModelError,
+    InvalidInputError,
+    build_feature_vector,
+    check_demographics,
+    validate_bundle,
+)
 from .model_loader import ModelBundle, load_bundle
 
 WINDOW_S = 10.0
@@ -57,6 +64,7 @@ class BPResult:
     uncertainty: dict
     rejection_reasons: list[str] = field(default_factory=list)
     model_version: str = ""
+    inference_mode: str = "demonstration"  # from the model contract; legacy bundles are demonstration-only
     disclaimer: str = DISCLAIMER
 
     def to_dict(self) -> dict:
@@ -80,6 +88,7 @@ def _as_signal(x, name: str) -> np.ndarray | None:
 class BPPredictor:
     def __init__(self, bundle: ModelBundle):
         self.bundle = bundle
+        self.contract = validate_bundle(bundle)  # raises IncompatibleModelError for malformed bundles
 
     @classmethod
     def from_file(cls, path) -> BPPredictor:
@@ -116,12 +125,10 @@ class BPPredictor:
         n = min(sig[c].size for c in b.channels)
         if n / fs < MIN_DURATION_S:
             return self._reject([f"too_short:{n / fs:.1f}s<{MIN_DURATION_S:.0f}s"], {})
-        demo = {}
-        if b.uses_demographics:
-            needed = ("age", "sex", "height_cm", "weight_kg")
-            if not demographics or any(k not in demographics for k in needed):
-                raise InputError(f"this model requires demographics {needed}")
-            demo = {f"demo_{k}": float(demographics[k]) for k in needed}
+        try:  # required demographics are validated (presence and plausible range), never imputed
+            demo = check_demographics(self.contract, demographics)
+        except IncompatibleModelError as exc:
+            raise InputError(str(exc)) from exc
 
         stack = np.stack([sig[c][:n] for c in b.channels])
         windows = sliding_windows(stack, fs, WINDOW_S, STEP_S)
@@ -133,7 +140,7 @@ class BPPredictor:
                 for r in proc[c].sqi.reasons:
                     reasons[f"{c}:{r}"] = reasons.get(f"{c}:{r}", 0) + 1
             if ok:
-                rows.append({**feats, **demo})
+                rows.append(feats)
         q = {
             "windows_total": len(windows),
             "windows_accepted": len(rows),
@@ -143,7 +150,21 @@ class BPPredictor:
         if len(rows) < MIN_ACCEPTED_WINDOWS or q["accepted_fraction"] < MIN_ACCEPTED_FRACTION:
             return self._reject(["insufficient_signal_quality"], q)
 
-        X = pd.DataFrame(rows).reindex(columns=b.features).to_numpy(dtype=float)
+        df = pd.DataFrame(rows)
+        if "ir_beat_T" in df:
+            from ..evaluation.auricle_study import add_normalised_shape
+
+            add_normalised_shape(df, "ir")
+        X, n_invalid = [], 0
+        for r in df.to_dict("records"):  # every window goes through the contract: no silent imputation
+            try:
+                X.append(build_feature_vector(self.contract, r, demo)[0][0])
+            except InvalidInputError:
+                n_invalid += 1
+        q["windows_invalid_input"] = n_invalid
+        if len(X) < MIN_ACCEPTED_WINDOWS:
+            return self._reject(["no_window_has_the_required_model_inputs"], q)
+        X = np.vstack(X)
         s_w = b.sbp.predict(X)
         d_w = b.dbp.predict(X)
         unc = {
@@ -156,7 +177,10 @@ class BPPredictor:
             "note": "validation_* are population-level subject-wise CV errors on fingertip data, "
             "not a per-reading confidence interval.",
         }
-        return BPResult(True, float(np.median(s_w)), float(np.median(d_w)), q, unc, [], b.version)
+        mode = "experimental" if self.contract.get("experimental_for") else "demonstration"
+        if self.contract.get("validated_for"):
+            mode = "validated"
+        return BPResult(True, float(np.median(s_w)), float(np.median(d_w)), q, unc, [], b.version, mode)
 
     def _reject(self, reasons: list[str], q: dict) -> BPResult:
         return BPResult(False, None, None, q, {}, reasons, self.bundle.version)
