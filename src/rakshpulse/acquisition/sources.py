@@ -4,10 +4,10 @@ Every source yields :class:`SampleBlock` objects: consecutive samples with a dev
 device provides one), red and IR counts, and the host time the block arrived. Timestamps are assigned later by
 :class:`~rakshpulse.acquisition.ingest.TimestampSync`, so the rest of the pipeline never depends on the transport.
 
-**No hardware protocol is assumed.** :class:`LineFormat` describes the text lines the microcontroller firmware
+**The serial contract is fixed in docs/HARDWARE_HANDOFF.md** (default line ``sample_index,red,ir``; the reference
+firmware is ``hardware/firmware/rakshpulse_max30102``). :class:`LineFormat` describes the text lines the firmware
 emits (delimiter, column order, whether a sample counter / device time / die temperature is present). The
-hardware team fixes the firmware output and configures ``LineFormat`` to match. See
-docs/HARDWARE_INTEGRATION.md ("Connecting a MAX30102").
+hardware team fixes the firmware output and configures ``LineFormat`` to match.
 
 :class:`MAX30102Config` only *validates and records* the sensor settings that determine the data. It accepts
 the register options the datasheet lists (sample rate, pulse width/ADC resolution, ADC range, sample averaging,
@@ -16,12 +16,11 @@ LED currents). The firmware applies them; this software does not talk I²C.
 
 from __future__ import annotations
 
-import io
 import time
 from collections.abc import Iterator
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Protocol, TextIO, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 import numpy as np
 import pandas as pd
@@ -177,8 +176,9 @@ class LineFormat:
     """Describes one text line per sample emitted by the firmware, e.g. ``"1234,95321,118204"``.
 
     ``fields`` lists the column names in order. Recognised names: ``sample_index``, ``device_time_us``,
-    ``device_time_ms``, ``red``, ``ir``, ``temperature_c``. Others (e.g. ``ignore``) are skipped. ``red`` and ``ir``
-    are required. Lines starting with ``comment_prefix`` or failing to parse are counted, not raised.
+    ``device_time_ms``, ``red``, ``ir`` (or ``infrared``), ``temperature_c``. Others (e.g. ``ignore``) are
+    skipped. ``red`` and ``ir`` are required. Lines starting with ``comment_prefix`` or failing to parse are
+    counted, not raised.
     """
 
     fields: tuple[str, ...] = ("sample_index", "red", "ir")
@@ -196,23 +196,51 @@ class LineFormat:
             vals = {f: float(p) for f, p in zip(self.fields, parts, strict=True) if f != "ignore"}
         except ValueError:
             return None
+        if "infrared" in vals:  # accept the documented long name as an alias of "ir"
+            vals["ir"] = vals.pop("infrared")
         if "red" not in vals or "ir" not in vals:
             return None
         return vals
 
 
+class AcquisitionError(RuntimeError):
+    """An acquisition problem the user can act on (no port, no data, wrong rate...). The message says what to do."""
+
+
+def parse_banner(line: str) -> dict:
+    """``# rakshpulse key=value key=value`` → dict (the firmware's self-description; other comments → {})."""
+    body = line.strip().lstrip("#").strip()
+    if not body.startswith("rakshpulse"):
+        return {}
+    out = {}
+    for tok in body.split()[1:]:
+        if "=" in tok:
+            k, v = tok.split("=", 1)
+            out[k.strip()] = v.strip()
+    return out
+
+
 class TextStreamSource:
-    """Reads samples from any text stream (a serial port wrapper, a pipe, a file or ``io.StringIO``)."""
+    """Reads samples from any text stream (a serial port wrapper, a pipe, a file or ``io.StringIO``).
 
-    sensor_type = "max30102_text_stream"
+    Comment lines (``#``) are skipped. A ``# rakshpulse key=value ...`` banner is parsed into ``device_info`` (the
+    firmware declares e.g. ``fs_hz=100``). Malformed lines, non-finite values, and lines whose field set differs from
+    the stream's first data line are counted in ``bad_lines`` and never emitted."""
 
-    def __init__(self, stream: TextIO | io.TextIOBase, fs: float, fmt: LineFormat | None = None, block: int = 32):
+    sensor_type = "max30102"
+    transport = "text_stream"
+
+    def __init__(self, stream, fs: float, fmt: LineFormat | None = None, block: int = 32):
         self.stream, self.fs, self.fmt, self.block = stream, float(fs), fmt or LineFormat(), int(block)
         self.bad_lines = 0
+        self.good_lines = 0
+        self.device_info: dict = {}
         self._closed = False
 
     def _emit(self, rows: list[dict]) -> SampleBlock:
-        get = lambda k: np.array([r[k] for r in rows], float) if k in rows[0] else None  # noqa: E731
+        def get(k):
+            return np.array([r[k] for r in rows], float) if k in rows[0] else None
+
         dev = get("device_time_us")
         dev = dev / 1e6 if dev is not None else (get("device_time_ms") / 1e3 if "device_time_ms" in rows[0] else None)
         idx = get("sample_index")
@@ -223,25 +251,49 @@ class TextStreamSource:
             sample_index=idx.astype(np.int64) if idx is not None else None,
             device_time_s=dev,
             temperature_c=get("temperature_c"),
+            flags=dict(self.device_info),
         )
+
+    def _lines(self) -> Iterator[str]:
+        for line in self.stream:
+            yield line if isinstance(line, str) else line.decode("ascii", "replace")
+
+    def _consume(self, line: str, rows: list[dict]) -> bool:
+        """Parse one line into ``rows``; returns True if a sample was added."""
+        if line.lstrip().startswith(self.fmt.comment_prefix):
+            info = parse_banner(line)
+            if info:
+                self.device_info.update(info)
+            return False
+        v = self.fmt.parse(line)
+        if v is None:
+            if line.strip():
+                self.bad_lines += 1
+            return False
+        if rows and set(v) != set(rows[0]):
+            self.bad_lines += 1
+            return False
+        if not (np.isfinite(v["red"]) and np.isfinite(v["ir"])):
+            self.bad_lines += 1
+            return False
+        rows.append(v)
+        self.good_lines += 1
+        return True
 
     def blocks(self) -> Iterator[SampleBlock]:
         rows: list[dict] = []
-        for line in self.stream:
-            if self._closed:
-                break
-            v = self.fmt.parse(line if isinstance(line, str) else line.decode("ascii", "replace"))
-            if v is None:
-                if line.strip() and not str(line).lstrip().startswith(self.fmt.comment_prefix):
-                    self.bad_lines += 1
-                continue
-            if rows and set(v) != set(rows[0]):
-                self.bad_lines += 1
-                continue
-            rows.append(v)
-            if len(rows) >= self.block:
+        try:
+            for line in self._lines():
+                if self._closed:
+                    break
+                self._consume(line, rows)
+                if len(rows) >= self.block:
+                    yield self._emit(rows)
+                    rows = []
+        except AcquisitionError:
+            if rows:  # deliver samples already received before reporting the problem
                 yield self._emit(rows)
-                rows = []
+            raise
         if rows:
             yield self._emit(rows)
 
@@ -249,23 +301,172 @@ class TextStreamSource:
         self._closed = True
 
 
+def _open_serial(port: str, baudrate: int, timeout_s: float):
+    try:
+        import serial  # type: ignore[import-not-found]
+    except ImportError as exc:
+        raise AcquisitionError("serial input needs the optional 'pyserial' package: pip install -e .[serial]") from exc
+    try:
+        if "://" in port:  # loop://, socket://host:port, rfc2217:// (virtual or networked ports)
+            return serial.serial_for_url(port, baudrate=baudrate, timeout=timeout_s)
+        return serial.Serial(port, baudrate=baudrate, timeout=timeout_s)
+    except (serial.SerialException, OSError, ValueError) as exc:
+        raise AcquisitionError(
+            f"cannot open serial port {port!r} at {baudrate} baud: {exc}. Check the port name (rakshpulse ports), "
+            "that no other program (e.g. the Arduino Serial Monitor) has it open, and the USB cable."
+        ) from exc
+
+
 class SerialSource(TextStreamSource):
-    """USB-serial input (e.g. an ESP32/Arduino forwarding MAX30102 FIFO reads as text lines).
+    """USB-serial input from an ESP32/Arduino that forwards MAX30102 samples as text lines (see
+    docs/HARDWARE_HANDOFF.md and ``hardware/firmware``).
 
-    Needs the optional ``pyserial`` package (``pip install pyserial``). The port, baud rate and line format must
-    match the firmware. Nothing is assumed about the device beyond :class:`LineFormat`."""
+    * Opening needs the optional ``pyserial`` (``pip install -e .[serial]``). A missing package or a busy/absent port
+      raises :class:`AcquisitionError` with instructions.
+    * Each read waits at most ``timeout_s``. If no valid sample arrives for ``no_data_timeout_s`` the source raises
+      :class:`AcquisitionError` (wrong baud rate, firmware not running, sensor not detected).
+    * On a port error (cable pulled) it reopens up to ``reconnect_attempts`` times. Samples lost meanwhile appear as
+      counter gaps downstream, never silently stitched together.
+    * ``port_factory(port, baudrate, timeout_s)`` can replace pyserial (tests, other transports)."""
 
-    sensor_type = "max30102_serial"
+    transport = "serial"
 
-    def __init__(self, port: str, baudrate: int, fs: float, fmt: LineFormat | None = None, timeout_s: float = 1.0):
-        try:
-            import serial  # type: ignore[import-not-found]
-        except ImportError as exc:  # pragma: no cover - depends on the optional package
-            raise RuntimeError("SerialSource needs the optional 'pyserial' package: pip install pyserial") from exc
-        self._port = serial.Serial(port, baudrate=baudrate, timeout=timeout_s)
-        wrapper = io.TextIOWrapper(io.BufferedReader(self._port), encoding="ascii", errors="replace", newline=None)
-        super().__init__(wrapper, fs, fmt)
+    def __init__(
+        self,
+        port: str,
+        baudrate: int,
+        fs: float,
+        fmt: LineFormat | None = None,
+        timeout_s: float = 0.5,
+        no_data_timeout_s: float = 5.0,
+        reconnect_attempts: int = 3,
+        reconnect_wait_s: float = 1.0,
+        block: int = 32,
+        port_factory=None,
+    ):
+        if baudrate <= 0:
+            raise AcquisitionError("baud rate must be positive")
+        if not fs or fs <= 0:
+            raise AcquisitionError("the effective sampling rate (--fs) must be given and positive")
+        self.port_name, self.baudrate, self.timeout_s = port, int(baudrate), float(timeout_s)
+        self.no_data_timeout_s, self.reconnect_attempts = float(no_data_timeout_s), int(reconnect_attempts)
+        self.reconnect_wait_s = float(reconnect_wait_s)
+        self._factory = port_factory or _open_serial
+        self._port = self._factory(port, self.baudrate, self.timeout_s)
+        self.reconnects = 0
+        super().__init__(None, fs, fmt, block)
 
-    def close(self) -> None:  # pragma: no cover - needs a device
+    def _reopen(self, exc: Exception) -> None:
+        for _ in range(self.reconnect_attempts):
+            time.sleep(self.reconnect_wait_s)
+            try:
+                self._port.close()
+            except Exception:  # the old handle may already be invalid
+                pass
+            try:
+                self._port = self._factory(self.port_name, self.baudrate, self.timeout_s)
+                self.reconnects += 1
+                return
+            except AcquisitionError:
+                continue
+        raise AcquisitionError(
+            f"serial port {self.port_name!r} was lost and could not be reopened after "
+            f"{self.reconnect_attempts} attempts ({exc})"
+        ) from exc
+
+    def _lines(self) -> Iterator[str]:
+        last_data = time.monotonic()
+        while not self._closed:
+            try:
+                raw = self._port.readline()
+            except AcquisitionError:
+                raise
+            except Exception as exc:  # serial.SerialException / OSError: try to reopen
+                self._reopen(exc)
+                continue
+            if raw:
+                before = self.good_lines
+                yield raw.decode("ascii", "replace") if isinstance(raw, bytes) else str(raw)
+                if self.good_lines > before:
+                    last_data = time.monotonic()
+                    continue
+            if time.monotonic() - last_data > self.no_data_timeout_s:
+                raise AcquisitionError(
+                    f"no valid samples from {self.port_name!r} for {self.no_data_timeout_s:.0f} s "
+                    f"({self.bad_lines} malformed lines). Check the baud rate ({self.baudrate}), that the firmware is "
+                    "running and printing 'sample_index,red,ir' lines, and that the sensor was detected."
+                )
+
+    def close(self) -> None:
         super().close()
-        self._port.close()
+        try:
+            self._port.close()
+        except Exception:  # closing twice or after a lost port must not raise
+            pass
+
+
+def list_ports() -> list[dict]:
+    """Serial ports visible to the OS (needs pyserial)."""
+    try:
+        from serial.tools import list_ports as lp  # type: ignore[import-not-found]
+    except ImportError as exc:
+        raise AcquisitionError("listing ports needs the optional 'pyserial' package: pip install -e .[serial]") from exc
+    return [{"device": p.device, "description": p.description, "hwid": p.hwid} for p in lp.comports()]
+
+
+def check_serial(source: TextStreamSource, seconds: float = 5.0, rate_tolerance: float = 0.05) -> dict:
+    """Read ``seconds`` of data and report whether the stream matches the RakshPulse serial contract."""
+    from .ingest import TimestampSync
+
+    sync = TimestampSync(source.fs)
+    t0 = time.monotonic()
+    n, red, ir = 0, [], []
+    err = None
+    first_t = None
+    try:
+        for b in source.blocks():
+            if first_t is None:
+                first_t = time.monotonic()
+            rows = sync.process(b)
+            n += len(rows)
+            red.append(rows.red.to_numpy())
+            ir.append(rows.infrared.to_numpy())
+            if time.monotonic() - t0 >= seconds:
+                break
+    except (AcquisitionError, ValueError) as exc:
+        err = str(exc)
+    finally:
+        source.close()
+    elapsed = time.monotonic() - (first_t or t0)
+    rate = (n + sync.n_missing) / elapsed if elapsed > 0 and n else float("nan")
+    declared = float(source.device_info["fs_hz"]) if "fs_hz" in source.device_info else None
+    problems = []
+    if err:
+        problems.append(err)
+    if n == 0:
+        problems.append("no valid samples received")
+    if declared is not None and abs(declared - source.fs) > 1e-6:
+        problems.append(f"firmware declares fs_hz={declared:g} but --fs is {source.fs:g}")
+    if n and np.isfinite(rate) and elapsed >= 2 and abs(rate - source.fs) / source.fs > rate_tolerance:
+        problems.append(
+            f"measured rate {rate:.1f} Hz differs from --fs {source.fs:g} Hz by more than {rate_tolerance:.0%}"
+        )
+    allr = np.concatenate(red) if red else np.array([])
+    alli = np.concatenate(ir) if ir else np.array([])
+    if alli.size > 1 and (np.ptp(alli) == 0 or np.ptp(allr) == 0):
+        problems.append("a channel is constant: the sensor is not reading (check wiring and skin contact)")
+    return {
+        "samples": n,
+        "malformed_lines": source.bad_lines,
+        "duplicates": sync.n_duplicates,
+        "missing_samples": sync.n_missing,
+        "gaps": len(sync.gaps),
+        "counter_resets": sync.n_resets,
+        "measured_rate_hz": round(rate, 2) if np.isfinite(rate) else None,
+        "declared_fs_hz": declared,
+        "device_info": dict(source.device_info),
+        "red_range": [float(allr.min()), float(allr.max())] if allr.size else None,
+        "ir_range": [float(alli.min()), float(alli.max())] if alli.size else None,
+        "ok": not problems,
+        "problems": problems,
+    }

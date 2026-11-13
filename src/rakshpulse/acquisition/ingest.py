@@ -50,6 +50,10 @@ class TimestampSync:
     gaps: list = field(default_factory=list)
     n_samples: int = 0
     n_missing: int = 0
+    n_duplicates: int = 0  # repeated sample counters (dropped, never written twice)
+    n_resets: int = 0  # counter restarted (device reboot): recorded as a discontinuity
+    allow_counter_reset: bool = True
+    _reset_offset: int = 0
 
     def process(self, b: SampleBlock) -> pd.DataFrame:
         n = len(b)
@@ -72,16 +76,46 @@ class TimestampSync:
             idx = idx_f
         elif b.sample_index is not None:
             raw = np.asarray(b.sample_index, np.int64)
-            idx = self._unwrap(raw)
+            uw = self._unwrap(raw)
             if self._first_counter is None:
-                self._first_counter = int(idx[0])
-            idx = idx - self._first_counter
+                self._first_counter = int(uw[0])
             prev = self._last_index
-            steps = np.diff(np.r_[prev if prev is not None else idx[0] - 1, idx])
-            if np.any(steps <= 0):
-                raise ValueError("sample counter went backwards (configure counter_modulus if it wraps)")
-            for j in np.flatnonzero(steps > 1):
-                self._gap((idx[j] - steps[j] + 1) / self.fs, int(idx[j] - steps[j] + 1), int(steps[j] - 1), "counter")
+            idx_l, keep = [], np.ones(n, bool)
+            for j in range(n):
+                v = int(uw[j]) - self._first_counter + self._reset_offset  # offset may change at a reset
+                if prev is not None and v == prev:  # duplicate sample (re-sent line): drop
+                    self.n_duplicates += 1
+                    keep[j] = False
+                    continue
+                if prev is not None and v < prev:
+                    prev_raw = prev - self._reset_offset + self._first_counter
+                    rebooted = uw[j] < prev_raw / 2 and prev_raw >= 2 * self.fs  # restarted near zero after >= 2 s
+                    if not (self.allow_counter_reset and rebooted):
+                        raise ValueError(
+                            "sample counter went backwards (corrupted or out-of-order data; configure "
+                            "counter_modulus if the firmware counter wraps)"
+                        )
+                    # the device restarted: continue after a discontinuity of one second so no window spans it
+                    new_v = prev + 1 + max(int(round(self.fs)), 3)
+                    self._reset_offset += new_v - v
+                    self.n_resets += 1
+                    self.gaps.append(GapEvent(float(prev + 1) / self.fs, int(prev + 1), 0, "counter_reset"))
+                    v = new_v
+                elif prev is not None and v - prev > 1:
+                    self._gap((prev + 1) / self.fs, prev + 1, v - prev - 1, "counter")
+                idx_l.append(v)
+                prev = v
+            if not idx_l:
+                return pd.DataFrame(columns=["timestamp", "sample_index", "red", "infrared"])
+            idx = np.asarray(idx_l, np.int64)
+            b = SampleBlock(
+                red=np.asarray(b.red)[keep],
+                ir=np.asarray(b.ir)[keep],
+                host_time_s=b.host_time_s,
+                sample_index=idx,
+                temperature_c=None if b.temperature_c is None else np.asarray(b.temperature_c)[keep],
+            )
+            n = idx.size
             t = idx / self.fs
         else:
             start = 0 if self._last_index is None else self._last_index + 1

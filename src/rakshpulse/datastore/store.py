@@ -274,7 +274,10 @@ class DatasetStore:
         name = _safe_id(name, "derived name")
         if name in ("raw_ppg", "reference_bp", "session_metadata", "gaps"):
             raise ValueError("derived outputs may not use raw file names")
+        if not (self.session_dir(subject_id, session_id) / "session_metadata.csv").exists():
+            raise FileNotFoundError(f"no session {subject_id}/{session_id} in {self.root}")
         p = self.session_dir(subject_id, session_id) / "derived" / f"{name}.csv"
+        p.parent.mkdir(exist_ok=True)  # empty folders are lost by git/zip transfers; recreate it
         if p.exists() and not overwrite_derived:
             raise FileExistsError(f"{p} exists (pass overwrite_derived=True to replace a derived file)")
         df.to_csv(p, index=False)

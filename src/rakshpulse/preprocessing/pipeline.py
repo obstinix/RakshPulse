@@ -32,7 +32,7 @@ import pandas as pd
 from ..evaluation.auricle_study import add_normalised_shape
 from ..features.feature_pipeline import extract_features
 from ..features.physiological import PHYSIO_FEATURES, physio_features
-from . import filtering
+from . import artifact_removal, filtering
 from .quality_score import score_window
 
 WINDOW_COLUMNS = [
@@ -69,6 +69,32 @@ class PipelineConfig:
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+
+def validate_config(cfg: PipelineConfig) -> None:
+    """Reject configurations the pipeline cannot process correctly (explicit errors, never silent changes)."""
+    filtering.validate_sampling_rate(cfg.fs)  # raises ValueError for rates the band-pass cannot support
+    if cfg.window_s <= 0 or cfg.step_s <= 0:
+        raise ValueError("window_s and step_s must be positive")
+    if cfg.window_s < 5.0:  # the quality gate needs >= 4 beats per window
+        raise ValueError("window_s must be at least 5 s (the quality gate needs at least 4 beats)")
+    lo, hi = cfg.band
+    if not 0 < lo < hi < cfg.fs / 2:
+        raise ValueError(f"band {cfg.band} Hz must satisfy 0 < low < high < fs/2 ({cfg.fs / 2} Hz)")
+
+
+def check_rate(t: np.ndarray, idx: np.ndarray, fs: float, tolerance: float = 0.05) -> None:
+    """Refuse a recording whose timestamps contradict its declared sampling rate (wrong metadata or --fs)."""
+    step = np.diff(idx)
+    dt = np.diff(t)[step == 1]
+    if dt.size < 10:
+        return
+    est = 1.0 / np.median(dt)
+    if abs(est - fs) / fs > tolerance:
+        raise ValueError(
+            f"timestamps imply about {est:.1f} Hz but the recording is declared as {fs:g} Hz; "
+            "fix the session's sampling_rate (or --fs) before processing"
+        )
 
 
 def _segments(t: np.ndarray, idx: np.ndarray, cfg: PipelineConfig) -> list[tuple[int, int]]:
@@ -122,8 +148,19 @@ def window_features(red: np.ndarray | None, ir: np.ndarray, fs: float, cfg: Pipe
         rail = float(np.mean((x >= cfg.adc_max - cfg.rail_margin_counts) | (x <= cfg.rail_margin_counts)) * 100)
         out[f"{name}_rail_pct"] = rail
         rails.append(rail)
-    if not np.isfinite(ir).all() and np.isfinite(ir).mean() < 0.95:
-        return {**out, "quality_class": "missing", "quality_score": 0.0, "reasons": "non_finite_samples"}
+    notes = []
+    for name, x in (("ir", ir), ("red", red)):
+        if x is None:
+            continue
+        bad = ~np.isfinite(x)
+        if bad.mean() > 0.05:  # too many NaN/Inf values to repair: never passed to feature extraction
+            return {**out, "quality_class": "missing", "quality_score": 0.0, "reasons": f"non_finite_samples_{name}"}
+        if bad.any():
+            notes.append(f"interpolated_{int(bad.sum())}_non_finite_{name}")
+    # repair the few non-finite samples once, so every later step (features, quality) sees the same signal
+    ir = artifact_removal.interpolate_nonfinite(ir) if not np.isfinite(ir).all() else ir
+    if red is not None and not np.isfinite(red).all():
+        red = artifact_removal.interpolate_nonfinite(red)
     if np.nanstd(ir) < cfg.flat_sd_counts:
         return {**out, "quality_class": "missing", "quality_score": 0.0, "reasons": "no_signal_flatline"}
     chans = {c: (ir if c == "ir" else red) for c in cfg.channels if (ir if c == "ir" else red) is not None}
@@ -142,7 +179,7 @@ def window_features(red: np.ndarray | None, ir: np.ndarray, fs: float, cfg: Pipe
         rail_pct=max(rails),
         rail_max_pct=cfg.rail_max_pct,
     )
-    reasons += q.reasons
+    reasons += q.reasons + notes
     out.update({"quality_class": q.quality_class, "quality_score": q.score})
     if cfg.contour_features:
         pf, _ = physio_features(proc["ir"].filtered, filtering.TARGET_FS)
@@ -159,6 +196,7 @@ def process_recording(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Return (windows table, segment summary). Raw input can be a DataFrame or an iterator of chunks."""
     cfg = cfg or PipelineConfig()
+    validate_config(cfg)
     fs, win, step = cfg.fs, int(round(cfg.window_s * cfg.fs)), int(round(cfg.step_s * cfg.fs))
     rows, segs = [], []
     buf: pd.DataFrame | None = None  # unconsumed samples of the open segment (starts at the next window start)
@@ -217,8 +255,15 @@ def process_recording(
             }
         )
 
+    checked_rate = False
     for chunk in _iter_raw(raw):
+        missing = [c for c in ("timestamp", "sample_index", "red", "infrared") if c not in chunk]
+        if missing:
+            raise ValueError(f"raw recording lacks columns {missing} (expected timestamp, sample_index, red, infrared)")
         chunk = chunk[["timestamp", "sample_index", "red", "infrared"]].assign(filled=False)
+        if not checked_rate and len(chunk) > 20:
+            check_rate(chunk.timestamp.to_numpy(float), chunk.sample_index.to_numpy(np.int64), fs)
+            checked_rate = True
         n_buf = 0 if buf is None else len(buf)
         data = chunk if buf is None else pd.concat([buf, chunk], ignore_index=True)
         data = _fill_short_gaps(data, cfg)
