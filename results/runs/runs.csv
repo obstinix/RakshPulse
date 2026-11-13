@@ -15,3 +15,5 @@ quality_score_v4-20261111T083126Z,quality_score_v4,2026-11-11T08:31:26+00:00,2.9
 cross_day_generalization_v4-20261111T083414Z,cross_day_generalization_v4,2026-11-11T08:34:14+00:00,28.0,479b2655c8a6,True,0,104,35,results/runs/cross_day_generalization_v4-20261111T083414Z,False,completed,,
 v5_cross_day_calibration-20261112T180142Z,v5_cross_day_calibration,2026-11-12T18:01:42+00:00,44.8,78ed2cbe6f7c,True,0,16,40,results/runs/v5_cross_day_calibration-20261112T180142Z,False,completed,,
 v5_simulation_and_benchmarks-20261112T180227Z,v5_simulation_and_benchmarks,2026-11-12T18:02:27+00:00,67.0,78ed2cbe6f7c,True,21,8,0,results/runs/v5_simulation_and_benchmarks-20261112T180227Z,False,completed,,
+v5_cross_day_calibration-20261113T183004Z,v5_cross_day_calibration,2026-11-13T18:30:04+00:00,37.1,c76dca985d05,True,0,16,40,results/runs/v5_cross_day_calibration-20261113T183004Z,False,completed,,
+v5_simulation_and_benchmarks-20261113T183041Z,v5_simulation_and_benchmarks,2026-11-13T18:30:41+00:00,46.5,c76dca985d05,True,21,8,0,results/runs/v5_simulation_and_benchmarks-20261113T183041Z,False,completed,,

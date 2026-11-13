@@ -1720,14 +1720,14 @@ Expiry policy: share of windows still valid and their error vs expired windows:
 
 | Stage | Metric | Value |
 |---|---|---|
-| record_to_csv | samples_per_s | 13,929.52 |
-| validate | s_per_10min_session | 0.08 |
-| pipeline_chunked | ms_per_window | 28.79 |
+| record_to_csv | samples_per_s | 22,327.40 |
+| validate | s_per_10min_session | 0.04 |
+| pipeline_chunked | ms_per_window | 14.15 |
 | pipeline_chunked | peak_python_mem_mb | 4.23 |
-| inference_engine_hop_1s | latency_ms_p50 | 35.96 |
-| inference_engine_hop_1s | latency_ms_p95 | 50.85 |
-| inference_engine_hop_5s | latency_ms_p50 | 40.99 |
-| inference_engine_hop_5s | latency_ms_p95 | 51.70 |
+| inference_engine_hop_1s | latency_ms_p50 | 23.02 |
+| inference_engine_hop_1s | latency_ms_p95 | 35.42 |
+| inference_engine_hop_5s | latency_ms_p50 | 35.57 |
+| inference_engine_hop_5s | latency_ms_p95 | 39.84 |
 | inference_engine_hop_5s | peak_python_mem_mb | 0.33 |
 
 <!-- END V5 -->
@@ -1778,15 +1778,26 @@ Expiry policy: share of windows still valid and their error vs expired windows:
    This shows which features are *sensitive* to contact and morphology changes. It is consistent with, but does
    **not** prove, the 4.0 explanation of the cross-day shift. That needs the repeat-day, re-seated-sensor protocol
    in DATA_COLLECTION_PROTOCOL.md on real MAX30102 recordings.
-5. **Platform cost (Y5, desktop only).**
-   - Recording to CSV runs at about 14,000 samples/s (140× real time at 100 Hz).
-   - Validation takes 0.08 s per 10-minute session.
-   - The full red + IR pipeline (quality, 1.0 features, contour features) takes about 29 ms per window, against
-     6–12 ms for the 4.0 IR-only streaming path. The extra cost is the second channel and the contour and quality
-     features.
-   - The inference engine latency is 36–41 ms (p50) and about 51 ms (p95) per evaluated window.
+5. **Platform cost (Y5, desktop only).** Y5 shows the run at `c76dca9` (5.1 code, which adds model-contract checks
+   to every window). The deterministic results Y1–Y4 reproduced byte-for-byte; only these timings changed.
+   - Recording to CSV runs at about 22,000 samples/s (the first 5.0 run measured about 14,000).
+   - Validation takes 0.04 s per 10-minute session.
+   - The full red + IR pipeline (quality, 1.0 features, contour features) takes about 14 ms per window (29 ms in
+     the first 5.0 run).
+   - The inference engine latency is 23–36 ms (p50) and 35–40 ms (p95) per evaluated window.
    - Peak Python memory is 0.33 MB for the engine and 4.2 MB for chunked processing of a 10-minute recording.
-   - These are desktop numbers. No embedded hardware has been measured.
+   - Repeated runs on this desktop differ by up to about 2×, so treat these as orders of magnitude. No embedded
+     hardware has been measured.
+
+### RakshPulse 5.1 (software only; no new research results)
+
+5.1 changes no research conclusion. It fixes inference safety:
+- each model bundle carries a contract, and inference refuses missing or invalid inputs and missing demographics;
+- uncertainty is reported only for sensors where it was estimated;
+- every MAX30102 prediction is labelled `demonstration`, because no model has been validated on that sensor.
+
+It also adds the MAX30102 handoff package (docs/HARDWARE_HANDOFF.md, `hardware/`). The 5.0 experiment script was
+rerun on the 5.1 code. All deterministic tables are identical, and `scripts/audit_v4.py` passes.
 
 ### 2.0 → 5.0 summary
 
