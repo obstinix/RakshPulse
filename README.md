@@ -1,313 +1,418 @@
-# RakshPulse ML
+<div align="center">
 
-Research pipeline for **cuffless blood-pressure estimation from red/IR PPG**. It supports
-RakshPulse, a proposed behind-the-ear BP monitor for military personnel in field and
-high-altitude settings, built around the MAX30102 optical sensor.
+# RakshPulse
 
-> **Not a medical device.** Nothing here is clinically validated, and nothing has been tested
-> on behind-ear MAX30102 recordings. Every result below comes from public **fingertip-type**
-> datasets. Read [Current limitations](#current-limitations) before using any number.
+**Research software for cuffless blood-pressure estimation from red/IR photoplethysmography (PPG),
+built around the MAX30102 optical sensor.**
 
-## Status at a glance
+[![CI](https://github.com/obstinix/RakshPulse/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/obstinix/RakshPulse/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/obstinix/RakshPulse?sort=semver&color=0F8B8D)](https://github.com/obstinix/RakshPulse/releases)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-3776AB?logo=python&logoColor=white)](pyproject.toml)
+[![Tests](https://img.shields.io/badge/tests-164%20passing-2EA44F?logo=pytest&logoColor=white)](tests)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![License: CC0-1.0](https://img.shields.io/badge/license-CC0--1.0-lightgrey)](LICENSE)
+<br>
+[![Status](https://img.shields.io/badge/status-research%20prototype-D9731A)](#capabilities-and-limitations)
+[![Hardware](https://img.shields.io/badge/hardware-MAX30102%20%2B%20ESP32-1B2A4A)](docs/HARDWARE_HANDOFF.md)
+[![Not a medical device](https://img.shields.io/badge/medical%20device-no-C0392B)](#capabilities-and-limitations)
 
-| Component | Status |
+</div>
+
+> [!WARNING]
+> **RakshPulse is a research prototype, not a medical device.** No output is a clinically validated blood-pressure
+> measurement. No model has been validated on MAX30102 recordings: on MAX30102 data every model runs in
+> **demonstration** mode, which shows the pipeline works and is **not** a BP measurement.
+
+## Contents
+
+[Overview](#overview) · [Architecture](#system-architecture) · [ML pipeline](#ml-pipeline) ·
+[Requirements](#requirements) · [Installation](#installation) · [Usage](#usage) ·
+[Hardware integration](#hardware-integration) · [Capabilities and limitations](#capabilities-and-limitations) ·
+[Research findings](#research-findings) · [Reproducing the research](#reproducing-the-research) ·
+[Documentation](#documentation) · [Repository layout](#repository-layout) · [Licences](#data-licences-and-attribution)
+
+## Overview
+
+RakshPulse is a proposed behind-the-ear blood-pressure monitor for military personnel in field and high-altitude
+settings. This repository is its software side:
+
+- **an acquisition and data platform**: serial streaming from a MAX30102 + ESP32/Arduino board, timestamping with
+  lost-sample detection, checksummed CSV session datasets and cuff reference readings;
+- **a signal-processing and ML pipeline**: preprocessing, a signal-quality gate, pulse features, training with
+  leakage-checked splits, calibration and streaming inference behind explicit model contracts;
+- **a research record**: reproducible experiments on public PPG datasets (finger, earlobe, surgical) that measure
+  honestly what PPG can and cannot tell about blood pressure.
+
+**Objectives**
+
+1. Give the hardware team a tested, documented path from a MAX30102 sensor to a validated recording dataset.
+2. Collect MAX30102 recordings with cuff references across people and days.
+3. Train and evaluate a MAX30102-specific model, and report it only when it beats simple baselines on unseen
+   people and days.
+
+## System architecture
+
+```mermaid
+flowchart LR
+    subgraph HW["Hardware (hardware team)"]
+        S["MAX30102<br/>red + IR PPG"] -->|"I²C · 0x57"| MCU["ESP32 / Arduino<br/>reference firmware"]
+    end
+    subgraph COM["Communication"]
+        MCU -->|"USB serial 115200<br/>sample_index,red,ir"| SER["SerialSource<br/>banner + rate checks"]
+    end
+    subgraph SW["Software platform"]
+        SER --> SYNC["TimestampSync<br/>gaps · duplicates · reboots"]
+        SYNC --> DS[("Dataset store<br/>CSV sessions + SHA-256")]
+        DS --> PIPE["Preprocessing<br/>10 s windows · quality gate · features"]
+    end
+    subgraph ML["Machine learning"]
+        PIPE --> CON{"Model contract<br/>sensor · rate · inputs"}
+        CON -->|"compatible"| ENG["Inference engine<br/>mode-labelled output"]
+        CON -->|"incompatible"| REF["Refused<br/>exit code 4"]
+        ENG --> OUT["Predictions CSV<br/>status · quality · inference_mode"]
+    end
+    CUFF["Upper-arm cuff"] -->|"rakshpulse reference"| DS
+    DS -->|"cuff readings"| CAL["Calibration +<br/>comparison"]
+    ENG --> CAL
+
+    classDef hw fill:#E8F1FA,stroke:#3E7CB1,color:#1B2A4A
+    classDef com fill:#F2F3F5,stroke:#2C4372,color:#1B2A4A
+    classDef sw fill:#E6F4F4,stroke:#0F8B8D,color:#1B2A4A
+    classDef ml fill:#FDF1E6,stroke:#D9731A,color:#1B2A4A
+    classDef bad fill:#FBEAEA,stroke:#C0392B,color:#7A1F16
+    class S,MCU hw
+    class SER com
+    class SYNC,DS,PIPE sw
+    class CON,ENG,OUT,CAL,CUFF ml
+    class REF bad
+```
+
+Each layer has one job and a defined interface to the next. If `rakshpulse check-serial` passes, the hardware and
+communication layers work. The cuff never connects to the computer: an operator types each reading in with its
+time since the recording started.
+
+## ML pipeline
+
+```mermaid
+flowchart TB
+    A["Raw red/IR counts<br/>at --fs Hz"] --> B["Clean-up<br/>fill ≤ 2-sample gaps · resample to 100 Hz"]
+    B --> C["Band-pass 0.5–10 Hz<br/>zero-phase Butterworth"]
+    C --> D["10 s windows, 5 s hop<br/>never across a gap"]
+    D --> E{"Quality gate"}
+    E -->|"usable / degraded"| F["Features<br/>heart rate + pulse shape"]
+    E -->|"unusable / missing"| X["No estimate<br/>reasons recorded"]
+    F --> G{"Model contract"}
+    G --> H["Ridge model<br/>SBP / DBP"]
+    H --> I["validated · experimental · demonstration"]
+
+    classDef sig fill:#E8F1FA,stroke:#3E7CB1,color:#1B2A4A
+    classDef q fill:#E6F4F4,stroke:#0F8B8D,color:#1B2A4A
+    classDef m fill:#FDF1E6,stroke:#D9731A,color:#1B2A4A
+    classDef bad fill:#FBEAEA,stroke:#C0392B,color:#7A1F16
+    class A,B,C,D sig
+    class E,F q
+    class G,H,I m
+    class X bad
+```
+
+- **Preprocessing** ([DATA_PREPROCESSING](docs/DATA_PREPROCESSING.md)): DC removal, anti-aliased resampling,
+  Hampel despiking, zero-phase band-pass, orientation, beat segmentation. The same code runs at training and
+  inference time.
+- **Quality gate:** beat count, heart-rate plausibility, beat regularity, template correlation, cardiac-band power,
+  rail clipping and flat lines. Each window is `usable`, `degraded`, `unusable` or `missing`, with reasons.
+  Failing windows are rejected, never repaired.
+- **Features:** pulse morphology, derivative (APG), variability, spectral and red/IR cross-channel features. The
+  shipped model uses heart rate plus 27 heart-rate-invariant shape features.
+- **Models** ([MODEL_ARCHITECTURE](docs/MODEL_ARCHITECTURE.md)): mean and demographic baselines, ridge, elastic
+  net, SVR, tree ensembles, XGBoost, LightGBM, PLS, plus raw-waveform CNN/GRU/TCN/Transformer benchmarks.
+- **Evaluation** ([MODEL_EVALUATION](docs/MODEL_EVALUATION.md)): subject-wise and cross-day splits that raise on
+  leakage, subject-level metrics with bootstrap confidence intervals, Bland–Altman, permutation tests with Holm
+  correction. Every model is compared with predicting the mean.
+- **Model contracts:** each bundle declares its required inputs, supported sensors, sampling rates and the mode it
+  runs in for each sensor. Inference refuses incompatible input instead of guessing, and every output row carries
+  its `inference_mode`.
+
+| Mode | Meaning | Exists for MAX30102? |
+|---|---|---|
+| `validated` | Independently evaluated on this sensor type | No (none for any sensor) |
+| `experimental` | Trained on this sensor type, cross-validated only | No: needs MAX30102 recordings |
+| `demonstration` | Built for another sensor or site; shows the pipeline runs | **Yes**: the shipped `auricle_ear_ridge_v2` |
+
+## Requirements
+
+**Software**
+
+| Item | Requirement |
 |---|---|
-| Requirements extracted from project PDFs | ✅ Implemented ([docs/PROJECT_REQUIREMENTS.md](docs/PROJECT_REQUIREMENTS.md)) |
-| Dataset survey (16 datasets, weighted scoring) | ✅ Implemented ([docs/DATASET_RESEARCH.md](docs/DATASET_RESEARCH.md)) |
-| Dataset download, checksums, provenance, validation | ✅ Implemented (3 datasets, ≈650 MB) |
-| Preprocessing + signal-quality gate + features | ✅ Implemented and unit-tested |
-| Baseline and advanced models, subject-wise nested CV | ✅ Implemented. Results below |
-| 1D CNN (raw waveform) | ✅ Experimental |
-| ECG pulse-arrival-time study | 🧪 Auxiliary research only (no ECG on MAX30102) |
-| Inference API with quality-based rejection | ✅ Implemented (proposed interface) |
-| Tests + CI (ruff, pytest, Python 3.10–3.12) | ✅ Implemented |
-| Finger vs earlobe study (Auricle, 41 subjects) | ✅ Implemented ([MODEL_EVALUATION §F](docs/MODEL_EVALUATION.md)) |
-| Cross-day calibration study (Auricle, 36 subjects × 2 days) | ✅ Completed and independently audited ([RESEARCH_FINDINGS](docs/RESEARCH_FINDINGS.md)) |
-| Standardised Auricle dataset (CSV tables + NPZ waveforms, 30,841 windows) | ✅ Built, validated (19 checks), published ([data/README.md](data/README.md)) |
-| Population model, personalisation engine, baseline tracker, adaptive calibration | ✅ Implemented, tested, evaluated ([RESEARCH_FINDINGS](docs/RESEARCH_FINDINGS.md#population-model-and-personalisation-standardised-dataset-dataauricle)) |
-| Real-time estimation interface (ear PPG + optional calibration state) | ✅ Implemented (hardware-independent; research use) |
-| 3.0: VitalDB subset (40 surgical cases, real cuff + arterial line), advanced features (PAT, wavelets, ear→finger PTT) | ✅ Built and committed ([data/README.md](data/README.md#vitaldb-subset-datavitaldb-rakshpulse-30)) |
-| 3.0: beyond-reference study, calibration-count study, feature stability, GRU / CNN-LSTM / TCN / Transformer / PLS | ✅ Evaluated with matched controls ([RESEARCH_FINDINGS § 3.0](docs/RESEARCH_FINDINGS.md#rakshpulse-30-information-beyond-the-reference-reading)) |
-| 3.0: streaming estimator (chunked input, SQI, aggregation, signal-lost, JSONL log) + latency benchmark | ✅ Implemented and measured on desktop CPU ([HARDWARE_INTEGRATION](docs/HARDWARE_INTEGRATION.md#streaming-interface-rakshpulse-30-srcrakshpulseinferencestreamingpy)) |
-| 3.0: experiment provenance registry (dataset hashes, commit, versions, splits) | ✅ `results/runs/` |
-| 4.0: cross-day shift diagnostics + six leakage-safe normalisations | ✅ Evaluated: shift explained, no normalisation helps ([RESEARCH_FINDINGS § 4.0](docs/RESEARCH_FINDINGS.md#rakshpulse-40-generalisation-physiology-quality-calibration-uncertainty-external-validation)) |
-| 4.0: pulse-contour features (notch, diastolic peak, upstroke, decay, beat variability) | ✅ Built for all windows; no added predictive value |
-| 4.0: graded PPG quality score (good / degraded / unreliable / missing) | ✅ Evaluated against real errors |
-| 4.0: hierarchical Bayesian calibration with matched no-PPG control; conformal / quantile intervals | ✅ Evaluated on identical splits |
-| 4.0: external validation on 60 further, independent VitalDB patients | ✅ Zero-shot, independent-patient and adaptation results reported separately |
-| 4.0: subject-level statistics (permutation, Holm/BH, effect sizes, Bland–Altman) + result audit | ✅ `evaluation/statistics.py`, `scripts/audit_v4.py` |
-| 4.0: ring-buffer streaming, in-stream quality, float32 C-header export, driver-free sensor interface | ✅ Desktop-verified; **no embedded hardware tested** |
-| 5.0: acquisition (red/IR simulator, MAX30102 config, serial/replay sources, timestamp sync, gap detection, recorder) | ✅ Implemented, tested with simulated input |
-| 5.0: CSV dataset store (sessions, cuff readings, manifest checksums, validation, import/export, reference association) | ✅ Implemented ([DATA_COLLECTION_PROTOCOL](docs/DATA_COLLECTION_PROTOCOL.md)) |
-| 5.0: configurable chunked pipeline, calibration strategies + policy, leakage-checked splits, model registry, inference engine | ✅ Implemented ([USER_GUIDE](docs/USER_GUIDE.md)) |
-| 5.0: `rakshpulse` CLI (doctor, simulate, record, reference, inspect, preprocess, features, train, calibrate, evaluate, infer, export) | ✅ Implemented |
-| 5.1: MAX30102 handoff: reference firmware, serial contract, `check-serial`, examples, troubleshooting, checklist | ✅ [docs/HARDWARE_HANDOFF.md](docs/HARDWARE_HANDOFF.md); firmware **not compiled or run** (no board available); **awaiting hardware** |
-| 5.1: model contracts (required inputs, demographics, sensors, sampling rates, uncertainty validity); inference refuses missing/invalid inputs | ✅ Implemented and tested; `rakshpulse models` |
-| 5.1: robust serial acquisition (timeouts, reconnect, duplicates, device reboot, rate checks) and `analyze` command | ✅ Tested with simulated and loop-back serial ports |
-| Behind-ear validation | ❌ **Not done.** No behind-ear data exists yet ([docs/DOMAIN_ADAPTATION.md](docs/DOMAIN_ADAPTATION.md)) |
-| ESP32 / ONNX / TFLite deployment | ❌ Planned. Footprint measured only |
-| Clinical validation (ISO 81060-2 / IEEE 1708) | ❌ Not started |
+| OS | Windows 10/11 or Linux (macOS works, untested in CI) |
+| Python | 3.10, 3.11 or 3.12 (all three tested in CI) |
+| Core packages | numpy, scipy, pandas, scikit-learn, xgboost, lightgbm, joblib, matplotlib, wfdb, openpyxl (installed automatically) |
+| Optional extras | `serial` (pyserial, for a live sensor), `dev` (pytest, ruff), `deep` (torch), `vitaldb` (VitalDB reader) |
 
-## Key findings (honest summary)
+**Hardware** (only for live recording)
 
-1. **No public dataset has behind-ear PPG with BP labels.** This is a research gap. RakshPulse
-   must collect its own reference-labelled MAX30102 recordings.
-2. On 148 healthy young adults (Guilin dual-wavelength dataset, subject-independent 5-fold
-   nested CV), **PPG-only models did not beat the predict-the-mean baseline for SBP**
-   (best MAE 11.1 vs 10.8 mmHg). For DBP they did slightly better (6.7 vs 7.6 mmHg, r ≈ 0.4).
-3. Most of the predictable SBP variance came from **demographics** (sex, height, weight). In a
-   paired subject-level bootstrap, adding PPG to demographics improved **DBP** reliably
-   (6.18 vs 7.28 mmHg MAE, 95 % CI of the difference [−1.82, −0.31]). For **SBP** there was no
-   detectable gain (8.59 vs 9.21, CI [−1.53, +0.30]). Bland–Altman limits of agreement are about
-   ±22 mmHg for SBP.
-4. **Red + IR gave no benefit over IR or red alone** on this data.
-5. All models **regress to the mean**: the 5 hypertensive subjects (SBP ≥ 140) were
-   underestimated by about 32–36 mmHg. A screening device built on these models would miss hypertension.
-6. **Models trained on young adults failed on older external cohorts** (Foggia, PPG-BP), with
-   −7 to −15 mmHg bias. Population-level, calibration-free BP from PPG did not generalise.
-7. An auxiliary ECG experiment found that **pulse arrival time** (timing) carries SBP signal
-   (r = −0.35) that single-site PPG shape lacks. A two-site optical *pulse transit time* design is
-   worth evaluating. ECG is not available on the MAX30102.
-8. **Earlobe evidence (Auricle, 41 healthy subjects, simultaneous finger + earlobe PPG, continuous BP):**
-   PPG tracks within-session SBP changes slightly better than heart rate (ear r 0.29 vs 0.21, finger r 0.34 vs 0.28,
-   after removing rail-clipped and flat-signal windows). With one-point
-   calibration, earlobe SBP error beat carry-forward by about 1.2 mmHg (95 % CI [−2.07, −0.29]), but absolute
-   MAE was still about 14 mmHg and DBP showed no benefit. **Finger-trained models lost most tracking at the
-   ear (r 0.34 → ≤ 0.18)**, so a behind-ear model needs behind-ear training data.
-9. **Cross-day (36 subjects, two recording days, audited):** a day-1 calibration does **not** hold on day 2. The model
-   does not follow day-to-day resting-BP shifts (slope 0.02, 95 % CI [−0.04, 0.09]), calibration offsets drift by
-   9–12 mmHg, and day-2 SBP error with day-1 calibration (ear 16.1 mmHg MAE) is no better than reporting the
-   calibration value. Within a session, ear pulse shape does carry heart-rate-independent SBP trend information.
-   See [docs/RESEARCH_FINDINGS.md](docs/RESEARCH_FINDINGS.md).
-10. **Population vs personalisation (standardised dataset):** on unseen subjects no population model beat predicting
-    the training-mean BP (0 of 64 paired tests better). Personal calibration improves day-2 errors only through
-    new cuff readings: a PPG-free tracker of the same readings did statistically as well, and with a reading
-    every 2 min the PPG engine never beat "repeat the last reading". PPG added no measurable value beyond the
-    references in these data.
-11. **RakshPulse 3.0, beyond the reference reading:** modelling *changes* in pulse shape since the last cuff
-    reading recovers a small, heart-rate-independent signal **within a session**: about 0.6–1.2 mmHg SBP better than
-    the matched no-signal control at the ear (CIs exclude 0). There is **no** such gain across days, and it was not
-    demonstrated with real cuff readings in 34 surgical patients (VitalDB), where the cuff itself differed from the
-    arterial line by about 13 mmHg MAE. Deep sequence models (GRU, CNN-LSTM, TCN, Transformer) did not beat the
-    baselines. This refines finding 10 without overturning it. See
-    [RESEARCH_FINDINGS § 3.0](docs/RESEARCH_FINDINGS.md#rakshpulse-30-information-beyond-the-reference-reading).
-12. **RakshPulse 4.0, generalisation:**
-    - **Within-session signal confirmed.** The ear within-session SBP signal survives subject-level permutation
-      tests with Holm correction in two independent analyses (−0.74 and −1.09 mmHg).
-    - **Cross-day prediction still fails, now with an explanation.** PPG features shift between days far more
-      than within a day, the resting pulse shape changes, and amplitude changes about 1.65×; these shifts are
-      largely unrelated to BP. None of six normalisations helped, and six combinations were significantly worse.
-    - **Reference-only personalisation helps more than PPG.** Statistical hierarchical calibration using only
-      cuff readings beats repeating the last reading by 1–4 mmHg; PPG adds to it in one setting only.
-    - **Uncertainty stays wide.** Conformal intervals reach 90 % coverage only at about ±25–30 mmHg.
-    - **External results are mixed.** On 60 independent surgical patients, the Auricle model fails zero-shot.
-      A VitalDB-trained model predicts new patients' absolute SBP better than the mean (−2.1 mmHg), but MAE
-      stays about 14 mmHg. Change-model gains beyond real cuff readings are not significant after correction.
-    See [RESEARCH_FINDINGS § 4.0](docs/RESEARCH_FINDINGS.md#rakshpulse-40-generalisation-physiology-quality-calibration-uncertainty-external-validation).
-13. **RakshPulse 5.0, cross-day follow-up:**
-    - **Unsupervised adaptation does not help across days.** Per-session standardisation and CORAL were no
-      better than plain ridge, which was itself no better than the mean.
-    - **PPG + cuff vs cuff-only across days stays non-significant** (−1.26 mmHg SBP, Holm p = 0.19).
-    - **Calibrations decay within minutes:** SBP error grows from about 9 to about 13 mmHg within 20–40 minutes
-      of the last reading.
-    - **Simulation (tool validation only)** shows the features are gain-invariant but sensitive to contact
-      amplitude and pulse morphology.
-    See [RESEARCH_FINDINGS § 5.0](docs/RESEARCH_FINDINGS.md#rakshpulse-50-software-platform-and-cross-day-follow-up).
-14. The realistic path forward is **per-user cuff calibration plus behind-ear data collection with a controlled,
-    repeatable sensor placement across days**.
-   It is not a bigger model on fingertip data.
+| Item | Requirement |
+|---|---|
+| Sensor | MAX30102 breakout (red + IR, SpO2 mode) |
+| Board | ESP32 development board (recommended) or another Arduino-compatible board with I²C and USB serial |
+| Connection | USB **data** cable; CP210x or CH340 driver if the board needs one |
+| Reference | Automatic upper-arm cuff for reference readings |
+
+Pin assignments, supply voltage and pull-ups depend on the board and breakout and are deliberately not assumed:
+see [HARDWARE_HANDOFF](docs/HARDWARE_HANDOFF.md#1-what-you-build-and-what-the-software-expects).
 
 ## Installation
 
 ```bash
-git clone https://github.com/obstinix/RakshPulse.git && cd RakshPulse
-python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -e ".[dev]"                                 # core + pytest + ruff
-pip install torch --index-url https://download.pytorch.org/whl/cpu   # optional, for the CNN
-pip install -e ".[serial]"                              # optional, USB-serial MAX30102 input
-rakshpulse doctor                                       # environment check + simulated self-test
+git clone https://github.com/obstinix/RakshPulse.git
+cd RakshPulse
+python -m venv .venv
+source .venv/bin/activate              # Windows PowerShell: .\.venv\Scripts\Activate.ps1
+pip install -e ".[serial]"             # core + live serial input
+pip install -e ".[dev]"                # optional: tests and linting
+rakshpulse doctor                      # must end with "all required checks passed"
 ```
 
-## Hardware team: start here
+`rakshpulse doctor` checks the Python packages, runs a 30 s simulated self-test and reports the default model's
+mode for MAX30102.
 
-Follow **[docs/HARDWARE_HANDOFF.md](docs/HARDWARE_HANDOFF.md)**: flash `hardware/firmware/rakshpulse_max30102`, then `rakshpulse check-serial`, `record`, `reference` and `analyze`. Every model currently runs on MAX30102 data in **demonstration** mode only: the numbers show the pipeline works and are not blood-pressure measurements.
+## Usage
 
-## Quick start (5.0 platform, simulated data)
+### Command line
+
+| Command | Purpose |
+|---|---|
+| `rakshpulse doctor` | Check the installation |
+| `rakshpulse models --sensor max30102 --fs 100 --verbose` | List model bundles, their contracts and the mode each runs in |
+| `rakshpulse ports` | List serial ports |
+| `rakshpulse check-serial --port COM5 --fs 100` | 10 s PASS/FAIL test of the live data stream |
+| `rakshpulse record --source serial ...` | Record a session (never overwrites) |
+| `rakshpulse reference ...` | Append a cuff reading |
+| `rakshpulse inspect --dataset DS --validate` | Verify checksums, schema, ordering, ranges, references |
+| `rakshpulse analyze --dataset DS --subject S --session D1` | Validate, process, predict, compare with cuff readings, export |
+| `simulate`, `preprocess`, `features`, `train`, `calibrate`, `evaluate`, `infer`, `export` | Research and model workflow ([USER_GUIDE](docs/USER_GUIDE.md)) |
+
+Exit codes: `0` success · `1` a check failed or no trustworthy result · `2` invalid usage or input ·
+`3` device or serial problem · `4` incompatible model.
+
+### Try it without hardware
 
 ```bash
-rakshpulse simulate --out demo --subjects 6 --sessions 2 --duration 240   # SIMULATED, clearly flagged
+rakshpulse simulate --out demo --subjects 6 --sessions 2 --duration 240    # SIMULATED data, flagged everywhere
 rakshpulse inspect --dataset demo --validate
 rakshpulse preprocess --dataset demo
 rakshpulse features --dataset demo --out demo_table.csv
 rakshpulse train --table demo_table.csv --allow-simulated --split cross_day --train-sessions D1
 rakshpulse infer --model models/<version>.joblib --source sim --duration 120
-rakshpulse models                                                         # installed models and their limits
 ```
 
-Simulated results describe the software, never blood pressure. For real recordings see
-[docs/USER_GUIDE.md](docs/USER_GUIDE.md), [docs/DATA_COLLECTION_PROTOCOL.md](docs/DATA_COLLECTION_PROTOCOL.md) and
-the MAX30102 section of [docs/HARDWARE_INTEGRATION.md](docs/HARDWARE_INTEGRATION.md).
+A complete simulated session ships in `hardware/examples/example_dataset/`. Copy it and run
+`rakshpulse analyze --dataset <copy> --subject SIM001 --session D1` to see real `analyze` output. Simulated
+results describe the software, never blood pressure.
 
-## Reproduce everything
+### Python API
+
+```python
+from rakshpulse.acquisition.simulator import SimConfig
+from rakshpulse.acquisition.sources import SimulatedSensor
+from rakshpulse.acquisition.ingest import Recorder
+from rakshpulse.datastore.store import DatasetStore, SessionMetadata
+from rakshpulse.preprocessing.pipeline import PipelineConfig, process_recording
+
+store = DatasetStore("data/demo")
+with store.create_session(SessionMetadata("SIM1", "D1", 100.0, sensor_type="simulator")) as w:
+    rec = Recorder(SimulatedSensor(SimConfig(seed=1), 120), [w.write_raw])
+    rec.run()
+    w.add_gaps(rec.sync.gap_table())
+windows, segments = process_recording(store.raw("SIM1", "D1", chunksize=50_000), PipelineConfig(), "SIM1", "D1")
+```
+
+The streaming, personalisation and export APIs are described in [USER_GUIDE](docs/USER_GUIDE.md) and
+[HARDWARE_INTEGRATION](docs/HARDWARE_INTEGRATION.md).
+
+## Hardware integration
+
+**Hardware team: start with the
+[Hardware Integration Manual (PDF)](docs/RAKSHPULSE_HARDWARE_INTEGRATION_MANUAL.pdf)**, a 43-page illustrated
+handbook. [HARDWARE_HANDOFF.md](docs/HARDWARE_HANDOFF.md) is the short version kept next to the code.
+
+1. Wire the MAX30102 to the board (power, GND, SDA, SCL; pins from your board's pinout).
+2. Flash [`hardware/firmware/rakshpulse_max30102`](hardware/firmware/rakshpulse_max30102/rakshpulse_max30102.ino)
+   (SparkFun MAX3010x library; defaults: 100 Hz, 411 µs, 115200 baud).
+3. Verify the stream, record, add cuff readings and analyse:
 
 ```bash
-# 1. data (≈650 MB download, ≈1.6 GB extracted); see data/README.md
+rakshpulse ports
+rakshpulse check-serial --port COM5 --fs 100
+rakshpulse record --source serial --port COM5 --fs 100 --out data/rakshpulse_hw --subject P001 --session D1 --duration 300
+rakshpulse reference --dataset data/rakshpulse_hw --subject P001 --session D1 --time 60 --sbp 121 --dbp 79 --hr 72 --device "Omron M3"
+rakshpulse inspect --dataset data/rakshpulse_hw --validate
+rakshpulse analyze --dataset data/rakshpulse_hw --subject P001 --session D1
+```
+
+The firmware prints one line per sample (`sample_index,red,ir`) after a `# rakshpulse fw=1 fs_hz=...` banner. The
+counter advances past samples lost to FIFO overflow, so the software logs gaps instead of silently joining time.
+`--fs` (sample rate ÷ averaging) is never assumed, and `record` refuses to start if it disagrees with the banner.
+Example streams and a simulated dataset are in [`hardware/examples/`](hardware/examples).
+
+## Capabilities and limitations
+
+| Area | Status |
+|---|---|
+| Serial acquisition (timeouts, reconnect, duplicates, reboots, rate checks) | ✅ Tested with simulated and loop-back serial ports |
+| Reference firmware for MAX30102 + ESP32/Arduino | ⚠️ Written to the datasheet; **not yet compiled or run on a board** |
+| Checksummed CSV datasets with cuff references | ✅ Implemented and tested |
+| Preprocessing, quality gate, features | ✅ Implemented and tested |
+| Model contracts and mode-labelled inference | ✅ Implemented and tested; refuses incompatible input |
+| Training, calibration, evaluation with leakage-checked splits | ✅ Implemented; used for all research results |
+| Streaming inference and float32 C-header export | ✅ Desktop-verified; no microcontroller measurements |
+| MAX30102 BP model | ❌ None yet: needs recordings with cuff references |
+| Behind-the-ear validation | ❌ No behind-ear data exists yet ([DOMAIN_ADAPTATION](docs/DOMAIN_ADAPTATION.md)) |
+| Clinical validation (ISO 81060-2 / IEEE 1708) | ❌ Not started; no compliance is claimed |
+
+**Known limitations**
+
+- **No hardware data yet.** Every component was exercised with simulated sensors, replayed recordings and public
+  datasets. MAX30102 noise, ambient light, contact pressure and placement effects are untested.
+- **Site and sensor mismatch.** The shipped model was trained on earlobe PPG from a different sensor. On its own
+  data it was barely better than predicting the mean for SBP (MAE 15.0 vs 15.29 mmHg on unseen subjects) and
+  slightly worse for DBP (10.98 vs 10.72).
+- **Cross-day transfer.** No method tried (normalisation, domain adaptation, hierarchical calibration) carried PPG
+  information across recording days, and calibrations decay within tens of minutes.
+- **Populations.** The public cohorts are mostly healthy young adults or surgical patients; hypertensive subjects
+  are under-represented and models regress to the mean.
+- **Motion.** Neither the data nor the MAX30102 has an accelerometer; motion robustness is untested.
+
+## Research findings
+
+Summarised from [RESEARCH_FINDINGS](docs/RESEARCH_FINDINGS.md) and [MODEL_EVALUATION](docs/MODEL_EVALUATION.md):
+
+1. **No public dataset has behind-the-ear PPG with BP labels.** RakshPulse must collect its own.
+2. **Population, calibration-free BP from PPG did not work.** On 148 healthy adults (Guilin), PPG-only models did
+   not beat the mean for SBP (11.1 vs 10.8 mmHg MAE); on unseen subjects in the standardised Auricle dataset, 0 of
+   64 paired tests beat the training mean. Models trained on young adults showed −7 to −15 mmHg bias on older
+   cohorts.
+3. **A small within-session signal exists at the ear.** Modelling changes in pulse shape since the last cuff
+   reading beat a matched no-PPG control by about 0.6–1.2 mmHg SBP, surviving subject-level permutation tests with
+   Holm correction.
+4. **It does not survive across days.** PPG features shift between days for reasons unrelated to BP; day-2 error
+   with a day-1 calibration (ear SBP 16.1 mmHg MAE) was no better than reporting the calibration value.
+5. **Cuff readings carry most of the value.** Hierarchical calibration using only cuff readings beat repeating the
+   last reading by 1–4 mmHg; PPG added to it in one setting only. Conformal intervals reach 90 % coverage only at
+   about ±25–30 mmHg.
+6. **Bigger models did not help.** CNN, GRU, CNN-LSTM, TCN and Transformer models did not beat the baselines.
+
+The realistic path is per-user cuff calibration plus MAX30102 data collected with a controlled, repeatable
+placement across days ([DATA_COLLECTION_PROTOCOL](docs/DATA_COLLECTION_PROTOCOL.md)).
+
+## Reproducing the research
+
+All seeds are fixed (CV seeds 0, 1, 2; model seed 0), results are written to `results/`, and every run is recorded
+with dataset hashes, commit and package versions in `results/runs/`. `python scripts/audit_v4.py` checks
+provenance, checksums, splits and leakage.
+
+<details>
+<summary><b>Full reproduction commands</b> (public datasets, several GB of downloads)</summary>
+
+```bash
+pip install -e ".[dev,deep,vitaldb]"
+
+# public fingertip datasets (≈650 MB download); see data/README.md
 python -m rakshpulse.data.download guilin_dualwave foggia_multiwave ppg_bp
 python scripts/extract_datasets.py
 python -m rakshpulse.data.dataset_validator
 python -m rakshpulse.data.build guilin_dualwave foggia_multiwave ppg_bp guilin_unlabelled
 python -m rakshpulse.data.metadata
+python scripts/run_experiments.py && python scripts/run_cnn.py && python scripts/run_ecg_aux.py
 
-# 2. experiments (≈10 min on an 8-core CPU)
-python scripts/run_experiments.py     # feature models, channel ablation, external tests
-python scripts/run_cnn.py             # 1D CNN
-python scripts/run_ecg_aux.py         # auxiliary ECG/PAT study
-
-# Auricle finger vs earlobe (≈3 GB+ download, throttled; healthy cohort first)
+# Auricle finger vs earlobe and cross-day study
 python -m rakshpulse.data.physionet auricle --via-zip --jobs 3
 python -m rakshpulse.data.build_auricle
-python scripts/run_auricle.py
-python scripts/visualize_auricle.py
-python scripts/run_cross_day.py                                   # all models, 2,000 subject-bootstrap draws
+python scripts/run_auricle.py && python scripts/visualize_auricle.py
+python scripts/run_cross_day.py
 python scripts/run_cross_day.py --models ridge --no-rail-gate --tag _no_rail_gate
 python scripts/compare_rail_gate.py
-python -m rakshpulse.data.physionet auricle --verify               # acquisition manifest
-python scripts/audit_cross_day.py                                 # independent audit (must pass)
+python -m rakshpulse.data.physionet auricle --verify
+python scripts/audit_cross_day.py
 python scripts/make_cross_day_figures.py && python scripts/write_findings.py
 
-# or everything in order:
-python scripts/reproduce.py
-
-# standardised dataset + personalisation
+# standardised dataset and personalisation (or fetch the published NPZ waveforms)
 python -m rakshpulse.data build && python -m rakshpulse.data validate && python -m rakshpulse.data summary
-python scripts/run_personalization.py
-python -m rakshpulse.data.release fetch waveforms   # or fetch the published NPZ instead of building
-python scripts/compare_models.py      # paired bootstrap CIs
-python scripts/visualize_ppg.py       # figures in docs/figures/
+python -m rakshpulse.data.release fetch waveforms
+python scripts/run_personalization.py && python scripts/compare_models.py && python scripts/visualize_ppg.py
 
-# RakshPulse 3.0 (VitalDB needs: pip install -e .[vitaldb])
+# 3.0: VitalDB subset, beyond-reference and calibration studies, deep benchmarks
 python -m rakshpulse.data export-advanced --jobs 3
-python -m rakshpulse.data.vitaldb_dataset build --jobs 3   # after downloading the selected .vital files
-python scripts/run_beyond_reference.py
-python scripts/run_calibration_study.py
-python scripts/run_feature_analysis.py
-python scripts/run_deep_benchmark.py                        # ~8 min CPU
+python -m rakshpulse.data.vitaldb_dataset build --jobs 3
+python scripts/run_beyond_reference.py && python scripts/run_calibration_study.py
+python scripts/run_feature_analysis.py && python scripts/run_deep_benchmark.py
 python scripts/benchmark_inference.py
-python scripts/write_findings.py
 
-# RakshPulse 4.0 (the extension needs the 60 .vital files listed in data/metadata/vitaldb_selection_ext.csv)
+# 4.0: generalisation, physiology, quality, calibration uncertainty, external validation, deployment
 python -m rakshpulse.data export-physio --jobs 3
 python -m rakshpulse.data.vitaldb_dataset build --set ext --jobs 3
-python scripts/run_cross_day_generalization.py
-python scripts/run_physio_features.py
-python scripts/run_quality_study.py                        # grades all windows first (cached, ~1 min)
-python scripts/run_calibration_uncertainty.py              # needs the quality cache
-python scripts/run_external_validation.py
-python scripts/run_deployment_v4.py
+python scripts/run_cross_day_generalization.py && python scripts/run_physio_features.py
+python scripts/run_quality_study.py && python scripts/run_calibration_uncertainty.py
+python scripts/run_external_validation.py && python scripts/run_deployment_v4.py
 python scripts/plot_v4.py && python scripts/write_findings.py
-python scripts/run_v5_experiments.py                       # 5.0: X1-X4 + platform benchmarks
-python scripts/audit_v4.py                                 # 4.0 + 5.0: provenance, checksums, splits, leakage, tables
 
-# 3. reference inference bundle
-python scripts/train_final.py --feature-set ppg_ir_red+demo --model ridge
+# 5.0/5.1: cross-day follow-up, platform benchmarks, model contracts, audit
+python scripts/run_v5_experiments.py
+python scripts/build_model_contracts.py
+python scripts/audit_v4.py
 
-# 4. tests
-pytest
+# or the earlier stages in order
+python scripts/reproduce.py
 ```
 
-All random seeds are fixed (CV seeds 0, 1, 2; model seeds 0). Results are written to `results/`.
+</details>
 
-## Pipeline
+## Documentation
 
-1. **Preprocessing** ([docs/DATA_PREPROCESSING.md](docs/DATA_PREPROCESSING.md)): DC removal →
-   anti-aliased resampling to 100 Hz → Hampel despike → 0.5–10 Hz zero-phase Butterworth →
-   orientation → per-window z-score → 10 s windows → beat segmentation (adaptive peaks,
-   intersecting-tangent feet).
-2. **Signal-quality gate:** beat count, HR plausibility, RR regularity, template correlation,
-   cardiac-band power, ADC flatline. Failing windows are rejected, never repaired.
-3. **Features:** about 80 per window (morphology, APG, HRV, spectral, red/IR cross-channel).
-4. **Models** ([docs/MODEL_ARCHITECTURE.md](docs/MODEL_ARCHITECTURE.md)): mean and demographics
-   baselines, linear, ridge, SVR, random forest, XGBoost, and a 1D CNN of 16.4k parameters.
-5. **Evaluation** ([docs/MODEL_EVALUATION.md](docs/MODEL_EVALUATION.md)): subject-independent
-   nested CV, subject-level metrics (MAE, RMSE, R², bias, SD, Bland–Altman, per-BP-range),
-   external datasets, paired bootstrap.
-
-## Inference
-
-```python
-from rakshpulse.inference.predictor import BPPredictor
-
-predictor = BPPredictor.from_file("models/rakshpulse_bp_v0.joblib")
-result = predictor.predict(red_signal=red, ir_signal=ir, sampling_rate=100,
-                           demographics={"age": 25, "sex": 1, "height_cm": 175, "weight_kg": 70})
-if result.accepted:
-    print(result.systolic_bp, result.diastolic_bp, result.uncertainty)
-else:
-    print("re-measure:", result.rejection_reasons)
-```
-
-It rejects the measurement (no BP returned) when signal quality is insufficient, a required
-channel is missing, or the recording is shorter than 10 s. See
-[docs/HARDWARE_INTEGRATION.md](docs/HARDWARE_INTEGRATION.md).
-
-## Personalised, real-time estimation
-
-```python
-from rakshpulse.inference.realtime import RealtimeEstimator
-from rakshpulse.personalization import BaselineTracker, PersonalizationEngine, RefPoint
-
-est = RealtimeEstimator.from_file("models/auricle_population_ear_ridge.joblib")   # ear PPG, ridge, HR + shape
-first = est.estimate(ear_ppg=ear, sampling_rate=1000, timestamp=t0)               # population estimate
-engine = PersonalizationEngine("user-1")                                           # one engine per user
-engine.calibrate([RefPoint(t0, first.population_sbp, first.population_dbp, cuff_sbp, cuff_dbp)])
-baseline = BaselineTracker("user-1"); baseline.add(t0, cuff_sbp, cuff_dbp)
-later = est.estimate(ear_ppg=ear2, sampling_rate=1000, timestamp=t1, engine=engine, baseline=baseline)
-later.sbp, later.dbp, later.estimate_type          # "personalised"
-later.recalibration_recommended, later.recalibration_reasons
-engine.update(RefPoint(t2, p_sbp, p_dbp, cuff2_sbp, cuff2_dbp))   # adaptive update; engine.rollback() undoes it
-engine.save("state/user-1.json")
-```
-
-Poor or invalid signals return `accepted=False` and no BP. The uncertainty fields are research validation
-errors, not clinical confidence intervals.
-
-## Current limitations
-
-- **Site mismatch:** the training data is fingertip-type PPG. Behind-ear performance is unknown.
-- **Labels:** one oscillometric cuff reading per subject. Windows are pseudo-replicates, so the
-  effective sample size is 148.
-- **Population:** healthy adults aged 18–36 with a narrow BP range (SBP IQR 105–124) and few
-  hypertensive subjects. That is not enough to show BP *tracking*.
-- **Generalisation:** external tests show large bias in older cohorts.
-- **Motion:** no accelerometer in the data or on the MAX30102. Motion robustness is untested.
-- **No hardware data yet (5.0):** the acquisition, storage and inference platform has been exercised only with
-  simulated sensors and replayed public data. MAX30102 behaviour (noise, ambient light, contact pressure, die
-  temperature), embedded latency, memory and power, and any behind-ear model are still untested.
-- **Cross-day transfer:** no method tried in 3.0–5.0 (normalisation, domain adaptation, hierarchical
-  calibration) carries information across recording days. Calibrations decay within minutes.
-- **Standards:** ISO 81060-2 / BHS statistics are reported for orientation only. Compliance is
-  **not** claimed. See [docs/MODEL_EVALUATION.md](docs/MODEL_EVALUATION.md#validation-requirements-before-any-real-world-use).
+| Document | Contents |
+|---|---|
+| [Hardware Integration Manual (PDF)](docs/RAKSHPULSE_HARDWARE_INTEGRATION_MANUAL.pdf) | Illustrated handbook: wiring, firmware, setup, recording, cuff readings, analysis, troubleshooting |
+| [HARDWARE_HANDOFF](docs/HARDWARE_HANDOFF.md) | Serial contract, firmware, setup, commands, data formats, troubleshooting, checklist |
+| [HARDWARE_INTEGRATION](docs/HARDWARE_INTEGRATION.md) | Python inference, streaming and export interfaces for device integration |
+| [USER_GUIDE](docs/USER_GUIDE.md) | Every CLI command, training, calibration, evaluation, streaming, export |
+| [DATA_COLLECTION_PROTOCOL](docs/DATA_COLLECTION_PROTOCOL.md) | Recording protocol and dataset format |
+| [DATA_PREPROCESSING](docs/DATA_PREPROCESSING.md) | Signal-processing chain and quality gate |
+| [MODEL_ARCHITECTURE](docs/MODEL_ARCHITECTURE.md) · [MODEL_EVALUATION](docs/MODEL_EVALUATION.md) | Models, evaluation protocol and results |
+| [RESEARCH_FINDINGS](docs/RESEARCH_FINDINGS.md) | Full research record, releases 2.0–5.1 |
+| [DOMAIN_ADAPTATION](docs/DOMAIN_ADAPTATION.md) | Why fingertip and earlobe results do not transfer to behind-the-ear |
+| [PROJECT_REQUIREMENTS](docs/PROJECT_REQUIREMENTS.md) | Requirements traced to the project documents |
+| [DATASET_RESEARCH](docs/DATASET_RESEARCH.md) · [DATASET_ACQUISITION](docs/DATASET_ACQUISITION.md) · [data/README](data/README.md) | Dataset survey, downloads, checksums, licences, published dataset |
+| [RESEARCH_REFERENCES](docs/RESEARCH_REFERENCES.md) | Literature and dataset citations |
 
 ## Repository layout
 
 ```
-src/rakshpulse/{acquisition,datastore,data,preprocessing,features,models,evaluation,inference,personalization,experiments}
-src/rakshpulse/cli.py  the `rakshpulse` command
-scripts/      reproducible experiment entry points
-tests/        pytest suite (synthetic fixtures; no dataset needed)
-notebooks/    01_ppg_exploration.ipynb
-docs/         requirements, dataset research, preprocessing, models, evaluation, domain adaptation, hardware
-data/auricle/ populated Auricle CSV dataset (waveform NPZ + raw WFDB on GitHub Releases)
-data/vitaldb/ 40-case VitalDB subset, derived CSV tables (raw .vital files git-ignored)
-data/vitaldb_ext/ 4.0: 60 further, disjoint VitalDB cases (independent validation patients)
-data/         other raw data git-ignored; provenance/manifests committed
-results/      metrics CSV/JSON (committed); results/runs/ provenance registry; per-window caches git-ignored
+src/rakshpulse/
+  acquisition/       serial, replay and simulated sources; timestamp sync; recorder
+  datastore/         checksummed CSV session datasets
+  data/              public-dataset download, extraction, validation, standardised builds
+  preprocessing/     filtering, windows, quality gate, chunked pipeline
+  features/          pulse morphology, spectral, cross-channel and physiology features
+  models/            model zoo, deep models, registry and contracts
+  evaluation/        splits, metrics, statistics
+  personalization/   calibration strategies, policies, baseline tracking
+  inference/         contracts, engine, predictor, streaming, export
+  experiments/       provenance registry
+  cli.py             the `rakshpulse` command
+hardware/            MAX30102 firmware and example streams/dataset
+models/              shipped model bundles (other bundles are regenerable and git-ignored)
+scripts/             reproducible experiment entry points and audits
+tests/               pytest suite (synthetic fixtures; no download needed)
+notebooks/           exploratory analysis
+docs/                documentation, figures and the manual's source (docs/manual_source)
+data/                committed derived datasets and manifests; raw downloads are git-ignored
+results/             committed metrics and the run provenance registry
 ```
 
 ## Data licences and attribution
 
-Guilin dual-wave (CC BY 4.0), Foggia multiwavelength (CC BY 4.0), PPG-BP (CC0), Auricle (ODC-By 1.0;
-redistributed with attribution on this repository's Releases) and VitalDB (CC BY 4.0, PhysioNet
-doi:10.13026/czw8-9p62; derived tables redistributed with attribution). Required
-citations are in [docs/DATASET_ACQUISITION.md](docs/DATASET_ACQUISITION.md). Code is released
-under CC0 1.0 (see LICENSE).
+Guilin dual-wave (CC BY 4.0), Foggia multiwavelength (CC BY 4.0), PPG-BP (CC0), Auricle (ODC-By 1.0; processed
+waveforms and the original WFDB records are redistributed with attribution on this repository's
+[Releases](https://github.com/obstinix/RakshPulse/releases)) and VitalDB (CC BY 4.0, PhysioNet
+doi:10.13026/czw8-9p62; derived tables redistributed with attribution). Required citations are in
+[DATASET_ACQUISITION](docs/DATASET_ACQUISITION.md). Code is released under CC0 1.0 ([LICENSE](LICENSE)).
