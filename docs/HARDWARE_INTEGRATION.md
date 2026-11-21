@@ -17,7 +17,11 @@ print(r.to_dict())
 | Field | Meaning |
 |---|---|
 | `status` | `ok`, `poor_signal` (too few windows passed the quality gate), `invalid_input` (bad samples or rate) or `incompatible_model` |
-| `sbp`, `dbp` | Median over accepted 10 s windows; `None` unless `status == "ok"` |
+| `sbp`, `dbp` | Median over accepted 10 s windows (calibrated if a cuff calibration is active); `None` unless `status == "ok"` |
+| `population_sbp`, `population_dbp` | The uncalibrated model output |
+| `heart_rate_bpm` | Median heart rate of the accepted windows |
+| `input_validation`, `calibration_status` | `passed` or the reason it failed; `uncalibrated`, `calibrated (...)` or `expired` |
+| `sensor_status` | Source, connection and sample counts supplied by the caller (the CLI fills it from the serial port) |
 | `sbp_interval_90`, `dbp_interval_90` | 90 % interval, only if the model's uncertainty is valid for this sensor (not `max30102`) |
 | `signal_quality` | Window counts per quality class, median quality score, most frequent rejection reasons |
 | `inference_mode` | `validated` / `experimental` / `demonstration` from the model contract (`demonstration` for MAX30102) |
@@ -29,6 +33,12 @@ print(r.to_dict())
   channel lengths and recordings shorter than one window return `invalid_input` with a message; nothing raises.
 - **Processing:** the production pipeline used for recorded sessions (`preprocessing.pipeline`), then
   `inference.engine.predict_windows` (model contract, sensor and sampling-rate checks). Nothing is reimplemented.
+- **Calibration:** `est.calibrate(sbp, dbp, ir, fs)` stores one cuff reading with PPG recorded at the same time;
+  later estimates add the bundle's Δ-model prediction (BP change from the feature change) to the cuff values. Readings
+  older than `max_calibration_age_s` (30 min) are ignored (`expired`). On earlobe test data this beat the cuff value
+  alone only for DBP within a session ([report](../reports/final_model_evaluation.md)).
+- **CLI and dashboard:** `rakshpulse estimate --source serial --port COM5 --fs 100 --plot status.png` prints the same
+  fields and renders a status dashboard; its banner always states the input source and the inference mode.
 - **Streaming:** `StreamingBPEstimator(est, fs, buffer_s=30)` keeps a ring buffer of the last `buffer_s` seconds;
   `push()` any chunk size (e.g. one FIFO read), `estimate()` when needed.
 - **Cost:** about 0.1 s of desktop CPU per 30 s of data.

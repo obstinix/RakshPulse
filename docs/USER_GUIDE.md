@@ -26,12 +26,13 @@ python scripts/run_complete_pipeline.py --evaluate-only  # re-evaluate models/ra
 python scripts/run_complete_pipeline.py --smoke-test     # SYNTHETIC data; proves the code runs, nothing more
 python scripts/run_complete_pipeline.py --force          # ignore cached stages
 python scripts/run_complete_pipeline.py --with-waveforms # also download the raw Auricle waveforms (≈350 MB)
+python scripts/make_figures.py                           # docs/assets/ images from the real outputs
 ```
 
 Stages: dependencies, dataset availability, downloads, integrity checks, a feature-reproducibility check (production
 extractor on the raw waveforms, if downloaded), cleaning and label alignment, the model-ready CSV, subject-wise
 training with grid search, evaluation (cross-validation, independent test, cross-session, baseline), selection,
-export, figures and `reports/final_model_evaluation.md`. The same functions (`rakshpulse.ml`) run in
+export, figures and `reports/final_model_evaluation.md`, plus nested subject-wise cross-validation over all subjects and a per-person calibration study. The same functions (`rakshpulse.ml`) run in
 `notebooks/RakshPulse_Complete_ML.ipynb`.
 
 ## 3. The workflow at a glance
@@ -46,6 +47,7 @@ live source ──────────────────────�
 |---|---|---|
 | `rakshpulse doctor` | checks Python, required/optional packages, the default model, runs a simulated self-test | exit code 0/1 |
 | `rakshpulse models [--sensor max30102 --fs 100 --verbose]` | lists model bundles, their contracts and the mode each would run in for a sensor | table |
+| `rakshpulse estimate --source sim\|replay\|serial [--seconds 30 --json r.json --plot d.png]` | acquires PPG and prints the full estimate: input validation, signal quality, heart rate, SBP/DBP, mode, calibration, latency | status panel, JSON, PNG dashboard |
 | `rakshpulse ports` / `check-serial --port P --fs F` | finds serial ports; reads a few seconds and checks the data contract (needs the board) | PASS/FAIL report |
 | `rakshpulse analyze --dataset DS --subject S --session D1 [--calibrate N]` | validate → process → predict → compare with cuff readings → export, for one session | `derived/predictions_<model>.csv` |
 | `rakshpulse simulate --out DS` | creates a **simulated** dataset (subjects × sessions, synthetic cuff readings) | `DS/sessions/...` |

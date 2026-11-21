@@ -261,7 +261,7 @@ def ch03(b):
             ],
             [
                 "Testing",
-                "Software tests (185 automated tests) prove the code behaves as designed. They say nothing about "
+                "Software tests (189 automated tests) prove the code behaves as designed. They say nothing about "
                 "BP accuracy.",
                 "Software team",
             ],
@@ -1104,7 +1104,7 @@ validation: all PASS
 [1/5] validating SIM001/D1 (simulator, 100 Hz)
 [2/5] processing windows
 [3/5] model checks and prediction
-      model rakshpulse-ear-bp (rakshpulse-ear-bp-1.0+e37871a3): mode=demonstration
+      model rakshpulse-ear-bp (rakshpulse-ear-bp-1.1+0bccb773): mode=demonstration
       DEMONSTRATION MODE: this model has not been validated for this sensor; the numbers
       show that the pipeline runs and are NOT blood-pressure measurements.
       windows: 17 total, 17 predicted; status counts {'usable': 14, 'degraded': 3}
