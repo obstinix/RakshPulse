@@ -514,3 +514,28 @@ def test_cli_rejects_short_recordings_and_incompatible_models(tmp_path, demo_bun
         )
         == 4
     )
+
+
+def test_check_serial_rate_is_not_inflated_by_the_first_block_and_garbled_streams_fail():
+    import time
+
+    from rakshpulse.acquisition.sources import check_serial
+
+    class Paced:
+        def __init__(self, lines, fs):
+            self.lines, self.dt = lines, 1.0 / fs
+
+        def __iter__(self):
+            t0 = time.monotonic()
+            for i, ln in enumerate(self.lines):
+                wait = t0 + i * self.dt - time.monotonic()
+                if wait > 0:
+                    time.sleep(wait)
+                yield ln + "\n"
+
+    r = check_serial(TextStreamSource(Paced(_stream_lines(), 100.0), 100.0), seconds=3.0)
+    assert r["ok"], r["problems"]  # a correct stream passes a short check
+    assert abs(r["measured_rate_hz"] - 100.0) / 100.0 < 0.05
+    bad = (HW / "examples" / "serial_stream_malformed.txt").read_text().splitlines()
+    r = check_serial(TextStreamSource(io.StringIO("\n".join(bad)), 100.0), seconds=1)
+    assert not r["ok"] and any("malformed lines" in p for p in r["problems"])

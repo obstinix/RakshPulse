@@ -1,4 +1,4 @@
-"""``rakshpulse`` command-line interface (RakshPulse 5.1).
+"""``rakshpulse`` command-line interface (RakshPulse 5.2).
 
     rakshpulse doctor                       check the environment, optional packages, the default model, self-test
     rakshpulse models                        list installed models, their contracts and sensor compatibility

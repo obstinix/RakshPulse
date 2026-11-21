@@ -414,6 +414,9 @@ def list_ports() -> list[dict]:
     return [{"device": p.device, "description": p.description, "hwid": p.hwid} for p in lp.comports()]
 
 
+MAX_MALFORMED_FRACTION = 0.01  # check_serial fails above this share of unparseable data lines
+
+
 def check_serial(source: TextStreamSource, seconds: float = 5.0, rate_tolerance: float = 0.05) -> dict:
     """Read ``seconds`` of data and report whether the stream matches the RakshPulse serial contract."""
     from .ingest import TimestampSync
@@ -423,11 +426,14 @@ def check_serial(source: TextStreamSource, seconds: float = 5.0, rate_tolerance:
     n, red, ir = 0, [], []
     err = None
     first_t = None
+    first_n = 0  # samples in the first block: they arrived before the clock started, so they are not timed
     try:
         for b in source.blocks():
             if first_t is None:
                 first_t = time.monotonic()
             rows = sync.process(b)
+            if n == 0:
+                first_n = len(rows)
             n += len(rows)
             red.append(rows.red.to_numpy())
             ir.append(rows.infrared.to_numpy())
@@ -438,13 +444,20 @@ def check_serial(source: TextStreamSource, seconds: float = 5.0, rate_tolerance:
     finally:
         source.close()
     elapsed = time.monotonic() - (first_t or t0)
-    rate = (n + sync.n_missing) / elapsed if elapsed > 0 and n else float("nan")
+    timed = n + sync.n_missing - first_n
+    rate = timed / elapsed if elapsed > 0 and timed > 0 else float("nan")
     declared = float(source.device_info["fs_hz"]) if "fs_hz" in source.device_info else None
     problems = []
     if err:
         problems.append(err)
     if n == 0:
         problems.append("no valid samples received")
+    bad = source.bad_lines
+    if n and bad / (n + bad) > MAX_MALFORMED_FRACTION:
+        problems.append(
+            f"{bad} malformed lines ({bad / (n + bad):.1%} of all lines): check that the baud rate matches the "
+            "firmware (115200), remove extra prints from the firmware, or adjust --fields/--delimiter"
+        )
     if declared is not None and abs(declared - source.fs) > 1e-6:
         problems.append(f"firmware declares fs_hz={declared:g} but --fs is {source.fs:g}")
     if n and np.isfinite(rate) and elapsed >= 2 and abs(rate - source.fs) / source.fs > rate_tolerance:
