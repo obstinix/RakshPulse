@@ -196,3 +196,85 @@ def test_pipeline_smoke_test_runs_end_to_end():
     assert "SMOKE TEST PASSED" in p.stdout and "not model validation" in p.stdout
     report = (ROOT / "reports" / "smoke_test" / "smoke_test_report.md").read_text(encoding="utf-8")
     assert "SMOKE TEST ON SYNTHETIC DATA" in report
+
+
+# ------------------------------------------------------------------------------------------------ 5.2 additions
+def test_nested_cv_and_calibration_study_on_smoke_data(smoke):
+    from rakshpulse.ml.evaluation import calibration_study, nested_cv
+
+    d, r = smoke
+    n = nested_cv(
+        d,
+        candidate_features(),
+        PipelineConfig(cv_folds=2, n_bootstrap=50, models=("ridge",), n_jobs=1),
+        outer_folds=2,
+        log=lambda *_: None,
+    )
+    assert set(n["predictions"].subject_id) == set(d.subject_id)  # every subject predicted out of fold
+    assert set(n["summary"].model) == {"nested-selected", "mean"}
+    for _, row in n["choices"].iterrows():  # chosen without the outer-fold subjects
+        assert row.model == "ridge"
+    c = calibration_study(
+        r["data"],
+        r["train_subjects"],
+        r["test_subjects"],
+        r["models"],
+        r["features"],
+        PipelineConfig(cv_folds=2, n_bootstrap=50, n_jobs=1),
+        gap_s=10.0,
+    )
+    assert {"population", "carry_forward", "offset", "delta_ridge"} <= set(c["summary"].method)
+    assert set(c["predictions"].subject_id) <= set(r["test_subjects"])
+
+
+def test_api_calibration_heart_rate_and_status(signal):
+    ir, red = signal
+    est = BPEstimator(SHIPPED, sensor="simulator")
+    assert est.supports_calibration
+    r0 = est.estimate(ir, 100.0, red=red)
+    assert r0.calibration_status == "uncalibrated" and r0.input_validation == "passed"
+    assert r0.heart_rate_bpm is not None and 40 < r0.heart_rate_bpm < 150
+    assert not est.calibrate(300, 80, ir, 100.0)["ok"]  # implausible cuff reading
+    assert est.calibrate(125, 82, ir, 100.0, red=red, timestamp=1000.0)["ok"]
+    r1 = est.estimate(ir, 100.0, red=red, timestamp=1060.0)
+    assert r1.calibration_status.startswith("calibrated") and r1.population_sbp == r0.sbp
+    assert abs(r1.sbp - 125) < 15 and abs(r1.dbp - 82) < 15  # same signal: close to the cuff reading
+    r2 = est.estimate(ir, 100.0, red=red, timestamp=1000.0 + 10_000)
+    assert r2.calibration_status == "expired" and r2.sbp == r2.population_sbp
+
+
+def test_cli_estimate_writes_json_and_dashboard(tmp_path, capsys):
+    import json
+
+    from rakshpulse.cli import main
+
+    code = main(
+        [
+            "estimate",
+            "--source",
+            "sim",
+            "--seconds",
+            "20",
+            "--json",
+            str(tmp_path / "r.json"),
+            "--plot",
+            str(tmp_path / "d.png"),
+        ]
+    )
+    out = capsys.readouterr().out
+    assert code == 0 and "DEMONSTRATION MODE" in out and "heart rate" in out
+    r = json.loads((tmp_path / "r.json").read_text(encoding="utf-8"))
+    assert (
+        r["status"] == "ok" and r["sensor_status"]["source"] == "simulator" and r["inference_mode"] == "demonstration"
+    )
+    assert (tmp_path / "d.png").stat().st_size > 10_000
+
+
+def test_dashboard_banner_never_hides_demonstration_mode():
+    from rakshpulse.inference.api import BPEstimate
+    from rakshpulse.inference.dashboard import banner
+
+    text, _ = banner(BPEstimate("ok", inference_mode="demonstration", sensor_status={"source": "serial"}))
+    assert "LIVE SENSOR" in text and "NOT A BLOOD-PRESSURE MEASUREMENT" in text
+    text, _ = banner(BPEstimate("poor_signal", sensor_status={"source": "simulator"}))
+    assert "SIMULATED" in text and "NO ESTIMATE" in text

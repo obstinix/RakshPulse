@@ -37,6 +37,7 @@ class ModelBundle:
     version: str
     trained_on: str = ""
     contract: dict = field(default_factory=dict)  # see inference/contract.py; {} for bundles saved before 5.1
+    extras: dict = field(default_factory=dict)  # optional fitted extras, e.g. {"calibration_models": {...}}
     created_utc: str = field(default_factory=lambda: dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"))
 
     def save(self, path: str | Path) -> Path:

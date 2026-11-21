@@ -236,6 +236,84 @@ def cmd_check_serial(a) -> int:
     return EXIT_DEVICE if r["samples"] == 0 else EXIT_CHECK
 
 
+def cmd_estimate(a) -> int:
+    """Acquire ``--seconds`` of PPG from a source, estimate BP through the hardware API and print a status panel."""
+    from .acquisition.sources import SerialSource
+    from .inference.api import BPEstimator
+
+    if a.source == "sim":
+        a.duration = a.seconds
+    src = _source(a)
+    need = int(round(a.seconds * src.fs))
+    ir, red, idx = [], [], []
+    try:
+        for blk in src.blocks():
+            ir.append(blk.ir)
+            red.append(blk.red)
+            idx.append(blk.sample_index)
+            if sum(map(len, ir)) >= need:
+                break
+    finally:
+        src.close()
+    ir_a = np.concatenate(ir)[:need] if ir else np.array([])
+    red_a = np.concatenate(red)[:need] if red else None
+    counter = np.concatenate(idx)[:need] if idx else np.array([], int)
+    missing = int(np.clip(np.diff(counter) - 1, 0, None).sum()) if counter.size > 1 else 0
+    status = {
+        "source": {"sim": "simulator", "replay": "replay", "serial": "serial"}[a.source],
+        "connection": "connected" if a.source == "serial" else ("simulated" if a.source == "sim" else "file"),
+        "samples": int(ir_a.size),
+        "missing_samples": missing,
+        "units": "ADC counts",
+    }
+    if isinstance(src, SerialSource):
+        status["device_info"] = getattr(src, "device_info", {})
+    sensor = a.sensor or ("simulator" if a.source == "sim" else "max30102")
+    est = BPEstimator(a.model or (_models_dir() / DEFAULT_MODEL_NAME), sensor=sensor)
+    red_in = red_a if red_a is not None and np.isfinite(red_a).any() else None
+    r = est.estimate(ir_a, src.fs, red=red_in, sensor_status=status)
+    q = r.signal_quality
+    print(
+        f"source        {status['source']} ({status['connection']}), {status['samples']} samples at {src.fs:g} Hz, "
+        f"{missing} missing"
+    )
+    print(f"sensor        {r.sensor}")
+    print(f"input         {r.input_validation}")
+    print(
+        f"quality       {q.get('windows_usable', 0)} usable / {q.get('windows_degraded', 0)} degraded / "
+        f"{q.get('windows_unusable', 0)} unusable / {q.get('windows_missing', 0)} missing windows"
+    )
+    print(f"heart rate    {r.heart_rate_bpm if r.heart_rate_bpm is not None else '-'} bpm")
+    print(f"estimate      SBP {r.sbp if r.sbp is not None else '-'} / DBP {r.dbp if r.dbp is not None else '-'} mmHg")
+    print(f"mode          {r.inference_mode}   calibration: {r.calibration_status}")
+    print(f"model         {r.model_id} ({r.model_version})   latency {r.latency_ms:.0f} ms")
+    print(f"status        {r.status}: {r.message}")
+    for w in r.warnings:
+        print(f"warning       {w}")
+    if a.json:
+        Path(a.json).write_text(json.dumps(r.to_dict(), indent=2, default=str), encoding="utf-8")
+        print(f"wrote {a.json}")
+    if a.plot:
+        from .inference.dashboard import render
+        from .preprocessing.pipeline import PipelineConfig, process_recording
+
+        raw = pd.DataFrame(
+            {
+                "timestamp": np.arange(ir_a.size) / src.fs,
+                "sample_index": np.arange(ir_a.size),
+                "red": np.full(ir_a.size, np.nan),
+                "infrared": ir_a,
+            }
+        )
+        windows = None
+        if r.status not in ("invalid_input",):
+            windows, _ = process_recording(raw, PipelineConfig(fs=src.fs, channels=("ir",)))
+        print(f"wrote {render(ir_a, src.fs, r, a.plot, windows)}")
+    return {"ok": EXIT_OK, "poor_signal": EXIT_CHECK, "invalid_input": EXIT_USAGE, "incompatible_model": EXIT_MODEL}[
+        r.status
+    ]
+
+
 # ------------------------------------------------------------------------------------------------ simulate / record
 def _sim_config(a, seed: int, hr: float):
     from .acquisition.simulator import SimConfig
@@ -908,6 +986,13 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--realtime", action="store_true", help="pace the simulator with the wall clock")
         p.add_argument("--seed", type=int, default=0)
 
+    es = sub.add_parser("estimate", help="acquire PPG (sim, replay or serial) and print a BP estimate with full status")
+    source_args(es)
+    es.add_argument("--seconds", type=float, default=30.0, help="seconds of PPG to analyse (>= 10)")
+    es.add_argument("--model", default=None, help="model bundle (default models/rakshpulse_ear_bp.joblib)")
+    es.add_argument("--json", default=None, help="also write the result as JSON")
+    es.add_argument("--plot", default=None, help="also write a PNG status dashboard")
+
     r = sub.add_parser("record", help="record from a source into a dataset")
     source_args(r)
     r.add_argument("--out", required=True)
@@ -1039,6 +1124,7 @@ COMMANDS = {
     "ports": cmd_ports,
     "check-serial": cmd_check_serial,
     "analyze": cmd_analyze,
+    "estimate": cmd_estimate,
 }
 
 

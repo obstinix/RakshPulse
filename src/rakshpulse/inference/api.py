@@ -42,7 +42,7 @@ import pandas as pd
 
 from ..data.download import REPO_ROOT
 from ..preprocessing.pipeline import PipelineConfig, process_recording
-from .contract import IncompatibleModelError, validate_bundle
+from .contract import IncompatibleModelError, build_feature_vector, validate_bundle
 from .engine import predict_windows
 from .model_loader import ModelBundle, load_bundle
 
@@ -61,11 +61,17 @@ class BPEstimate:
     dbp: float | None = None
     sbp_interval_90: tuple[float, float] | None = None
     dbp_interval_90: tuple[float, float] | None = None
+    population_sbp: float | None = None  # uncalibrated model output (equals sbp when uncalibrated)
+    population_dbp: float | None = None
+    heart_rate_bpm: float | None = None
     signal_quality: dict = field(default_factory=dict)
+    input_validation: str = ""
+    calibration_status: str = "uncalibrated"
     inference_mode: str | None = None
     model_id: str = ""
     model_version: str = ""
     sensor: str = ""
+    sensor_status: dict = field(default_factory=dict)
     fs_hz: float | None = None
     message: str = ""
     warnings: list[str] = field(default_factory=list)
@@ -77,6 +83,17 @@ class BPEstimate:
         for k in ("sbp_interval_90", "dbp_interval_90"):
             d[k] = list(d[k]) if d[k] is not None else None
         return d
+
+
+@dataclass
+class Calibration:
+    """One cuff reading paired with the PPG features measured at the same time."""
+
+    sbp: float
+    dbp: float
+    features: np.ndarray
+    timestamp: float
+    n_windows: int
 
 
 def _signal(x, name: str) -> np.ndarray:
@@ -93,8 +110,14 @@ def _signal(x, name: str) -> np.ndarray:
     return a
 
 
+class _Rejected(Exception):
+    def __init__(self, status: str, message: str):
+        super().__init__(message)
+        self.status = status
+
+
 class BPEstimator:
-    """Stateless estimator: one call analyses one block of samples (at least 10 s)."""
+    """One call analyses one block of samples (at least 10 s). Holds an optional per-person cuff calibration."""
 
     def __init__(
         self,
@@ -102,16 +125,23 @@ class BPEstimator:
         sensor: str = "max30102",
         min_usable_fraction: float = 0.5,
         pipeline_overrides: dict | None = None,
+        max_calibration_age_s: float = 1800.0,
     ):
         self.bundle = model if isinstance(model, ModelBundle) else load_bundle(model)
         self.contract = validate_bundle(self.bundle)
         self.sensor = sensor
         self.min_usable_fraction = float(min_usable_fraction)
         self.pipeline_overrides = dict(pipeline_overrides or {})
+        self.max_calibration_age_s = float(max_calibration_age_s)
+        self.calibration: Calibration | None = None
 
     @property
     def model_id(self) -> str:
         return str(self.contract.get("model_id", ""))
+
+    @property
+    def supports_calibration(self) -> bool:
+        return bool(getattr(self.bundle, "extras", {}).get("calibration_models"))
 
     def describe(self) -> dict:
         c = self.contract
@@ -125,17 +155,13 @@ class BPEstimator:
             "validated_for": c.get("validated_for", []),
             "experimental_for": c.get("experimental_for", []),
             "demonstration_for": c.get("demonstration_for", []),
+            "calibration": c.get("calibration", {}),
             "limitations": c.get("limitations", []),
         }
 
-    def estimate(self, ir, fs: float, red=None, metadata: dict | None = None) -> BPEstimate:
-        t0 = time.perf_counter()
-        base = {
-            "model_id": self.model_id,
-            "model_version": self.bundle.version,
-            "sensor": self.sensor,
-            "metadata": dict(metadata or {}),
-        }
+    # -------------------------------------------------------------------------------------------- analysis
+    def _analyse(self, ir, fs, red):
+        """Validate, run the production pipeline and the model contract. Returns accepted-window results."""
         try:
             fs = float(fs)
             if not np.isfinite(fs) or fs <= 0:
@@ -149,9 +175,8 @@ class BPEstimator:
                     f"need at least {MIN_SECONDS:g} s of samples ({int(MIN_SECONDS * fs)} at "
                     f"{fs:g} Hz), got {ir_a.size}"
                 )
-        except ValueError as exc:
-            return self._done(BPEstimate("invalid_input", fs_hz=_num(fs), message=str(exc), **base), t0)
-
+        except (TypeError, ValueError) as exc:
+            raise _Rejected("invalid_input", str(exc)) from None
         n = ir_a.size
         raw = pd.DataFrame(
             {
@@ -166,34 +191,121 @@ class BPEstimator:
             windows, _ = process_recording(raw, cfg)
             preds, compat = predict_windows(self.bundle, windows, self.sensor, fs, pipeline=cfg)
         except IncompatibleModelError as exc:
-            return self._done(BPEstimate("incompatible_model", fs_hz=fs, message=str(exc), **base), t0)
+            raise _Rejected("incompatible_model", str(exc)) from None
         except ValueError as exc:
-            return self._done(BPEstimate("invalid_input", fs_hz=fs, message=str(exc), **base), t0)
+            raise _Rejected("invalid_input", str(exc)) from None
+        mask = (np.isfinite(preds.sbp) & np.isfinite(preds.dbp)).to_numpy()
+        return fs, windows, preds, compat, mask
+
+    def _features(self, windows: pd.DataFrame, mask: np.ndarray) -> np.ndarray:
+        rows = windows.iloc[np.flatnonzero(mask)]
+        return np.vstack([build_feature_vector(self.contract, r.to_dict(), {})[0] for _, r in rows.iterrows()])
+
+    def calibrate(self, sbp: float, dbp: float, ir, fs: float, red=None, timestamp: float | None = None) -> dict:
+        """Store one cuff reading (``sbp``/``dbp`` in mmHg) with PPG recorded at the same time (>= 10 s).
+
+        Later estimates add the model's predicted *change* since this reading to the cuff values. The reading is
+        rejected if it is implausible or the PPG is poor; nothing is stored then."""
+        if not self.supports_calibration:
+            return {"ok": False, "message": "this model bundle has no calibration models"}
+        if not (60 <= float(sbp) <= 250 and 30 <= float(dbp) <= 150 and float(sbp) - float(dbp) >= 10):
+            return {"ok": False, "message": f"implausible cuff reading {sbp}/{dbp} mmHg"}
+        try:
+            _, windows, _, _, mask = self._analyse(ir, fs, red)
+        except _Rejected as exc:
+            return {"ok": False, "message": str(exc)}
+        if mask.mean() < self.min_usable_fraction or not mask.any():
+            return {"ok": False, "message": f"only {int(mask.sum())}/{mask.size} windows usable; re-measure"}
+        X = self._features(windows, mask)
+        self.calibration = Calibration(
+            float(sbp),
+            float(dbp),
+            np.median(X, axis=0),
+            time.time() if timestamp is None else float(timestamp),
+            int(mask.sum()),
+        )
+        return {"ok": True, "message": f"calibrated with {int(mask.sum())} windows", "sbp": sbp, "dbp": dbp}
+
+    def clear_calibration(self) -> None:
+        self.calibration = None
+
+    def estimate(
+        self,
+        ir,
+        fs: float,
+        red=None,
+        metadata: dict | None = None,
+        timestamp: float | None = None,
+        sensor_status: dict | None = None,
+    ) -> BPEstimate:
+        t0 = time.perf_counter()
+        base = {
+            "model_id": self.model_id,
+            "model_version": self.bundle.version,
+            "sensor": self.sensor,
+            "metadata": dict(metadata or {}),
+            "sensor_status": dict(sensor_status or {}),
+        }
+        try:
+            fs, windows, preds, compat, mask = self._analyse(ir, fs, red)
+        except _Rejected as exc:
+            r = BPEstimate(exc.status, fs_hz=_num(fs), message=str(exc), input_validation=f"failed: {exc}", **base)
+            return self._done(r, t0)
 
         quality = _quality(windows, preds)
-        out = BPEstimate("poor_signal", fs_hz=fs, inference_mode=compat["mode"], signal_quality=quality, **base)
+        out = BPEstimate(
+            "poor_signal",
+            fs_hz=fs,
+            inference_mode=compat["mode"],
+            signal_quality=quality,
+            input_validation="passed",
+            **base,
+        )
         out.warnings = _mode_warnings(compat["mode"])
-        ok = preds[np.isfinite(preds.sbp) & np.isfinite(preds.dbp)]
-        frac = len(ok) / max(len(preds), 1)
-        if len(ok) == 0 or frac < self.min_usable_fraction:
+        hr = windows["ir_hr"].to_numpy(float)[mask] if "ir_hr" in windows else np.array([])
+        if np.isfinite(hr).any():
+            out.heart_rate_bpm = round(float(np.nanmedian(hr)), 1)
+        frac = mask.sum() / max(len(preds), 1)
+        if not mask.any() or frac < self.min_usable_fraction:
             out.message = (
-                f"{len(ok)}/{len(preds)} windows passed the quality and input checks "
+                f"{int(mask.sum())}/{len(preds)} windows passed the quality and input checks "
                 f"(need {self.min_usable_fraction:.0%}); re-measure with a steady sensor"
             )
             return self._done(out, t0)
+        ok = preds[mask]
         out.status = "ok"
-        out.sbp, out.dbp = round(float(ok.sbp.median()), 1), round(float(ok.dbp.median()), 1)
+        out.population_sbp = round(float(ok.sbp.median()), 1)
+        out.population_dbp = round(float(ok.dbp.median()), 1)
+        out.sbp, out.dbp = out.population_sbp, out.population_dbp
+        out.calibration_status = self._apply_calibration(out, windows, mask, timestamp)
+        if out.sbp is not None and out.dbp is not None and out.sbp - out.dbp < 10:
+            out.warnings.append("estimated pulse pressure below 10 mmHg: physiologically implausible")
         unc = self.contract.get("uncertainty", {})
-        if self.sensor in unc.get("valid_for", []):
+        if self.sensor in unc.get("valid_for", []) and out.calibration_status == "uncalibrated":
             hw = unc.get("halfwidth_90", {})
             out.sbp_interval_90 = (round(out.sbp - hw["sbp"], 1), round(out.sbp + hw["sbp"], 1))
             out.dbp_interval_90 = (round(out.dbp - hw["dbp"], 1), round(out.dbp + hw["dbp"], 1))
-        else:
+        elif self.sensor not in unc.get("valid_for", []):
             out.warnings.append(
                 f"no uncertainty interval: the model's interval is not valid for sensor '{self.sensor}'"
             )
-        out.message = f"median of {len(ok)} accepted 10 s windows"
+        out.message = f"median of {int(mask.sum())} accepted 10 s windows"
         return self._done(out, t0)
+
+    def _apply_calibration(self, out: BPEstimate, windows, mask, timestamp) -> str:
+        cal = self.calibration
+        if cal is None:
+            return "uncalibrated"
+        now = time.time() if timestamp is None else float(timestamp)
+        age = now - cal.timestamp
+        if age < 0 or age > self.max_calibration_age_s:
+            out.warnings.append(f"calibration ignored: age {age:.0f} s outside 0–{self.max_calibration_age_s:.0f} s")
+            return "expired"
+        models = self.bundle.extras["calibration_models"]
+        dX = self._features(windows, mask) - cal.features
+        out.sbp = round(cal.sbp + float(np.median(models["sbp"].predict(dX))), 1)
+        out.dbp = round(cal.dbp + float(np.median(models["dbp"].predict(dX))), 1)
+        return f"calibrated (cuff {cal.sbp:.0f}/{cal.dbp:.0f} mmHg, {age:.0f} s ago)"
 
     @staticmethod
     def _done(r: BPEstimate, t0: float) -> BPEstimate:
@@ -275,9 +387,17 @@ class StreamingBPEstimator:
         self._ir.clear()
         self._red.clear()
 
-    def estimate(self, metadata: dict | None = None) -> BPEstimate:
+    def estimate(self, metadata: dict | None = None, **kw) -> BPEstimate:
         red = np.fromiter(self._red, float) if self.with_red else None
-        return self.estimator.estimate(np.fromiter(self._ir, float), self.fs, red=red, metadata=metadata)
+        return self.estimator.estimate(np.fromiter(self._ir, float), self.fs, red=red, metadata=metadata, **kw)
 
 
-__all__ = ["ANALOG_INPUT", "BPEstimate", "BPEstimator", "DEFAULT_MODEL", "STATUSES", "StreamingBPEstimator"]
+__all__ = [
+    "ANALOG_INPUT",
+    "BPEstimate",
+    "BPEstimator",
+    "Calibration",
+    "DEFAULT_MODEL",
+    "STATUSES",
+    "StreamingBPEstimator",
+]
