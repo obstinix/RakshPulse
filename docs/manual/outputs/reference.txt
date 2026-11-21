@@ -1,0 +1,10 @@
+# real output; ILLUSTRATIVE cuff values typed by hand for this example
+> rakshpulse reference --dataset data/rakshpulse_hw --subject P001 --session D1 --time 30 --sbp 121 --dbp 79 --hr 72 --device "Omron M3"
+reading appended
+[exit code 0]
+> rakshpulse reference --dataset data/rakshpulse_hw --subject P001 --session D1 --time 60 --sbp 118 --dbp 77 --hr 70 --device "Omron M3"
+reading appended
+[exit code 0]
+> rakshpulse reference --dataset data/rakshpulse_hw --subject P001 --session D1 --time 85 --sbp 119 --dbp 78 --hr 71 --device "Omron M3"
+reading appended
+[exit code 0]

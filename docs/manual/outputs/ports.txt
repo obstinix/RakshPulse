@@ -1,0 +1,6 @@
+# real output on the build PC: only Bluetooth ports exist there, which are NOT a RakshPulse board
+> rakshpulse ports
+device                                description                                                                                                    hwid
+  COM6 Standard Serial over Bluetooth link (COM6) <hardware id>
+  COM5 Standard Serial over Bluetooth link (COM5)          <hardware id>
+[exit code 0]

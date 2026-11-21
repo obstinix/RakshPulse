@@ -1,0 +1,8 @@
+# real output on the SIMULATED example session
+> rakshpulse inspect --dataset data/rakshpulse_hw --quality
+subject_id session_id    sensor  simulated    fs  samples  minutes  references  missing                                        derived
+      P001         D1 simulator       True 100.0     8995      1.5           3        5 predictions_rakshpulse-ear-bp;segments;windows
+WARNING: simulated data; results describe the software, not blood pressure.
+subject_id session_id  windows usable degraded                                                                   top_reasons
+      P001         D1       17    82%      18% filled_1_missing_samples (4); margin:spike_frac (2); margin:template_corr (2)
+[exit code 0]

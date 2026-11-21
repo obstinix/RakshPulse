@@ -1,0 +1,7 @@
+# real output on the SIMULATED example session
+> rakshpulse inspect --dataset data/rakshpulse_hw --validate
+subject_id session_id    sensor  simulated    fs  samples  minutes  references  missing derived
+      P001         D1 simulator       True 100.0     8995      1.5           3        5        
+WARNING: simulated data; results describe the software, not blood pressure.
+validation: all PASS
+[exit code 0]

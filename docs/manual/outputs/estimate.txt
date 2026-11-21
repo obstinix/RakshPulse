@@ -1,0 +1,14 @@
+# real output; SIMULATED sensor input, demonstration mode
+> rakshpulse estimate --source sim --seconds 30
+source        simulator (simulated), 3000 samples at 100 Hz, 0 missing
+sensor        simulator
+input         passed
+quality       5 usable / 0 degraded / 0 unusable / 0 missing windows
+heart rate    75.0 bpm
+estimate      SBP 108.3 / DBP 68.0 mmHg
+mode          demonstration   calibration: uncalibrated
+model         rakshpulse-ear-bp (rakshpulse-ear-bp-1.1+0bccb773)   latency 342 ms
+status        ok: median of 5 accepted 10 s windows
+warning       DEMONSTRATION MODE: this model has not been validated for this sensor; the numbers show that the pipeline runs and are NOT blood-pressure measurements
+warning       no uncertainty interval: the model's interval is not valid for sensor 'simulator'
+[exit code 0]

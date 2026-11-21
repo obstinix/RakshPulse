@@ -1,0 +1,6 @@
+# real file written by the commands above
+> (first lines of gaps.csv)
+timestamp,first_missing_index,n_missing,detected_by
+0.35,35,1,device_time
+29.41,2941,1,device_time
+81.08999999999999,8109,1,device_time

@@ -1,0 +1,8 @@
+# real file written by the commands above
+> (first lines of raw_ppg.csv)
+timestamp,subject_id,session_id,sample_index,red,infrared
+0.0,P001,D1,0,90028.0,120077.0
+0.01,P001,D1,1,90093.0,120029.0
+0.02,P001,D1,2,90029.0,119972.0
+0.03,P001,D1,3,90042.0,119920.0
+0.04,P001,D1,4,89951.0,119916.0

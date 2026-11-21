@@ -1,0 +1,9 @@
+# real file written by analyze (demonstration values)
+> (derived/predictions_rakshpulse-ear-bp.csv, selected columns)
+      window_id status inference_mode   sbp  dbp  ref_sbp  ref_dbp       role
+P001_D1_w000000 usable  demonstration 107.1 69.8    121.0     79.0 prediction
+P001_D1_w000001 usable  demonstration 108.7 67.8    121.0     79.0 prediction
+P001_D1_w000002 usable  demonstration 109.1 68.8    121.0     79.0 prediction
+P001_D1_w000003 usable  demonstration 108.5 67.5    121.0     79.0 prediction
+P001_D1_w000004 usable  demonstration 109.8 66.9    121.0     79.0 prediction
+P001_D1_w000005 usable  demonstration 109.6 67.3    121.0     79.0 prediction

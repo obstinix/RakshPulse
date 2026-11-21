@@ -1,0 +1,10 @@
+# SIMULATED example of the firmware output (hardware/examples/serial_stream_valid.txt)
+> (Arduino Serial Monitor at 115200 baud)
+# rakshpulse fw=1 fs_hz=100 sample_rate=100 averaging=1 pulse_width_us=411 adc_range_na=16384 led_red=0x24 led_ir=0x24
+0,90065,120024
+1,90052,120050
+2,90036,120006
+3,89980,119947
+4,89993,119839
+5,89964,119813
+6,89977,119766

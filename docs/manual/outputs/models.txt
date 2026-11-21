@@ -1,0 +1,11 @@
+# real output
+> rakshpulse models --sensor max30102 --fs 100
+                               file                           model_id                               version  mode_for_max30102 uncertainty_for_sensor                demographics channels  features
+        auricle_ear_ridge_v2.joblib                  auricle-ear-ridge         auricle-ear-ridge-1+contract1      demonstration            unavailable                        none       ir        28
+auricle_population_ear_ridge.joblib         legacy:auricle-ear-ridge-1                   auricle-ear-ridge-1      demonstration            unavailable                        none       ir        28
+      guilin_finger_ridge_v2.joblib   guilin-finger-ridge-demographics 0.1.0-ppg_ir_red+demo-ridge+contract1 needs demographics                      - age,sex,height_cm,weight_kg   ir,red        84
+            rakshpulse_bp_v0.joblib legacy:0.1.0-ppg_ir_red+demo-ridge           0.1.0-ppg_ir_red+demo-ridge needs demographics                      - age,sex,height_cm,weight_kg   ir,red        84
+           rakshpulse_ear_bp.joblib                  rakshpulse-ear-bp        rakshpulse-ear-bp-1.1+0bccb773      demonstration            unavailable                        none       ir        40
+
+Modes: validated (none exist yet) > experimental (trained on this sensor type, cross-validated only) > demonstration (pipeline demo, not BP). Use --verbose for limitations.
+[exit code 0]

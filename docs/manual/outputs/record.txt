@@ -1,0 +1,5 @@
+# real output; replays SIMULATED example samples instead of a live board
+> rakshpulse record --source replay --input raw_ppg.csv --fs 100 --sensor simulator --out data/rakshpulse_hw --subject P001 --session D1 --placement behind_ear --contact "elastic band, moderate"
+recording P001/D1 at 100 Hz from replay (Ctrl-C to stop)
+{"samples": 8995, "missing_samples": 5, "gaps": 5, "drift_ppm": 2.220446049250313e-10, "stopped_by": "limit_or_end", "duplicates": 0, "counter_resets": 0, "malformed_lines": 0}
+[exit code 0]

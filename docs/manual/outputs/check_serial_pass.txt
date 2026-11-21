@@ -1,0 +1,15 @@
+# real check_serial code; input is the SIMULATED example stream played at 100 lines per second
+> rakshpulse check-serial --port COM5 --fs 100 --seconds 4
+           samples: 416
+   malformed_lines: 0
+        duplicates: 0
+   missing_samples: 0
+              gaps: 0
+    counter_resets: 0
+  measured_rate_hz: 100.31
+    declared_fs_hz: 100.0
+       device_info: {'fw': '1', 'fs_hz': '100', 'sample_rate': '100', 'averaging': '1', 'pulse_width_us': '411', 'adc_range_na': '16384', 'led_red': '0x24', 'led_ir': '0x24'}
+         red_range: [89242.0, 90239.0]
+          ir_range: [118496.0, 120306.0]
+                ok: True
+serial check: PASS (data matches the RakshPulse contract)

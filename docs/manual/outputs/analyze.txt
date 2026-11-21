@@ -1,0 +1,14 @@
+# real output on the SIMULATED example session (demonstration mode)
+> rakshpulse analyze --dataset data/rakshpulse_hw --subject P001 --session D1
+[1/5] validating P001/D1 (simulator, 100 Hz)
+[2/5] processing windows
+[3/5] model checks and prediction
+      model rakshpulse-ear-bp (rakshpulse-ear-bp-1.1+0bccb773): mode=demonstration
+      DEMONSTRATION MODE: this model has not been validated for this sensor; the numbers show that the pipeline runs and are NOT blood-pressure measurements.
+      windows: 17 total, 17 predicted; status counts {'usable': 14, 'degraded': 3}
+[4/5] cuff references
+      3 independent readings vs population estimate: SBP MAE 12.5 (mean error -12.5), DBP MAE 7.4 (mean error -7.4) mmHg  [demonstration mode: not an accuracy claim]
+[5/5] writing results
+      median estimate over accepted windows: 108/69 mmHg  (uncertainty unavailable for sensor 'simulator' (interval estimated on ['auricle_earlobe']; not transferable))
+      wrote data\rakshpulse_hw\sessions\P001\D1\derived\predictions_rakshpulse-ear-bp.csv
+[exit code 0]

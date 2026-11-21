@@ -1,0 +1,18 @@
+# real output on the build PC (versions will differ)
+> rakshpulse doctor
+python 3.11.9 on Windows-10-10.0.26300-SP0
+  ok   numpy 2.4.6
+  ok   scipy 1.17.1
+  ok   pandas 3.0.6
+  ok   sklearn 1.9.1
+  ok   joblib 1.6.0
+  ok   xgboost 3.2.0
+  ok   lightgbm 4.7.0
+  ok   torch 2.15.0+cpu
+  ok   serial 3.5
+  ok   vitaldb 
+  ok   self-test: simulated 30 s -> 5 windows, HR error 0.3 bpm
+  ok   default model rakshpulse_ear_bp.joblib: rakshpulse-ear-bp runs on max30102 data in 'demonstration' mode
+  ok   serial recording available (pyserial installed)
+doctor: all required checks passed
+[exit code 0]

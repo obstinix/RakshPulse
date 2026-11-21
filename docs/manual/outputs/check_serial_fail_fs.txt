@@ -1,0 +1,17 @@
+# real check_serial code; wrong --fs (the firmware banner says 100)
+> rakshpulse check-serial --port COM5 --fs 50 --seconds 4
+           samples: 416
+   malformed_lines: 0
+        duplicates: 0
+   missing_samples: 0
+              gaps: 0
+    counter_resets: 0
+  measured_rate_hz: 99.9
+    declared_fs_hz: 100.0
+       device_info: {'fw': '1', 'fs_hz': '100', 'sample_rate': '100', 'averaging': '1', 'pulse_width_us': '411', 'adc_range_na': '16384', 'led_red': '0x24', 'led_ir': '0x24'}
+         red_range: [89242.0, 90239.0]
+          ir_range: [118496.0, 120306.0]
+                ok: False
+  problem: firmware declares fs_hz=100 but --fs is 50
+  problem: measured rate 99.9 Hz differs from --fs 50 Hz by more than 5%
+serial check: FAIL (see docs/HARDWARE_HANDOFF.md, Troubleshooting)

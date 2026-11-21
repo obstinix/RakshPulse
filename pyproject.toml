@@ -52,3 +52,5 @@ pythonpath = ["tests"]
 "src/rakshpulse/data/physionet.py" = ["E501"]
 # Markdown table generator: long f-string rows are clearer unwrapped
 "scripts/write_session1_tables.py" = ["E501"]
+# operator-manual sources: prose paragraphs and diagram labels are kept on one line each
+"docs/manual/*.py" = ["E501"]

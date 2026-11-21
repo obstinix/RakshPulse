@@ -1,0 +1,9 @@
+# real file written by analyze
+> (derived/windows.csv, selected columns)
+      window_id  t_start_s status  quality_score                  reasons     ir_hr  ir_sys_ratio
+P001_D1_w000000        0.0 usable          100.0 filled_1_missing_samples 73.170732      0.176471
+P001_D1_w000001        5.0 usable          100.0                      NaN 75.000000      0.177215
+P001_D1_w000002       10.0 usable          100.0                      NaN 75.949367      0.175000
+P001_D1_w000003       15.0 usable          100.0                      NaN 76.923077      0.173920
+P001_D1_w000004       20.0 usable          100.0 filled_1_missing_samples 75.000000      0.175000
+P001_D1_w000005       25.0 usable          100.0 filled_1_missing_samples 75.000000      0.180723

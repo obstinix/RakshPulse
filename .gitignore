@@ -19,7 +19,7 @@ models/*
 
 # Project source PDFs (third-party/team documents, not redistributed); the generated hardware manual is published
 *.pdf
-!docs/RAKSHPULSE_HARDWARE_INTEGRATION_MANUAL.pdf
+!docs/RAKSHPULSE_COMPLETE_HARDWARE_AND_OPERATOR_MANUAL.pdf
 
 # Secrets
 .env

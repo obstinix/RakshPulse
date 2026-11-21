@@ -1,0 +1,16 @@
+# real check_serial code; input is the example stream with garbled lines
+> rakshpulse check-serial --port COM5 --fs 100 --seconds 4
+           samples: 32
+   malformed_lines: 6
+        duplicates: 0
+   missing_samples: 8
+              gaps: 2
+    counter_resets: 0
+  measured_rate_hz: None
+    declared_fs_hz: 100.0
+       device_info: {'fw': '1', 'fs_hz': '100', 'sample_rate': '100', 'averaging': '1', 'pulse_width_us': '411', 'adc_range_na': '16384', 'led_red': '0x24', 'led_ir': '0x24'}
+         red_range: [89548.0, 90065.0]
+          ir_range: [118718.0, 120050.0]
+                ok: False
+  problem: 6 malformed lines (15.8% of all lines): check that the baud rate matches the firmware (115200), remove extra prints from the firmware, or adjust --fields/--delimiter
+serial check: FAIL (see docs/HARDWARE_HANDOFF.md, Troubleshooting)

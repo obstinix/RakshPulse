@@ -1,0 +1,13 @@
+# real output; a SIMULATED flat signal (sensor off the skin)
+> rakshpulse estimate --source replay --input flat.csv --fs 100 --sensor max30102
+source        replay (file), 3000 samples at 100 Hz, 0 missing
+sensor        max30102
+input         passed
+quality       0 usable / 0 degraded / 0 unusable / 5 missing windows
+heart rate    - bpm
+estimate      SBP - / DBP - mmHg
+mode          demonstration   calibration: uncalibrated
+model         rakshpulse-ear-bp (rakshpulse-ear-bp-1.1+0bccb773)   latency 16 ms
+status        poor_signal: 0/5 windows passed the quality and input checks (need 50%); re-measure with a steady sensor
+warning       DEMONSTRATION MODE: this model has not been validated for this sensor; the numbers show that the pipeline runs and are NOT blood-pressure measurements
+[exit code 1]

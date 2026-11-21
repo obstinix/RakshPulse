@@ -1,0 +1,4 @@
+# real file written by the commands above
+> (first lines of session_metadata.csv)
+subject_id,session_id,recording_date,sensor_type,placement,sampling_rate,contact_conditions,notes,sensor_config,software_version,simulated
+P001,D1,2026-11-22,simulator,behind_ear,100.0,"elastic band, moderate",transport=replay,,,True

@@ -1,0 +1,6 @@
+# real file written by the commands above
+> (first lines of reference_bp.csv)
+subject_id,session_id,timestamp,sbp,dbp,heart_rate,measurement_device
+P001,D1,30.0,121.0,79.0,72.0,Omron M3
+P001,D1,60.0,118.0,77.0,70.0,Omron M3
+P001,D1,85.0,119.0,78.0,71.0,Omron M3

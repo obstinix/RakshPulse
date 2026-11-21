@@ -1,0 +1,16 @@
+# real folder created by the commands above
+> (contents of data/rakshpulse_hw)
+data/rakshpulse_hw/
+    dataset_manifest.csv
+    sessions/
+        P001/
+            D1/
+                derived/
+                    predictions_rakshpulse-ear-bp.csv
+                    segments.csv
+                    windows.csv
+                gaps.csv
+                raw_ppg.csv
+                reference_bp.csv
+                session_metadata.csv
+    subjects.csv

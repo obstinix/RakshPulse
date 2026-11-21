@@ -1,0 +1,32 @@
+# real output: list of commands
+> rakshpulse -h
+usage: rakshpulse [-h]
+                  {doctor,models,ports,check-serial,simulate,estimate,record,reference,inspect,preprocess,features,train,calibrate,evaluate,infer,export,analyze}
+                  ...
+
+``rakshpulse`` command-line interface (RakshPulse 5.2).
+
+positional arguments:
+  {doctor,models,ports,check-serial,simulate,estimate,record,reference,inspect,preprocess,features,train,calibrate,evaluate,infer,export,analyze}
+    doctor              environment, default model and self-test
+    models              list models, contracts and compatibility with a sensor
+    ports               list serial ports (needs pyserial)
+    check-serial        read a few seconds from the device and check the data contract (requires the
+                        connected board)
+    simulate            create a SIMULATED dataset
+    estimate            acquire PPG (sim, replay or serial) and print a BP estimate with full status
+    record              record from a source into a dataset
+    reference           append a cuff reading to a session
+    inspect             summarise / validate a dataset
+    preprocess          windows, quality and features per session
+    features            training table with associated references
+    train               train and cross-validate a model
+    calibrate           compare calibration strategies on out-of-fold predictions
+    evaluate            evaluate a saved model without refitting
+    infer               streaming inference from a source
+    export              runtime-free float32 export (JSON + C header)
+    analyze             validate, process, predict and export one recorded session
+
+options:
+  -h, --help            show this help message and exit
+[exit code 0]
