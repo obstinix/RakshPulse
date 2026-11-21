@@ -1,0 +1,461 @@
+{
+  "version": "rakshpulse-ear-bp-1.0+e37871a3",
+  "features": [
+    "ear_hr",
+    "ear_w10_n",
+    "ear_w25_n",
+    "ear_w50_n",
+    "ear_w75_n",
+    "ear_w90_n",
+    "ear_t_max_slope_n",
+    "ear_t_apg_b_n",
+    "ear_max_slope_n",
+    "ear_sys_T",
+    "ear_dia_T",
+    "ear_sys_ratio",
+    "ear_w10",
+    "ear_w50",
+    "ear_w75",
+    "ear_w90",
+    "ear_w10_sd_ratio",
+    "ear_w50_sd_ratio",
+    "ear_w75_sd_ratio",
+    "ear_w90_sd_ratio",
+    "ear_area_dia",
+    "ear_area_ratio",
+    "ear_max_slope",
+    "ear_t_max_slope",
+    "ear_beat_kurt",
+    "ear_apg_b_a",
+    "ear_apg_c_a",
+    "ear_apg_d_a",
+    "ear_apg_e_a",
+    "ear_aging_index",
+    "ear_t_apg_b",
+    "ear_sdnn",
+    "ear_rmssd",
+    "ear_win_skew",
+    "ear_win_kurt",
+    "ear_h2_h1",
+    "ear_h3_h1",
+    "ear_spec_entropy",
+    "ear_pow_0p5_2",
+    "ear_pow_5_10"
+  ],
+  "contract": {
+    "contract_version": 1,
+    "model_id": "rakshpulse-ear-bp",
+    "features": [
+      {
+        "name": "ear_hr",
+        "source": "ir_hr",
+        "kind": "signal",
+        "required": true,
+        "fill": 77.4194,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_w10_n",
+        "source": "ir_w10_n",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.761904761904762,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_w25_n",
+        "source": "ir_w25_n",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.6212121212121211,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_w50_n",
+        "source": "ir_w50_n",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.43956043956043955,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_w75_n",
+        "source": "ir_w75_n",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.2608695652173913,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_w90_n",
+        "source": "ir_w90_n",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.15384615384615385,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_t_max_slope_n",
+        "source": "ir_t_max_slope_n",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.06779661016949153,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_t_apg_b_n",
+        "source": "ir_t_apg_b_n",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.14159292035398233,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_max_slope_n",
+        "source": "ir_max_slope_n",
+        "kind": "signal",
+        "required": true,
+        "fill": 6.6628799999999995,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_sys_T",
+        "source": "ir_sys_T",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.175,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_dia_T",
+        "source": "ir_dia_T",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.61,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_sys_ratio",
+        "source": "ir_sys_ratio",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.227487,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_w10",
+        "source": "ir_w10",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.585,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_w50",
+        "source": "ir_w50",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.345,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_w75",
+        "source": "ir_w75",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.2,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_w90",
+        "source": "ir_w90",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.12,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_w10_sd_ratio",
+        "source": "ir_w10_sd_ratio",
+        "kind": "signal",
+        "required": true,
+        "fill": 2.47059,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_w50_sd_ratio",
+        "source": "ir_w50_sd_ratio",
+        "kind": "signal",
+        "required": true,
+        "fill": 1.91667,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_w75_sd_ratio",
+        "source": "ir_w75_sd_ratio",
+        "kind": "signal",
+        "required": true,
+        "fill": 1.46429,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_w90_sd_ratio",
+        "source": "ir_w90_sd_ratio",
+        "kind": "signal",
+        "required": true,
+        "fill": 1.25,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_area_dia",
+        "source": "ir_area_dia",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.241045,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_area_ratio",
+        "source": "ir_area_ratio",
+        "kind": "signal",
+        "required": true,
+        "fill": 2.0578,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_max_slope",
+        "source": "ir_max_slope",
+        "kind": "signal",
+        "required": true,
+        "fill": 8.77603,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_t_max_slope",
+        "source": "ir_t_max_slope",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.05,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_beat_kurt",
+        "source": "ir_beat_kurt",
+        "kind": "signal",
+        "required": true,
+        "fill": -1.40576,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_apg_b_a",
+        "source": "ir_apg_b_a",
+        "kind": "signal",
+        "required": true,
+        "fill": -1.0063,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_apg_c_a",
+        "source": "ir_apg_c_a",
+        "kind": "signal",
+        "required": true,
+        "fill": -0.345854,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_apg_d_a",
+        "source": "ir_apg_d_a",
+        "kind": "signal",
+        "required": true,
+        "fill": -0.423509,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_apg_e_a",
+        "source": "ir_apg_e_a",
+        "kind": "signal",
+        "required": false,
+        "fill": 0.175599,
+        "training_missing_rate": 0.004169562195969423
+      },
+      {
+        "name": "ear_aging_index",
+        "source": "ir_aging_index",
+        "kind": "signal",
+        "required": false,
+        "fill": -0.362728,
+        "training_missing_rate": 0.004169562195969423
+      },
+      {
+        "name": "ear_t_apg_b",
+        "source": "ir_t_apg_b",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.11,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_sdnn",
+        "source": "ir_sdnn",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.0367946,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_rmssd",
+        "source": "ir_rmssd",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.0361939,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_win_skew",
+        "source": "ir_win_skew",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.151983,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_win_kurt",
+        "source": "ir_win_kurt",
+        "kind": "signal",
+        "required": true,
+        "fill": -1.21822,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_h2_h1",
+        "source": "ir_h2_h1",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.286117,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_h3_h1",
+        "source": "ir_h3_h1",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.0992898,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_spec_entropy",
+        "source": "ir_spec_entropy",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.388849,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_pow_0p5_2",
+        "source": "ir_pow_0p5_2",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.899959,
+        "training_missing_rate": 0.0
+      },
+      {
+        "name": "ear_pow_5_10",
+        "source": "ir_pow_5_10",
+        "kind": "signal",
+        "required": true,
+        "fill": 0.00162146,
+        "training_missing_rate": 0.0
+      }
+    ],
+    "channels": [
+      "ir"
+    ],
+    "demographics": [],
+    "fs_range_hz": [
+      50.0,
+      1000.0
+    ],
+    "processing": {
+      "target_fs_hz": 100.0,
+      "window_s": 10.0,
+      "band_hz": [
+        0.5,
+        10.0
+      ],
+      "feature_set": "rakshpulse-features-1"
+    },
+    "max_imputed_fraction": 0.1,
+    "validated_for": [],
+    "experimental_for": [
+      "auricle_earlobe"
+    ],
+    "demonstration_for": [
+      "max30102",
+      "simulator"
+    ],
+    "uncertainty": {
+      "method": "subject_wise_cv_conformal_90",
+      "halfwidth_90": {
+        "sbp": 30.33644793320658,
+        "dbp": 21.12294770615724
+      },
+      "valid_for": [
+        "auricle_earlobe"
+      ],
+      "test_coverage": {
+        "sbp": 0.9580246913580247,
+        "dbp": 0.9810699588477366
+      }
+    },
+    "calibration": {
+      "supported": true
+    },
+    "performance": {
+      "sbp_mae": 13.662739261289857,
+      "sbp_rmse": 16.26084543872543,
+      "sbp_r2": -0.04933283625934015,
+      "dbp_mae": 6.7477464933256694,
+      "dbp_rmse": 8.604945498363891,
+      "dbp_r2": -0.2312703533726339,
+      "sbp_baseline_mae": 14.076195082890786,
+      "dbp_baseline_mae": 6.381540753323781
+    },
+    "selected_models": {
+      "sbp": {
+        "model": "ridge",
+        "params": {
+          "alpha": 10000.0
+        }
+      },
+      "dbp": {
+        "model": "svr",
+        "params": {
+          "C": 3.0,
+          "epsilon": 2.0,
+          "gamma": 0.01
+        }
+      }
+    },
+    "limitations": [
+      "trained and tested on Auricle earlobe transmissive PPG (Nonin) with CNAP labels, healthy adults",
+      "never tested on MAX30102 recordings: on MAX30102 input it runs in demonstration mode, not a BP measurement",
+      "uncertainty interval only valid on Auricle earlobe data"
+    ]
+  },
+  "validation": {
+    "sbp": {
+      "mae": 13.662739261289857,
+      "rmse": 16.26084543872543,
+      "r2": -0.04933283625934015
+    },
+    "dbp": {
+      "mae": 6.7477464933256694,
+      "rmse": 8.604945498363891,
+      "r2": -0.2312703533726339
+    },
+    "n_subjects_train": 32,
+    "n_subjects_test": 8,
+    "protocol": "subject-wise held-out test set; GroupKFold CV for tuning and selection"
+  },
+  "created_utc": "2026-11-21T13:48:49+00:00"
+}

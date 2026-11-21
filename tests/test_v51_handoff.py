@@ -403,7 +403,7 @@ def test_cli_models_record_replay_and_analyze(tmp_path, capsys):
     assert main(["analyze", "--dataset", str(ds), "--subject", "SIM001", "--session", "D1"]) == 0
     out = capsys.readouterr().out
     assert "mode=demonstration" in out and "NOT blood-pressure measurements" in out
-    pfile = ds / "sessions/SIM001/D1/derived/predictions_auricle-ear-ridge.csv"
+    pfile = ds / "sessions/SIM001/D1/derived/predictions_rakshpulse-ear-bp.csv"
     first = pd.read_csv(pfile)
     assert len(first) and first.inference_mode.eq("demonstration").all()
     assert main(["analyze", "--dataset", str(ds), "--subject", "SIM001", "--session", "D1"]) == 2  # no overwrite

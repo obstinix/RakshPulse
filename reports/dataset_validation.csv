@@ -1,0 +1,11 @@
+check,status,detail
+window ids unique,PASS,30841 windows
+features match windows one-to-one,PASS,30841 feature rows
+subject and session agree between tables,PASS,
+every subject documented,PASS,42 subjects
+sessions are 1 or 2,PASS,"[1, 2]"
+one source sampling rate,PASS,1000 Hz
+all windows 10 s long,PASS,
+labels numeric where valid,PASS,16419 labelled
+SBP > DBP where valid,PASS,
+raw recordings verified against PhysioNet SHA-256,PASS,79 recordings

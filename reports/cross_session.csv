@@ -1,0 +1,5 @@
+target,model,train,test,mae,rmse,r2,bias,sd_error,loa_low,loa_high,n_windows,n_subjects,subject_mean_mae
+sbp,mean,"train subjects, session 1","test subjects, session 2",12.9141,14.6782,-0.3614,7.5625,12.5934,-17.1205,32.2456,473,6,13.3315
+sbp,ridge,"train subjects, session 1","test subjects, session 2",12.3206,14.2059,-0.2752,6.1503,12.8191,-18.9751,31.2757,473,6,13.4887
+dbp,mean,"train subjects, session 1","test subjects, session 2",6.1657,7.2364,-0.0024,-0.3523,7.2354,-14.5338,13.8291,473,6,6.6342
+dbp,svr,"train subjects, session 1","test subjects, session 2",7.8356,9.7084,-0.8042,-3.6484,9.0063,-21.3008,14.0039,473,6,8.3390

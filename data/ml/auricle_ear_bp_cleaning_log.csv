@@ -1,0 +1,9 @@
+step,filter,rule,windows,subjects,records
+0,all windows,"standardised Auricle windows (10 s, 5 s hop)",30841,42,79
+1,reliable CNAP label,"label_valid (CNAP mask valid, label_status ok)",16419,42,78
+2,plausible BP,"SBP (60.0, 250.0), DBP (30.0, 150.0), pulse pressure >= 10.0",16369,42,78
+3,label aligned,SBP range inside the window <= 20.0 mmHg,12743,42,78
+4,ear signal quality,"production SQI gate passed (beats, HR, regularity, template, spectrum)",9851,40,72
+5,no saturation,rail-clipped samples <= 1.0 %,9851,40,72
+6,core features present,heart rate and beat duration extracted,9851,40,72
+7,enough windows per subject,>= 20 windows per subject,9851,40,72

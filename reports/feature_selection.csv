@@ -1,0 +1,48 @@
+feature,missing_rate,selected,reason
+ear_hr,0.0000,True,
+ear_w10_n,0.0000,True,
+ear_w25_n,0.0000,True,
+ear_w50_n,0.0000,True,
+ear_w75_n,0.0000,True,
+ear_w90_n,0.0000,True,
+ear_t_max_slope_n,0.0000,True,
+ear_t_apg_b_n,0.0000,True,
+ear_max_slope_n,0.0000,True,
+ear_beat_T,0.0000,False,|rho|=0.996 with ear_hr
+ear_sys_T,0.0000,True,
+ear_dia_T,0.0000,True,
+ear_sys_ratio,0.0000,True,
+ear_w10,0.0000,True,
+ear_w25,0.0000,False,|rho|=0.971 with ear_w10
+ear_w50,0.0000,True,
+ear_w75,0.0000,True,
+ear_w90,0.0000,True,
+ear_w10_sd_ratio,0.0000,True,
+ear_w25_sd_ratio,0.0000,False,|rho|=0.968 with ear_w10_sd_ratio
+ear_w50_sd_ratio,0.0000,True,
+ear_w75_sd_ratio,0.0000,True,
+ear_w90_sd_ratio,0.0000,True,
+ear_area_sys,0.0000,False,|rho|=0.979 with ear_sys_T
+ear_area_dia,0.0000,True,
+ear_area_ratio,0.0000,True,
+ear_max_slope,0.0000,True,
+ear_t_max_slope,0.0000,True,
+ear_beat_skew,0.0000,False,|rho|=0.957 with ear_w50_n
+ear_beat_kurt,0.0000,True,
+ear_apg_b_a,0.0000,True,
+ear_apg_c_a,0.0000,True,
+ear_apg_d_a,0.0000,True,
+ear_apg_e_a,0.0038,True,
+ear_aging_index,0.0038,True,
+ear_t_apg_b,0.0000,True,
+ear_sdnn,0.0000,True,
+ear_rmssd,0.0000,True,
+ear_win_skew,0.0000,True,
+ear_win_kurt,0.0000,True,
+ear_f0,0.0000,False,|rho|=0.957 with ear_hr
+ear_h2_h1,0.0000,True,
+ear_h3_h1,0.0001,True,
+ear_spec_entropy,0.0000,True,
+ear_pow_0p5_2,0.0000,True,
+ear_pow_2_5,0.0000,False,|rho|=0.998 with ear_pow_0p5_2
+ear_pow_5_10,0.0000,True,

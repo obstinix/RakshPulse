@@ -42,7 +42,7 @@ DEMO_WARNING = (
     "pipeline runs and are NOT blood-pressure measurements."
 )
 EXIT_OK, EXIT_CHECK, EXIT_USAGE, EXIT_DEVICE, EXIT_MODEL = 0, 1, 2, 3, 4
-DEFAULT_MODEL_NAME = "auricle_ear_ridge_v2.joblib"
+DEFAULT_MODEL_NAME = "rakshpulse_ear_bp.joblib"
 
 
 def _fail(msg: str, code: int = EXIT_USAGE) -> int:
