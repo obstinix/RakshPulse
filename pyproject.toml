@@ -29,6 +29,7 @@ deep = ["torch>=2.2"]
 dev = ["pytest>=8", "ruff>=0.5", "pyserial>=3.5"]  # pyserial: serial tests use loop:// ports
 vitaldb = ["vitaldb>=1.4"]  # MIT-licensed .vital reader, only for the VitalDB adapter
 serial = ["pyserial>=3.5"]  # only for SerialSource (USB-serial MAX30102 bridge)
+notebook = ["jupyter>=1.0", "nbformat>=5.9", "nbclient>=0.10", "ipykernel>=6.29"]  # notebooks/RakshPulse_Complete_ML.ipynb
 
 [tool.setuptools.packages.find]
 where = ["src"]

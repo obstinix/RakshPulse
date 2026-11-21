@@ -32,3 +32,11 @@ results/predictions/
 data/auricle/waveforms/
 !models/auricle_population_ear_ridge.joblib
 !models/auricle_ear_ridge_v2.joblib
+!models/rakshpulse_ear_bp.joblib
+!models/rakshpulse_ear_bp.json
+
+# complete ML pipeline (scripts/run_complete_pipeline.py): resume cache and local-only outputs
+data/ml/cache/
+reports/smoke_test/
+reports/evaluate_only/
+reports/notebook/
