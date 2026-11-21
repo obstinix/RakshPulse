@@ -179,7 +179,7 @@ def _load_script(name: str):
 
 
 def test_sequence_architectures_share_the_training_loop():
-    import torch
+    torch = pytest.importorskip("torch", reason="sequence models need the optional deep extra: pip install -e .[deep]")
 
     from rakshpulse.models.cnn import CNNConfig, CNNRegressor
     from rakshpulse.models.sequence import ARCHITECTURES

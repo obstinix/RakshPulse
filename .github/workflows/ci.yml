@@ -10,24 +10,42 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: test (${{ matrix.os }}, Python ${{ matrix.python-version }}${{ matrix.deep && ', torch' || '' }})
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        include:
+          - { os: ubuntu-latest, python-version: "3.10", deep: true }
+          - { os: ubuntu-latest, python-version: "3.11", deep: true }
+          - { os: ubuntu-latest, python-version: "3.12", deep: true }
+          - { os: windows-latest, python-version: "3.11", deep: false }
+    env:
+      PYTHONUTF8: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-      - name: Install
+      - name: Core install (no training or optional extras)
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e .
+      - name: Core inference works without the optional extras
+        run: |
+          rakshpulse doctor
+          rakshpulse estimate --source sim --seconds 20
+      - name: Development install
+        run: pip install -e ".[dev]"
+      - name: Optional deep-learning extra (CPU torch)
+        if: matrix.deep
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Dependency integrity
+        run: pip check
       - name: Ruff (lint)
         run: ruff check src tests scripts
       - name: Ruff (format check)
         run: ruff format --check src tests scripts
-      - name: Pytest
-        run: pytest -q
+      - name: Pytest (skips are listed with their reasons)
+        run: pytest -q -rs

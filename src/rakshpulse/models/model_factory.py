@@ -15,8 +15,6 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR
 
-from .xgboost_model import make_xgb
-
 
 def _pipe(est, scale: bool = True) -> Pipeline:
     steps = [("impute", SimpleImputer(strategy="median", keep_empty_features=True))]
@@ -72,6 +70,8 @@ def make_model(name: str, seed: int = 0) -> tuple[Pipeline, dict]:
             "model__max_features": [0.3, 0.6],
         }
     if name == "xgboost":
+        from .xgboost_model import make_xgb  # optional: pip install -e ".[train]"
+
         return _pipe(make_xgb(seed), scale=False), {"model__max_depth": [2, 4], "model__learning_rate": [0.03, 0.1]}
     raise KeyError(name)
 

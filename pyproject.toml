@@ -1,35 +1,35 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "rakshpulse"
-version = "5.1.0"
+version = "5.2.0"
 description = "RakshPulse: research platform for cuffless BP estimation from red/IR PPG (MAX30102)"
 requires-python = ">=3.10"
-license = { text = "CC0-1.0" }
+license = "CC0-1.0"
+license-files = ["LICENSE"]
 dependencies = [
+  # enough for data preparation, preprocessing, features, ridge/SVR/forest models and inference
   "numpy>=1.26",
   "scipy>=1.11",
   "pandas>=2.0",
   "scikit-learn>=1.4",
-  "xgboost>=2.0",
-  "matplotlib>=3.8",
   "joblib>=1.3",
-  "openpyxl>=3.1",
-  "wfdb>=4.1",
-  "lightgbm>=4.0",
+  "matplotlib>=3.8",
 ]
 
 [project.scripts]
 rakshpulse = "rakshpulse.cli:main"
 
 [project.optional-dependencies]
-deep = ["torch>=2.2"]
-dev = ["pytest>=8", "ruff>=0.5", "pyserial>=3.5"]  # pyserial: serial tests use loop:// ports
+train = ["xgboost>=2.0", "lightgbm>=4.0"]  # gradient-boosting candidates of the complete pipeline
+data = ["wfdb>=4.1", "openpyxl>=3.1"]  # readers for the public raw datasets (WFDB, Excel)
+serial = ["pyserial>=3.5"]  # live MAX30102 input over USB serial
+notebook = ["jupyter>=1.0", "nbformat>=5.9", "nbclient>=0.10", "ipykernel>=6.29"]
+deep = ["torch>=2.2"]  # raw-waveform research models (CNN, GRU, TCN, Transformer)
 vitaldb = ["vitaldb>=1.4"]  # MIT-licensed .vital reader, only for the VitalDB adapter
-serial = ["pyserial>=3.5"]  # only for SerialSource (USB-serial MAX30102 bridge)
-notebook = ["jupyter>=1.0", "nbformat>=5.9", "nbclient>=0.10", "ipykernel>=6.29"]  # notebooks/RakshPulse_Complete_ML.ipynb
+dev = ["pytest>=8", "ruff>=0.5", "pyserial>=3.5", "rakshpulse[train,data]"]  # pyserial: loop:// serial tests
 
 [tool.setuptools.packages.find]
 where = ["src"]
