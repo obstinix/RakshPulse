@@ -64,11 +64,15 @@ def _sha(*parts) -> str:
 
 
 def _code_hash() -> str:
+    """Fingerprint of the code that determines the trained models: the parsed syntax tree of each file, so that
+    formatting, comments and docstring-free whitespace changes do not force a retrain."""
+    import ast
+
     files = sorted((ROOT / "src" / "rakshpulse" / "ml").glob("*.py")) + [
         ROOT / "src" / "rakshpulse" / "models" / "model_factory.py",
         ROOT / "src" / "rakshpulse" / "features" / "feature_pipeline.py",
     ]
-    return _sha(*(f.read_bytes() for f in files))
+    return _sha(*(ast.dump(ast.parse(f.read_text(encoding="utf-8"))) for f in files))
 
 
 def _commit() -> str:
@@ -115,7 +119,7 @@ def check_dependencies() -> dict:
     for k, v in found.items():
         note(f"ok  {k} {v}")
     if missing:
-        sys.exit(f"missing required packages {missing}: run  pip install -e .")
+        sys.exit(f'missing required packages {missing}: run  pip install -e ".[train]"')
     return found
 
 
@@ -125,8 +129,9 @@ def run_smoke(args) -> int:
 
     from rakshpulse.acquisition.simulator import SimConfig, simulate
     from rakshpulse.inference.api import BPEstimator
-    from rakshpulse.ml import PipelineConfig, export_bundle, make_smoke_dataset, run_training
+    from rakshpulse.ml import PipelineConfig, export_bundle, make_smoke_dataset
     from rakshpulse.ml import report as R
+    from rakshpulse.ml.workflow import make_figures, train_and_evaluate
 
     st = Stages(8)
     print("SMOKE TEST: synthetic data only. Results are NOT model validation.")
@@ -142,9 +147,9 @@ def run_smoke(args) -> int:
     )
     st("training and evaluation (all candidate models, reduced grids)")
     cfg = PipelineConfig(seed=args.seed, cv_folds=3, n_bootstrap=200, n_jobs=args.n_jobs)
-    result = run_training(d, cfg=cfg, log=note)
+    result = train_and_evaluate(d, cfg=cfg, outer_folds=3, log=note)
     st("model export")
-    bundle = export_bundle(result, version="smoke-test", synthetic=True)
+    bundle = export_bundle(result, version="smoke-test", synthetic=True, calibration=result["calibration"])
     path = bundle.save(SMOKE_DIR / "smoke_model.joblib")
     note(f"wrote {path}")
     st("inference through the hardware API")
@@ -154,20 +159,14 @@ def run_smoke(args) -> int:
     note(f"status={r.status} sbp={r.sbp} dbp={r.dbp} mode={r.inference_mode} latency={r.latency_ms} ms")
     bad = est.estimate(np.full(300, np.nan), 100.0)
     note(f"invalid input → status={bad.status}: {bad.message}")
-    if r.status != "ok" or bad.status != "invalid_input":
+    cal = est.calibrate(120.0, 80.0, rec.ir, 100.0, red=rec.red)
+    rc = est.estimate(rec.ir, 100.0, red=rec.red)
+    note(f"calibration: {cal['message']} → {rc.calibration_status}, sbp={rc.sbp} dbp={rc.dbp}")
+    if r.status != "ok" or bad.status != "invalid_input" or not rc.calibration_status.startswith("calibrated"):
         print("SMOKE TEST FAILED: unexpected inference status")
         return 1
     st("figures")
-    figs = SMOKE_DIR / "figures"
-    figs.mkdir(exist_ok=True)
-    f = {
-        "dataset": R.plot_dataset(result["data"], figs / "dataset.png"),
-        "comparison": R.plot_model_comparison(result["comparison"], figs / "model_comparison.png"),
-        "scatter": R.plot_actual_vs_predicted(
-            result["test_predictions"], result["selection"], figs / "actual_vs_predicted.png"
-        ),
-        "residuals": R.plot_residuals(result["test_predictions"], result["selection"], figs / "residuals.png"),
-    }
+    f = make_figures(result, SMOKE_DIR / "figures")
     st("tables")
     R.write_tables(result, SMOKE_DIR)
     st("report")
@@ -285,10 +284,10 @@ def run_full(args) -> int:
         build_ear_dataset,
         export_bundle,
         load_ml_dataset,
-        run_training,
     )
     from rakshpulse.ml import report as R
     from rakshpulse.ml.dataset import feature_reproducibility, input_fingerprint, validate_auricle
+    from rakshpulse.ml.workflow import make_figures, train_and_evaluate
 
     st, paths, state = Stages(), DatasetPaths(), {} if args.force else _state()
     st("dependencies")
@@ -371,7 +370,7 @@ def run_full(args) -> int:
     else:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
-            result = run_training(d, cfg=cfg, log=note)
+            result = train_and_evaluate(d, cfg=cfg, log=note)
         CACHE.mkdir(parents=True, exist_ok=True)
         joblib.dump(result, cache, compress=3)
         state["training_fingerprint"] = train_fp
@@ -384,6 +383,10 @@ def run_full(args) -> int:
         )
     for _, r in result["cross_session"].iterrows():
         note(f"cross-session {r.target.upper()} {r.model:<14} MAE {r.mae:.2f}  R² {r.r2:.3f}")
+    for _, r in result["nested"]["summary"].iterrows():
+        note(f"nested CV ({r.n_subjects} subjects) {r.target.upper()} {r.model:<16} MAE {r.mae:.2f}  R² {r.r2:.3f}")
+    for _, r in result["calibration"]["summary"].iterrows():
+        note(f"calibration {r.scenario:<24} {r.target.upper()} {r.method:<14} MAE {r.mae:.2f}")
 
     st("model selection")
     for _, r in result["selection"].iterrows():
@@ -393,11 +396,11 @@ def run_full(args) -> int:
         )
 
     st("model export")
-    version = f"rakshpulse-ear-bp-1.0+{train_fp[:8]}"
+    version = f"rakshpulse-ear-bp-1.1+{train_fp[:8]}"
     if MODEL_PATH.exists() and state.get("model_fingerprint") == train_fp:
         note(f"up to date: {MODEL_PATH.relative_to(ROOT)}")
     else:
-        bundle = export_bundle(result, version)
+        bundle = export_bundle(result, version, calibration=result["calibration"])
         bundle.save(MODEL_PATH)
         meta = {
             "version": version,
@@ -411,16 +414,7 @@ def run_full(args) -> int:
         note(f"wrote {MODEL_PATH.relative_to(ROOT)} and {MODEL_PATH.with_suffix('.json').name}")
 
     st("figures")
-    figs = REPORTS / "figures"
-    figs.mkdir(exist_ok=True)
-    f = {
-        "dataset": R.plot_dataset(result["data"], figs / "dataset.png"),
-        "comparison": R.plot_model_comparison(result["comparison"], figs / "model_comparison.png"),
-        "scatter": R.plot_actual_vs_predicted(
-            result["test_predictions"], result["selection"], figs / "actual_vs_predicted.png"
-        ),
-        "residuals": R.plot_residuals(result["test_predictions"], result["selection"], figs / "residuals.png"),
-    }
+    f = make_figures(result, REPORTS / "figures")
     note(", ".join(p.name for p in f.values()))
 
     st("report")

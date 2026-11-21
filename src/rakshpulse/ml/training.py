@@ -206,6 +206,17 @@ def _cap(d: pd.DataFrame, n: int) -> pd.DataFrame:
     return pd.concat(parts)
 
 
+def tune(name: str, X: np.ndarray, y: np.ndarray, groups: np.ndarray, cv, cfg: PipelineConfig):
+    """Grid search of one candidate with group-aware CV. Returns (best unfitted-clone-ready estimator, params)."""
+    pipe = make_pipeline(name, cfg.seed)
+    grid = PARAM_GRIDS.get(name, {})
+    if not grid:
+        return clone(pipe), {}
+    gs = GridSearchCV(pipe, grid, cv=cv, scoring="neg_mean_absolute_error", n_jobs=cfg.n_jobs, error_score="raise")
+    gs.fit(X, y, groups=groups)
+    return gs.best_estimator_, {k.replace("model__", ""): v for k, v in gs.best_params_.items()}
+
+
 # ------------------------------------------------------------------------------------------------ main entry
 def run_training(
     d: pd.DataFrame, features: list[str] | None = None, cfg: PipelineConfig | None = None, log=print
@@ -233,17 +244,7 @@ def run_training(
         yh = hpo[target].to_numpy(float)
         for name in ("mean",) + tuple(cfg.models):
             t0 = time.perf_counter()
-            pipe = make_pipeline(name, cfg.seed)
-            grid = PARAM_GRIDS.get(name, {})
-            if grid:
-                gs = GridSearchCV(
-                    pipe, grid, cv=cv, scoring="neg_mean_absolute_error", n_jobs=cfg.n_jobs, error_score="raise"
-                )
-                gs.fit(Xh, yh, groups=gh)
-                best = gs.best_estimator_
-                params = {k.replace("model__", ""): v for k, v in gs.best_params_.items()}
-            else:
-                best, params = clone(pipe), {}
+            best, params = tune(name, Xh, yh, gh, cv, cfg)
             oof = cross_val_predict(clone(best), Xh, yh, cv=cv, groups=gh, n_jobs=cfg.n_jobs)
             model = clone(best).fit(fit_all[feats].to_numpy(float), fit_all[target].to_numpy(float))
             p_train = model.predict(fit_all[feats].to_numpy(float))
@@ -352,7 +353,7 @@ def run_training(
 
 
 # ------------------------------------------------------------------------------------------------ export
-def export_bundle(result: dict, version: str, synthetic: bool = False) -> ModelBundle:
+def export_bundle(result: dict, version: str, synthetic: bool = False, calibration: dict | None = None) -> ModelBundle:
     """Wrap the selected SBP and DBP pipelines in a contract-carrying bundle for the production inference engine.
 
     Mode: ``experimental`` for Auricle earlobe data (the population it was trained and tested on);
@@ -401,7 +402,7 @@ def export_bundle(result: dict, version: str, synthetic: bool = False) -> ModelB
             "valid_for": [] if synthetic else ["auricle_earlobe"],
             "test_coverage": {t: result["uncertainty"][t]["test_coverage"] for t in TARGETS},
         },
-        "calibration": {"supported": True},
+        "calibration": _calibration_contract(calibration, synthetic),
         "performance": test_perf,
         "selected_models": {t: {"model": sel.loc[t, "model"], "params": sel.loc[t, "params"]} for t in TARGETS},
         "limitations": limitations,
@@ -419,7 +420,9 @@ def export_bundle(result: dict, version: str, synthetic: bool = False) -> ModelB
         n_subjects_test=len(result["test_subjects"]),
         protocol="subject-wise held-out test set; GroupKFold CV for tuning and selection",
     )
+    extras = {"calibration_models": dict(calibration["models"])} if calibration else {}
     return ModelBundle(
+        extras=extras,
         sbp=result["models"]["sbp"],
         dbp=result["models"]["dbp"],
         features=list(feats),
@@ -430,3 +433,23 @@ def export_bundle(result: dict, version: str, synthetic: bool = False) -> ModelB
         trained_on="SYNTHETIC smoke-test windows" if synthetic else "Auricle earlobe PPG windows (data/ml)",
         contract=contract,
     )
+
+
+def _calibration_contract(cal: dict | None, synthetic: bool) -> dict:
+    """Describe the optional per-person calibration (``BPEstimator.calibrate``) and its measured test performance."""
+    if not cal:
+        return {"supported": False}
+    summ = cal["summary"]
+    perf = {}
+    for _, r in summ[summ.method.isin(["delta_ridge", "carry_forward"])].iterrows():
+        perf.setdefault(r.scenario, {})[f"{r.target}_{r.method}_mae"] = float(r.mae)
+    return {
+        "supported": True,
+        "method": "delta_ridge",
+        "description": "cuff reading + ridge model of the BP change predicted from the PPG feature change since the "
+        "reading (trained on training subjects; one reading per recording, scored >= "
+        f"{cal['gap_s']:.0f} s later)",
+        "valid_for": [] if synthetic else ["auricle_earlobe"],
+        "test_performance": perf,
+        "params": cal["delta_params"],
+    }

@@ -47,7 +47,7 @@ def plot_dataset(d: pd.DataFrame, out: Path) -> Path:
         ax[1 + i].hist(d[t], bins=40, color=c, alpha=0.85)
         ax[1 + i].set(title=f"{t.upper()} label distribution", xlabel="mmHg", ylabel="windows")
     fig.tight_layout()
-    fig.savefig(out)
+    fig.savefig(out, dpi=150)
     plt.close(fig)
     return out
 
@@ -68,7 +68,7 @@ def plot_model_comparison(comp: pd.DataFrame, out: Path) -> Path:
     h, lab = ax[0].get_legend_handles_labels()
     fig.legend(h, lab, loc="lower center", ncol=4, frameon=False, fontsize=8)
     fig.tight_layout(rect=(0, 0.07, 1, 1))
-    fig.savefig(out)
+    fig.savefig(out, dpi=150)
     plt.close(fig)
     return out
 
@@ -93,7 +93,7 @@ def plot_actual_vs_predicted(preds: pd.DataFrame, selection: pd.DataFrame, out: 
         )
         a.legend(frameon=False, fontsize=8)
     fig.tight_layout()
-    fig.savefig(out)
+    fig.savefig(out, dpi=150)
     plt.close(fig)
     return out
 
@@ -119,7 +119,7 @@ def plot_residuals(preds: pd.DataFrame, selection: pd.DataFrame, out: Path) -> P
             ylabel="difference (mmHg)",
         )
     fig.tight_layout()
-    fig.savefig(out)
+    fig.savefig(out, dpi=150)
     plt.close(fig)
     return out
 
@@ -207,6 +207,13 @@ def write_tables(result: dict, out: Path) -> dict[str, Path]:
             }
         ),
     }
+    if "nested" in result:
+        n = result["nested"]
+        choices = n["choices"].copy()
+        choices["params"] = choices["params"].map(json.dumps)
+        files.update(nested_cv_summary=n["summary"], nested_cv_per_subject=n["per_subject"], nested_cv_choices=choices)
+    if "calibration" in result:
+        files["calibration_summary"] = result["calibration"]["summary"]
     paths = {}
     for name, df in files.items():
         p = out / f"{name}.csv"
@@ -429,6 +436,95 @@ def write_markdown(result: dict, ctx: dict, out: Path, figures: dict[str, Path],
         "",
     ]
 
+    if "nested" in result:
+        n = result["nested"]
+        ns = n["summary"].set_index(["target", "model"])
+        L += [
+            "### 4.4 Nested subject-wise cross-validation (all subjects)",
+            "",
+            f"Every one of the {int(ns['n_subjects'].max())} subjects is predicted once by a model whose features, "
+            "hyper-parameters and model family were chosen on the other subjects only (5 outer folds, inner "
+            "5-fold GroupKFold). This is a more stable estimate than the 8-subject test set.",
+            "",
+        ]
+        rows = []
+        for t in TARGETS:
+            m, b = ns.loc[(t, "nested-selected")], ns.loc[(t, "mean")]
+            rows.append(
+                {
+                    "Target": t.upper(),
+                    "MAE": m.mae,
+                    "RMSE": m.rmse,
+                    "R²": m.r2,
+                    "Baseline MAE": b.mae,
+                    "Difference [95 % CI]": f"{m.mae_difference:+.2f} [{m.ci_low:+.2f}, {m.ci_high:+.2f}]",
+                    "Subjects": int(m.n_subjects),
+                }
+            )
+        L += [_md_table(pd.DataFrame(rows)), ""]
+        ch = n["choices"].groupby("target").model.value_counts().reset_index(name="outer folds")
+        L += [
+            "Models chosen by the inner loop: "
+            + "; ".join(f"{r.target.upper()} {r.model} ×{r['outer folds']}" for _, r in ch.iterrows())
+            + ".",
+            "",
+        ]
+        ps = n["per_subject"]
+        worse = ps[ps.mae_model > ps.mae_baseline].groupby("target").size().to_dict()
+        L += [
+            f"Per subject, the model is worse than the baseline for {worse.get('sbp', 0)} of "
+            f"{ps[ps.target == 'sbp'].shape[0]} subjects (SBP) and {worse.get('dbp', 0)} (DBP). Errors are "
+            "dominated by each person's offset from the population mean (regression to the mean): the model "
+            "over-predicts low-BP subjects and under-predicts high-BP subjects.",
+            "",
+            f"![subject-wise]({rel(figures['subjects'])})",
+            "",
+        ]
+    if "calibration" in result:
+        c = result["calibration"]
+        cs = c["summary"]
+        L += [
+            "### 4.5 Per-person cuff calibration",
+            "",
+            f"One labelled rest window per recording plays the role of a cuff reading; windows at least "
+            f"{c['gap_s']:.0f} s later are scored on the held-out test subjects. `carry_forward` (report the cuff "
+            "value, no PPG) is the baseline any PPG method must beat. Differences are against `carry_forward`.",
+            "",
+        ]
+        tab = cs[["scenario", "target", "method", "mae", "rmse", "r2", "n_windows", "n_subjects"]].copy()
+        tab["vs carry_forward [95 % CI]"] = [
+            "" if r.method == "carry_forward" else f"{r.mae_difference:+.2f} [{r.ci_low:+.2f}, {r.ci_high:+.2f}]"
+            for _, r in cs.iterrows()
+        ]
+        tab["target"] = tab.target.str.upper()
+        tab.columns = [
+            "Scenario",
+            "Target",
+            "Method",
+            "MAE",
+            "RMSE",
+            "R²",
+            "Windows",
+            "Subjects",
+            "vs carry_forward [95 % CI]",
+        ]
+        L += [_md_table(tab), ""]
+        better = cs[(cs.method != "carry_forward") & cs.model_better.fillna(False).astype(bool)]
+        if len(better):
+            L += [
+                "Significantly better than carry-forward: "
+                + "; ".join(
+                    f"{r.method} for {r.target.upper()} ({r.scenario}, {r.mae_difference:+.2f} mmHg)"
+                    for _, r in better.iterrows()
+                )
+                + ". Every other PPG method is not significantly better than "
+                "simply reporting the cuff reading.",
+                "",
+            ]
+        else:
+            L += ["No PPG method is significantly better than simply reporting the cuff reading.", ""]
+        L += [f"![calibration]({rel(figures['calibration'])})", ""]
+
     # ---- artefacts and limitations
     L += ["## 5. Exported model", ""]
     L += [
@@ -436,6 +532,8 @@ def write_markdown(result: dict, ctx: dict, out: Path, figures: dict[str, Path],
         "`rakshpulse.inference.model_loader.load_bundle` and used by `rakshpulse.inference.api.BPEstimator`.",
         "- Contract: `experimental` for Auricle earlobe data; `demonstration` for `max30102` and the simulator; "
         "`validated` for nothing.",
+        "- Calibration: the bundle carries the `delta_ridge` models; `BPEstimator.calibrate(sbp, dbp, ir, fs)` "
+        "stores one cuff reading and later estimates are reported relative to it (section 4.5).",
         "",
     ]
     L += [
@@ -462,4 +560,59 @@ def write_markdown(result: dict, ctx: dict, out: Path, figures: dict[str, Path],
         "",
     ]
     out.write_text("\n".join(L), encoding="utf-8")
+    return out
+
+
+def plot_subject_wise(nested: dict, out: Path) -> Path:
+    """Per-subject MAE (nested CV) of the model and the baseline, ordered by the subject's mean reference BP."""
+    _style()
+    ps = nested["per_subject"]
+    fig, ax = plt.subplots(2, 1, figsize=(13, 7), sharex=False)
+    for a, t in zip(ax, TARGETS, strict=True):
+        p = ps[ps.target == t].sort_values("mean_reference").reset_index(drop=True)
+        x = np.arange(len(p))
+        a.bar(x - 0.2, p.mae_baseline, 0.4, color=GREY, label="baseline (training mean)")
+        a.bar(x + 0.2, p.mae_model, 0.4, color=NAVY, label="nested-CV model")
+        a2 = a.twinx()
+        a2.plot(x, p.bias_model, color=ORANGE, marker="o", ms=3, lw=1, label="model bias (pred − ref)")
+        a2.axhline(0, color=ORANGE, lw=0.6, ls=":")
+        a2.set_ylabel("bias (mmHg)", color=ORANGE)
+        a.set_xticks(x, [f"{v:.0f}" for v in p.mean_reference], fontsize=7, rotation=90)
+        a.set(
+            title=f"{t.upper()}: per-subject MAE, subjects ordered by their mean reference {t.upper()}",
+            xlabel=f"subject mean reference {t.upper()} (mmHg)",
+            ylabel="MAE (mmHg)",
+        )
+        h1, l1 = a.get_legend_handles_labels()
+        h2, l2 = a2.get_legend_handles_labels()
+        a.legend(h1 + h2, l1 + l2, frameon=False, fontsize=8, loc="upper center", ncol=3)
+    fig.tight_layout()
+    fig.savefig(out, dpi=150)
+    plt.close(fig)
+    return out
+
+
+def plot_calibration(cal: dict, out: Path) -> Path:
+    """MAE by calibration method, scenario and target, with the subject-bootstrap CI of the difference."""
+    _style()
+    s = cal["summary"]
+    order = ["population", "carry_forward", "offset", "delta_ridge"]
+    colours = {"population": GREY, "carry_forward": ORANGE, "offset": TEAL, "delta_ridge": NAVY}
+    scen = list(dict.fromkeys(s.scenario))
+    fig, ax = plt.subplots(1, len(scen), figsize=(6.5 * len(scen), 4), squeeze=False)
+    for a, sc in zip(ax[0], scen, strict=True):
+        d = s[s.scenario == sc]
+        for j, t in enumerate(TARGETS):
+            for k, m in enumerate(order):
+                r = d[(d.target == t) & (d.method == m)]
+                if r.empty:
+                    continue
+                a.bar(j + (k - 1.5) * 0.2, float(r.mae.iloc[0]), 0.2, color=colours[m], label=m if j == 0 else None)
+        a.set_xticks(range(len(TARGETS)), [t.upper() for t in TARGETS])
+        a.set(title=f"Calibration: {sc}", ylabel="MAE (mmHg)")
+    h, lab = ax[0][0].get_legend_handles_labels()
+    fig.legend(h, lab, loc="lower center", ncol=4, frameon=False, fontsize=9)
+    fig.tight_layout(rect=(0, 0.08, 1, 1))
+    fig.savefig(out, dpi=150)
+    plt.close(fig)
     return out

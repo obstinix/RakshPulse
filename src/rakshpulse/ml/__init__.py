@@ -15,6 +15,7 @@ from .dataset import (
     make_smoke_dataset,
 )
 from .training import PipelineConfig, export_bundle, run_training
+from .workflow import make_figures, train_and_evaluate
 
 __all__ = [
     "DatasetPaths",
@@ -24,6 +25,8 @@ __all__ = [
     "candidate_features",
     "export_bundle",
     "load_ml_dataset",
+    "make_figures",
     "make_smoke_dataset",
     "run_training",
+    "train_and_evaluate",
 ]
