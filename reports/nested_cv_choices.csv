@@ -1,0 +1,11 @@
+outer_fold,target,model,params,inner_cv_mae,n_features,test_subjects
+0,sbp,ridge,"{""alpha"": 10000.0}",14.6742,40,8
+0,dbp,svr,"{""C"": 3.0, ""epsilon"": 2.0, ""gamma"": 0.01}",9.5496,40,8
+1,sbp,ridge,"{""alpha"": 10000.0}",14.2732,42,8
+1,dbp,svr,"{""C"": 3.0, ""epsilon"": 2.0, ""gamma"": 0.01}",8.8478,42,8
+2,sbp,svr,"{""C"": 3.0, ""epsilon"": 5.0, ""gamma"": 0.01}",14.0540,40,8
+2,dbp,svr,"{""C"": 3.0, ""epsilon"": 2.0, ""gamma"": 0.01}",8.9564,40,8
+3,sbp,ridge,"{""alpha"": 10000.0}",14.4604,42,8
+3,dbp,svr,"{""C"": 3.0, ""epsilon"": 2.0, ""gamma"": 0.01}",8.6527,42,8
+4,sbp,ridge,"{""alpha"": 100000.0}",14.9603,40,8
+4,dbp,svr,"{""C"": 3.0, ""epsilon"": 2.0, ""gamma"": 0.01}",10.0324,40,8

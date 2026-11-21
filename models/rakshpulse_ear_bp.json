@@ -1,5 +1,5 @@
 {
-  "version": "rakshpulse-ear-bp-1.0+e37871a3",
+  "version": "rakshpulse-ear-bp-1.1+0bccb773",
   "features": [
     "ear_hr",
     "ear_w10_n",
@@ -59,7 +59,7 @@
         "source": "ir_w10_n",
         "kind": "signal",
         "required": true,
-        "fill": 0.761904761904762,
+        "fill": 0.761905,
         "training_missing_rate": 0.0
       },
       {
@@ -67,7 +67,7 @@
         "source": "ir_w25_n",
         "kind": "signal",
         "required": true,
-        "fill": 0.6212121212121211,
+        "fill": 0.621212,
         "training_missing_rate": 0.0
       },
       {
@@ -75,7 +75,7 @@
         "source": "ir_w50_n",
         "kind": "signal",
         "required": true,
-        "fill": 0.43956043956043955,
+        "fill": 0.43956,
         "training_missing_rate": 0.0
       },
       {
@@ -83,7 +83,7 @@
         "source": "ir_w75_n",
         "kind": "signal",
         "required": true,
-        "fill": 0.2608695652173913,
+        "fill": 0.26087,
         "training_missing_rate": 0.0
       },
       {
@@ -91,7 +91,7 @@
         "source": "ir_w90_n",
         "kind": "signal",
         "required": true,
-        "fill": 0.15384615384615385,
+        "fill": 0.153846,
         "training_missing_rate": 0.0
       },
       {
@@ -99,7 +99,7 @@
         "source": "ir_t_max_slope_n",
         "kind": "signal",
         "required": true,
-        "fill": 0.06779661016949153,
+        "fill": 0.0677966,
         "training_missing_rate": 0.0
       },
       {
@@ -107,7 +107,7 @@
         "source": "ir_t_apg_b_n",
         "kind": "signal",
         "required": true,
-        "fill": 0.14159292035398233,
+        "fill": 0.141593,
         "training_missing_rate": 0.0
       },
       {
@@ -115,7 +115,7 @@
         "source": "ir_max_slope_n",
         "kind": "signal",
         "required": true,
-        "fill": 6.6628799999999995,
+        "fill": 6.66288,
         "training_missing_rate": 0.0
       },
       {
@@ -396,8 +396,8 @@
     "uncertainty": {
       "method": "subject_wise_cv_conformal_90",
       "halfwidth_90": {
-        "sbp": 30.33644793320658,
-        "dbp": 21.12294770615724
+        "sbp": 30.336441009197618,
+        "dbp": 21.122823208476248
       },
       "valid_for": [
         "auricle_earlobe"
@@ -408,15 +408,42 @@
       }
     },
     "calibration": {
-      "supported": true
+      "supported": true,
+      "method": "delta_ridge",
+      "description": "cuff reading + ridge model of the BP change predicted from the PPG feature change since the reading (trained on training subjects; one reading per recording, scored >= 60 s later)",
+      "valid_for": [
+        "auricle_earlobe"
+      ],
+      "test_performance": {
+        "within-session": {
+          "sbp_carry_forward_mae": 11.166687388987564,
+          "sbp_delta_ridge_mae": 11.283187148900085,
+          "dbp_carry_forward_mae": 6.793801065719361,
+          "dbp_delta_ridge_mae": 6.3062020602478155
+        },
+        "cross-session (S1 \u2192 S2)": {
+          "sbp_carry_forward_mae": 9.568372093023257,
+          "sbp_delta_ridge_mae": 12.514850816349654,
+          "dbp_carry_forward_mae": 10.376723044397464,
+          "dbp_delta_ridge_mae": 10.795931966178303
+        }
+      },
+      "params": {
+        "sbp": {
+          "alpha": 10000.0
+        },
+        "dbp": {
+          "alpha": 10000.0
+        }
+      }
     },
     "performance": {
-      "sbp_mae": 13.662739261289857,
-      "sbp_rmse": 16.26084543872543,
-      "sbp_r2": -0.04933283625934015,
-      "dbp_mae": 6.7477464933256694,
-      "dbp_rmse": 8.604945498363891,
-      "dbp_r2": -0.2312703533726339,
+      "sbp_mae": 13.662738895669913,
+      "sbp_rmse": 16.26084501112971,
+      "sbp_r2": -0.0493327810727604,
+      "dbp_mae": 6.747796038658145,
+      "dbp_rmse": 8.605001248436947,
+      "dbp_r2": -0.2312863078338283,
       "sbp_baseline_mae": 14.076195082890786,
       "dbp_baseline_mae": 6.381540753323781
     },
@@ -444,18 +471,18 @@
   },
   "validation": {
     "sbp": {
-      "mae": 13.662739261289857,
-      "rmse": 16.26084543872543,
-      "r2": -0.04933283625934015
+      "mae": 13.662738895669913,
+      "rmse": 16.26084501112971,
+      "r2": -0.0493327810727604
     },
     "dbp": {
-      "mae": 6.7477464933256694,
-      "rmse": 8.604945498363891,
-      "r2": -0.2312703533726339
+      "mae": 6.747796038658145,
+      "rmse": 8.605001248436947,
+      "r2": -0.2312863078338283
     },
     "n_subjects_train": 32,
     "n_subjects_test": 8,
     "protocol": "subject-wise held-out test set; GroupKFold CV for tuning and selection"
   },
-  "created_utc": "2026-11-21T13:48:49+00:00"
+  "created_utc": "2026-11-21T15:12:44+00:00"
 }
