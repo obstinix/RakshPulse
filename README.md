@@ -9,7 +9,7 @@ behind-the-ear MAX30102 sensor.**
 [![Release](https://img.shields.io/github/v/release/obstinix/RakshPulse?sort=semver&color=0F8B8D)](https://github.com/obstinix/RakshPulse/releases)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-3776AB?logo=python&logoColor=white)](pyproject.toml)
 [![Platforms](https://img.shields.io/badge/CI-Linux%20%7C%20Windows-1B2A4A)](.github/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-189%20passing-2EA44F?logo=pytest&logoColor=white)](tests)
+[![Tests](https://img.shields.io/badge/tests-190%20passing-2EA44F?logo=pytest&logoColor=white)](tests)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License: CC0-1.0](https://img.shields.io/badge/license-CC0--1.0-lightgrey)](LICENSE)
 <br>
@@ -154,7 +154,7 @@ and repeated. Pin numbers, supply voltage and pull-ups are board-specific and ar
 ## MAX30102 integration
 
 The hardware team starts with the illustrated
-**[Hardware Integration Manual (PDF)](docs/RAKSHPULSE_HARDWARE_INTEGRATION_MANUAL.pdf)** or the short
+**[Complete Hardware and Operator Manual (PDF)](docs/RAKSHPULSE_COMPLETE_HARDWARE_AND_OPERATOR_MANUAL.pdf)** or the short
 [HARDWARE_HANDOFF.md](docs/HARDWARE_HANDOFF.md):
 
 1. Wire the MAX30102 (power, GND, SDA, SCL) and flash
@@ -478,7 +478,7 @@ python scripts/run_v5_experiments.py && python scripts/build_model_contracts.py 
 | Document | Contents |
 |---|---|
 | [Final model evaluation](reports/final_model_evaluation.md) | Generated report: dataset, protocol, every metric, figures, limitations |
-| [Hardware Integration Manual (PDF)](docs/RAKSHPULSE_HARDWARE_INTEGRATION_MANUAL.pdf) | Illustrated handbook for the hardware team |
+| [Complete Hardware and Operator Manual (PDF)](docs/RAKSHPULSE_COMPLETE_HARDWARE_AND_OPERATOR_MANUAL.pdf) | Beginner-friendly handbook: why the ESP32 shows no SYS/DIA, wiring, install, recording, accuracy ([source](docs/manual/README.md)) |
 | [HARDWARE_HANDOFF](docs/HARDWARE_HANDOFF.md) | Serial contract, firmware, setup, commands, data formats, troubleshooting, checklist |
 | [HARDWARE_INTEGRATION](docs/HARDWARE_INTEGRATION.md) | Python inference, streaming and export interfaces |
 | [USER_GUIDE](docs/USER_GUIDE.md) | Every CLI command and the research workflow |

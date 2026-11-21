@@ -1,7 +1,7 @@
 # Hardware Integration: Python Interfaces for Device Integration
 
 To connect a MAX30102 and record data, follow [HARDWARE_HANDOFF.md](HARDWARE_HANDOFF.md) or the illustrated
-[Hardware Integration Manual (PDF)](RAKSHPULSE_HARDWARE_INTEGRATION_MANUAL.pdf). This page documents the Python
+[Complete Hardware and Operator Manual (PDF)](RAKSHPULSE_COMPLETE_HARDWARE_AND_OPERATOR_MANUAL.pdf). This page documents the Python
 interfaces a device integration builds on.
 
 ## Recommended entry point: `rakshpulse.inference.api`
