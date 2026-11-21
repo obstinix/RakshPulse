@@ -4,11 +4,44 @@ To connect a MAX30102 and record data, follow [HARDWARE_HANDOFF.md](HARDWARE_HAN
 [Hardware Integration Manual (PDF)](RAKSHPULSE_HARDWARE_INTEGRATION_MANUAL.pdf). This page documents the Python
 interfaces a device integration builds on.
 
+## Recommended entry point: `rakshpulse.inference.api`
+
+```python
+from rakshpulse.inference.api import BPEstimator, StreamingBPEstimator
+
+est = BPEstimator(sensor="max30102")              # default bundle: models/rakshpulse_ear_bp.joblib
+r = est.estimate(ir=ir_counts, fs=100.0, red=red_counts, metadata={"session": "D1"})
+print(r.to_dict())
+```
+
+| Field | Meaning |
+|---|---|
+| `status` | `ok`, `poor_signal` (too few windows passed the quality gate), `invalid_input` (bad samples or rate) or `incompatible_model` |
+| `sbp`, `dbp` | Median over accepted 10 s windows; `None` unless `status == "ok"` |
+| `sbp_interval_90`, `dbp_interval_90` | 90 % interval, only if the model's uncertainty is valid for this sensor (not `max30102`) |
+| `signal_quality` | Window counts per quality class, median quality score, most frequent rejection reasons |
+| `inference_mode` | `validated` / `experimental` / `demonstration` from the model contract (`demonstration` for MAX30102) |
+| `model_id`, `model_version`, `warnings`, `message`, `latency_ms`, `metadata` | Provenance and diagnostics |
+
+- **Input:** raw MAX30102 ADC counts (IR required, red optional) and the effective sampling rate (sample rate ÷
+  averaging), at least 10 s. Other signal units: pass `pipeline_overrides=ANALOG_INPUT` to disable ADC rail checks.
+- **Validation:** non-numeric, multi-dimensional, infinite or mostly-missing samples, a non-positive rate, unequal
+  channel lengths and recordings shorter than one window return `invalid_input` with a message; nothing raises.
+- **Processing:** the production pipeline used for recorded sessions (`preprocessing.pipeline`), then
+  `inference.engine.predict_windows` (model contract, sensor and sampling-rate checks). Nothing is reimplemented.
+- **Streaming:** `StreamingBPEstimator(est, fs, buffer_s=30)` keeps a ring buffer of the last `buffer_s` seconds;
+  `push()` any chunk size (e.g. one FIFO read), `estimate()` when needed.
+- **Cost:** about 0.1 s of desktop CPU per 30 s of data.
+- **Offline vs hardware validation:** the default model was tested on held-out subjects of the Auricle earlobe
+  dataset ([reports/final_model_evaluation.md](../reports/final_model_evaluation.md)) and is no better than the
+  population mean there. It has never seen MAX30102 data, so on MAX30102 input it runs in `demonstration` mode.
+
 ## Status
 
 | Item | Status |
 |---|---|
-| Python inference API (`BPPredictor`) | **Implemented and tested** with synthetic and real dataset signals |
+| Hardware inference API (`rakshpulse.inference.api`) | **Implemented and tested** with simulated MAX30102 signals and recorded earlobe PPG |
+| Python inference API (`BPPredictor`, 1.0) | **Implemented and tested** with synthetic and real dataset signals |
 | Accepts MAX30102 raw red/IR FIFO counts | **Implemented.** `raw_counts=True` handles DC offset and inverted pulses |
 | Tested on real MAX30102 behind-ear data | **Not done.** No such data exists yet |
 | Serial acquisition, `check-serial`, `record`, `analyze` (5.1) | **Implemented and tested** with simulated and loop-back serial ports |

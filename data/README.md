@@ -11,6 +11,14 @@ data/
 └── processed/  older per-study feature tables for Guilin / Foggia / PPG-BP / Auricle (git-ignored, regenerable)
 ```
 
+## Model-ready dataset (`data/ml/`)
+
+`auricle_ear_bp_windows.csv` is written by `scripts/run_complete_pipeline.py` (`rakshpulse.ml.build_ear_dataset`)
+from the Auricle tables below: one row per 10 s earlobe window with `subject_id`, `session`, `activity`, the CNAP
+`sbp`/`dbp` label, `fit_window` (non-overlapping windows used for fitting), 47 candidate features and
+`synthetic=False`. `auricle_ear_bp_cleaning_log.csv` lists every exclusion step with window and subject counts
+(9,851 windows and 40 subjects remain). `data/ml/cache/` (resume cache) is git-ignored.
+
 ## Auricle standardised dataset (`data/auricle/`)
 
 Source: *Auricle* v1.0.0, PhysioNet, doi:10.13026/swme-vp69, **ODC-By 1.0** (redistribution allowed with

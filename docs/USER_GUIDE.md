@@ -18,7 +18,23 @@ rakshpulse doctor                                      # environment check + sim
 
 Python 3.10–3.12 is supported and tested in CI.
 
-## 2. The workflow at a glance
+## 2. Complete ML pipeline (one command)
+
+```bash
+python scripts/run_complete_pipeline.py                  # dataset audit → validation → cleaning → training → report
+python scripts/run_complete_pipeline.py --evaluate-only  # re-evaluate models/rakshpulse_ear_bp.joblib
+python scripts/run_complete_pipeline.py --smoke-test     # SYNTHETIC data; proves the code runs, nothing more
+python scripts/run_complete_pipeline.py --force          # ignore cached stages
+python scripts/run_complete_pipeline.py --with-waveforms # also download the raw Auricle waveforms (≈350 MB)
+```
+
+Stages: dependencies, dataset availability, downloads, integrity checks, a feature-reproducibility check (production
+extractor on the raw waveforms, if downloaded), cleaning and label alignment, the model-ready CSV, subject-wise
+training with grid search, evaluation (cross-validation, independent test, cross-session, baseline), selection,
+export, figures and `reports/final_model_evaluation.md`. The same functions (`rakshpulse.ml`) run in
+`notebooks/RakshPulse_Complete_ML.ipynb`.
+
+## 3. The workflow at a glance
 
 ```
 record / simulate ─► dataset (CSV) ─► preprocess ─► features (+ cuff references) ─► train ─► calibrate ─► evaluate
@@ -46,9 +62,9 @@ live source ──────────────────────�
 
 Every command has `-h`. Exit codes: `0` success, `1` a check failed / no trustworthy result, `2` invalid usage or input, `3` device or serial problem, `4` incompatible model. `--fs` (the effective sampling rate) is required for serial and replay sources: it is never assumed.
 
-**Model contracts and modes.** Every bundle declares its required inputs (features, demographics), the sensors it supports, the sampling rates and preprocessing it accepts, and whether its uncertainty interval is valid for a sensor (`inference/contract.py`). Inference refuses incompatible inputs (exit 4) and never imputes required inputs. Each prediction carries `inference_mode`: `validated` (no model yet), `experimental` (trained on this sensor type, cross-validated only) or `demonstration` (pipeline demo, **not BP**). The shipped `models/auricle_ear_ridge_v2.joblib` is demonstration-only for MAX30102.
+**Model contracts and modes.** Every bundle declares its required inputs (features, demographics), the sensors it supports, the sampling rates and preprocessing it accepts, and whether its uncertainty interval is valid for a sensor (`inference/contract.py`). Inference refuses incompatible inputs (exit 4) and never imputes required inputs. Each prediction carries `inference_mode`: `validated` (no model yet), `experimental` (trained on this sensor type, cross-validated only) or `demonstration` (pipeline demo, **not BP**). The default `models/rakshpulse_ear_bp.joblib` (from `run_complete_pipeline.py`) is `experimental` for Auricle earlobe data and demonstration-only for MAX30102.
 
-## 3. Recording
+## 4. Recording
 
 ```bash
 # simulated sensor (software testing; flagged sensor_type=simulator)
@@ -68,7 +84,7 @@ rakshpulse record --out data/mystudy --subject P001 --session D1 --source serial
 - Missing samples (sample-counter gaps) are logged to `gaps.csv`.
 - Ctrl-C stops a live recording cleanly: files are closed, hashed and registered.
 
-## 4. Training guide
+## 5. Training guide
 
 ```bash
 rakshpulse preprocess --dataset data/mystudy
@@ -93,7 +109,7 @@ rakshpulse train --table tables/mystudy.csv --model ridge --split cross_day --tr
   feature models only.
 - `train` refuses an all-simulated table unless `--allow-simulated` is given (for software tests).
 
-## 5. Calibration guide
+## 6. Calibration guide
 
 ```bash
 rakshpulse calibrate --oof models/<version>_oof.csv --k 1 3 --spacing 60 --expiry 3600 --params-out calib_params.csv
@@ -122,7 +138,7 @@ Rules that are enforced in code:
 **Claim PPG value only when `combined` beats `cuff_hierarchical`.** Beating `cuff_last` alone can come purely
 from statistical shrinkage (RESEARCH_FINDINGS 3.0/4.0).
 
-## 6. Evaluation
+## 7. Evaluation
 
 ```bash
 rakshpulse evaluate --model models/<version>.joblib --table tables/new_site.csv --out eval.csv
@@ -133,7 +149,7 @@ repeated-measures Bland–Altman limits, and a paired test against an *oracle* c
 mean; it is optimistic for the baseline). For multiple comparisons, use `evaluation/statistics.py` (Holm / BH,
 sign-flip permutation, Cohen's d_z). The subject is always the unit of analysis.
 
-## 7. Streaming inference
+## 8. Streaming inference
 
 ```bash
 rakshpulse infer --model models/<version>.joblib --source serial --port COM5 --fs 100 --hop 5 \
@@ -146,7 +162,7 @@ rakshpulse infer --model models/<version>.joblib --source serial --port COM5 --f
 - `--prefix-map ir_:ear_` runs the 4.0 Auricle ear bundle on IR input. That crosses sensor and site domains and
   is **not** validated.
 
-## 8. Export
+## 9. Export
 
 ```bash
 rakshpulse export --model models/<version>.joblib --out export/ --table tables/mystudy.csv
@@ -156,7 +172,7 @@ This writes a float32 JSON file and a C99 header (`<name>_predict(const float *x
 checks equivalence with scikit-learn. float32 is the default and the recommendation. 4.0 showed that naive int8
 quantisation introduces errors of several mmHg.
 
-## 9. Python API
+## 10. Python API
 
 ```python
 from rakshpulse.acquisition.simulator import SimConfig

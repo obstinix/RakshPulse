@@ -261,7 +261,7 @@ def ch03(b):
             ],
             [
                 "Testing",
-                "Software tests (164 automated tests) prove the code behaves as designed. They say nothing about "
+                "Software tests (185 automated tests) prove the code behaves as designed. They say nothing about "
                 "BP accuracy.",
                 "Software team",
             ],
@@ -297,22 +297,24 @@ def ch03(b):
     )
     b.h2("The shipped model and its honest status")
     b.p(
-        "The default model is `models/auricle_ear_ridge_v2.joblib` (model id `auricle-ear-ridge`). It was trained on "
-        "a public research dataset of PPG recorded at the **earlobe** with a different sensor. Its contract declares "
-        "it **demonstration-only** for `max30102` and for the simulator."
+        "The default model is `models/rakshpulse_ear_bp.joblib` (model id `rakshpulse-ear-bp`), produced by "
+        "`python scripts/run_complete_pipeline.py`. It was trained on a public research dataset of PPG recorded at the "
+        "**earlobe** with a different sensor (40 healthy adults, continuous reference BP), and tested on 8 people it "
+        "never saw. Its contract declares it `experimental` for that earlobe data and **demonstration-only** for "
+        "`max30102` and the simulator."
     )
     b.table(
-        ["What was measured (stored research results)", "Model", "Predict-the-average baseline"],
+        ["Measured on 8 held-out people (reports/final_model_evaluation.md)", "Model", "Predict-the-average baseline"],
         [
-            ["SBP error on people not seen in training (MAE, mmHg)", "15.0", "15.29"],
-            ["DBP error on people not seen in training (MAE, mmHg)", "10.98", "10.72"],
+            ["SBP error (MAE, mmHg): ridge regression", "13.66", "14.08"],
+            ["DBP error (MAE, mmHg): support vector regression", "6.75", "6.38"],
         ],
         [4.5, 1.2, 2.2],
     )
     b.p(
-        "In words: on the earlobe dataset it was built from, the model is only marginally better than guessing the "
-        "average for systolic pressure and slightly *worse* for diastolic. Its uncertainty interval (±31.4 mmHg SBP, "
-        "±21.8 mmHg DBP) is valid only for that earlobe data, so for MAX30102 the software reports the uncertainty as "
+        "In words: on the earlobe dataset it was built from, the model is not better than guessing the population "
+        "average (neither difference is statistically significant). Its uncertainty interval (±30.3 mmHg SBP, "
+        "±21.1 mmHg DBP) is valid only for that earlobe data, so for MAX30102 the software reports the uncertainty as "
         "unavailable. Research on this project also found that what the PPG signal adds beyond a cuff reading did not "
         "carry over from one day to another."
     )
@@ -705,7 +707,7 @@ python 3.11.9 on Windows-10-10.0.26300-SP0
   ok   pandas 3.0.6
   ...
   ok   self-test: simulated 30 s -> 5 windows, HR error 0.3 bpm
-  ok   default model auricle_ear_ridge_v2.joblib: auricle-ear-ridge runs on max30102 data in 'demonstration' mode
+  ok   default model rakshpulse_ear_bp.joblib: rakshpulse-ear-bp runs on max30102 data in 'demonstration' mode
   ok   serial recording available (pyserial installed)
 doctor: all required checks passed
 """,
@@ -1102,15 +1104,15 @@ validation: all PASS
 [1/5] validating SIM001/D1 (simulator, 100 Hz)
 [2/5] processing windows
 [3/5] model checks and prediction
-      model auricle-ear-ridge (auricle-ear-ridge-1+contract1): mode=demonstration
+      model rakshpulse-ear-bp (rakshpulse-ear-bp-1.0+e37871a3): mode=demonstration
       DEMONSTRATION MODE: this model has not been validated for this sensor; the numbers
       show that the pipeline runs and are NOT blood-pressure measurements.
       windows: 17 total, 17 predicted; status counts {'usable': 14, 'degraded': 3}
 [4/5] cuff references
-      2 independent readings vs population estimate: SBP MAE 15.6 ... [demonstration mode: not an accuracy claim]
+      2 independent readings vs population estimate: SBP MAE 9.8 ... [demonstration mode: not an accuracy claim]
 [5/5] writing results
-      median estimate over accepted windows: 102/65 mmHg  (uncertainty unavailable for sensor 'simulator' ...)
-      wrote ...\\sessions\\SIM001\\D1\\derived\\predictions_auricle-ear-ridge.csv
+      median estimate over accepted windows: 108/69 mmHg  (uncertainty unavailable for sensor 'simulator' ...)
+      wrote ...\\sessions\\SIM001\\D1\\derived\\predictions_rakshpulse-ear-bp.csv
 """,
         "Output",
         "real output, simulated example",
@@ -1409,7 +1411,7 @@ def ch15(b):
             ],
             [
                 "Model",
-                "No model is validated or experimental for MAX30102. The shipped model is demonstration-only on MAX30102 and was barely better than (SBP) or worse than (DBP) predicting the average on its own earlobe dataset.",
+                "No model is validated or experimental for MAX30102. The shipped model is demonstration-only on MAX30102 and, on held-out people of its own earlobe dataset, was not better than predicting the average (SBP MAE 13.66 vs 14.08, DBP 6.75 vs 6.38 mmHg).",
             ],
             [
                 "Uncertainty",

@@ -8,7 +8,7 @@ built around the MAX30102 optical sensor.**
 [![CI](https://github.com/obstinix/RakshPulse/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/obstinix/RakshPulse/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/obstinix/RakshPulse?sort=semver&color=0F8B8D)](https://github.com/obstinix/RakshPulse/releases)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-3776AB?logo=python&logoColor=white)](pyproject.toml)
-[![Tests](https://img.shields.io/badge/tests-164%20passing-2EA44F?logo=pytest&logoColor=white)](tests)
+[![Tests](https://img.shields.io/badge/tests-185%20passing-2EA44F?logo=pytest&logoColor=white)](tests)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License: CC0-1.0](https://img.shields.io/badge/license-CC0--1.0-lightgrey)](LICENSE)
 <br>
@@ -27,6 +27,7 @@ built around the MAX30102 optical sensor.**
 
 [Overview](#overview) · [Architecture](#system-architecture) · [ML pipeline](#ml-pipeline) ·
 [Requirements](#requirements) · [Installation](#installation) · [Usage](#usage) ·
+[Model training and results](#model-training-and-results) ·
 [Hardware integration](#hardware-integration) · [Capabilities and limitations](#capabilities-and-limitations) ·
 [Research findings](#research-findings) · [Reproducing the research](#reproducing-the-research) ·
 [Documentation](#documentation) · [Repository layout](#repository-layout) · [Licences](#data-licences-and-attribution)
@@ -136,7 +137,7 @@ flowchart TB
 |---|---|---|
 | `validated` | Independently evaluated on this sensor type | No (none for any sensor) |
 | `experimental` | Trained on this sensor type, cross-validated only | No: needs MAX30102 recordings |
-| `demonstration` | Built for another sensor or site; shows the pipeline runs | **Yes**: the shipped `auricle_ear_ridge_v2` |
+| `demonstration` | Built for another sensor or site; shows the pipeline runs | **Yes**: the shipped `rakshpulse_ear_bp` |
 
 ## Requirements
 
@@ -147,7 +148,7 @@ flowchart TB
 | OS | Windows 10/11 or Linux (macOS works, untested in CI) |
 | Python | 3.10, 3.11 or 3.12 (all three tested in CI) |
 | Core packages | numpy, scipy, pandas, scikit-learn, xgboost, lightgbm, joblib, matplotlib, wfdb, openpyxl (installed automatically) |
-| Optional extras | `serial` (pyserial, for a live sensor), `dev` (pytest, ruff), `deep` (torch), `vitaldb` (VitalDB reader) |
+| Optional extras | `serial` (pyserial, for a live sensor), `dev` (pytest, ruff), `notebook` (Jupyter), `deep` (torch), `vitaldb` (VitalDB reader) |
 
 **Hardware** (only for live recording)
 
@@ -230,6 +231,63 @@ windows, segments = process_recording(store.raw("SIM1", "D1", chunksize=50_000),
 The streaming, personalisation and export APIs are described in [USER_GUIDE](docs/USER_GUIDE.md) and
 [HARDWARE_INTEGRATION](docs/HARDWARE_INTEGRATION.md).
 
+## Model training and results
+
+### One command
+
+```bash
+python scripts/run_complete_pipeline.py                  # audit → validate → clean → train → evaluate → export → report
+python scripts/run_complete_pipeline.py --evaluate-only  # re-evaluate the exported model, no training
+python scripts/run_complete_pipeline.py --smoke-test     # SYNTHETIC data: checks the code runs (not validation)
+```
+
+The full run takes about a minute on a laptop CPU and needs no download: the standardised Auricle tables are in the
+repository. It is resumable (unchanged stages are reused; `--force` recomputes) and writes:
+
+| Output | Contents |
+|---|---|
+| [`reports/final_model_evaluation.md`](reports/final_model_evaluation.md) | The evaluation report: dataset, protocol, every metric, figures, limitations |
+| `reports/*.csv` | Machine-readable results: metrics, model comparison, selection, baseline test, cross-session, test predictions, dataset audit and validation |
+| `data/ml/auricle_ear_bp_windows.csv` | The cleaned, model-ready dataset (with its cleaning log) |
+| `models/rakshpulse_ear_bp.joblib` | The exported model bundle (with a readable `.json` summary) |
+
+[`notebooks/RakshPulse_Complete_ML.ipynb`](notebooks/RakshPulse_Complete_ML.ipynb) runs the same workflow step by
+step (21 sections, from dataset loading to example inference) with the same functions (`rakshpulse.ml`); it checks
+that its models reproduce the exported bundle exactly. Install `pip install -e ".[notebook]"` to run it.
+
+### Protocol
+
+Data: the public **Auricle** dataset, healthy cohort: earlobe PPG (Nonin) with CNAP continuous BP, two sessions on
+different days. After cleaning (reliable and plausible labels, label stable within the window, production quality
+gate, no saturation): **9,851 windows from 40 subjects**. Split **by subject**: 32 training and 8 independent test
+subjects. Features: 40 of 47 single-channel PPG features from the production extractor (heart rate and pulse shape;
+computable on MAX30102 IR). Grid search with 5-fold GroupKFold over training subjects, separately for SBP and DBP;
+selection by cross-validated MAE; the test subjects are used only for the final numbers.
+
+### Results on the 8 independent test subjects (1,215 windows)
+
+| Model | SBP MAE | SBP RMSE | SBP R² | DBP MAE | DBP RMSE | DBP R² |
+|---|---|---|---|---|---|---|
+| Baseline: training mean | 14.08 | 16.92 | −0.14 | 6.38 | 7.76 | −0.00 |
+| Ridge regression | **13.66** ✓ | 16.26 | −0.05 | 6.06 | 7.86 | −0.03 |
+| Support vector regression | 13.38 | 15.94 | −0.01 | **6.75** ✓ | 8.60 | −0.23 |
+| Random forest | 13.70 | 16.10 | −0.03 | 6.34 | 8.10 | −0.09 |
+| Gradient boosting (histogram) | 14.69 | 17.29 | −0.19 | 6.78 | 8.68 | −0.25 |
+| XGBoost | 14.60 | 17.24 | −0.18 | 6.73 | 8.60 | −0.23 |
+| LightGBM | 14.89 | 17.65 | −0.24 | 7.08 | 8.96 | −0.33 |
+
+✓ = selected by cross-validation (SBP: ridge, α = 10⁴; DBP: RBF SVR, C = 3, ε = 2, γ = 0.01). MAE and RMSE in mmHg.
+
+**Honest reading: no model beats predicting the population mean.** The SBP difference against the baseline is
+−0.41 mmHg (95 % subject-bootstrap CI −1.73 to +1.01) and the DBP difference +0.37 mmHg (−1.31 to +1.87); R² is at or
+below 0. Predicting an unseen person's blood pressure from a single 10 s PPG window, without a personal cuff calibration, does
+not estimate their blood pressure. This agrees with the project's earlier research. Full details, Bland–Altman limits,
+cross-session results and figures: [reports/final_model_evaluation.md](reports/final_model_evaluation.md).
+
+> [!IMPORTANT]
+> These are **offline** results on earlobe data from a different sensor. They are **not** MAX30102 hardware
+> validation. On MAX30102 input the exported model runs in `demonstration` mode.
+
 ## Hardware integration
 
 **Hardware team: start with the
@@ -250,6 +308,26 @@ rakshpulse inspect --dataset data/rakshpulse_hw --validate
 rakshpulse analyze --dataset data/rakshpulse_hw --subject P001 --session D1
 ```
 
+From Python (for example a host application reading the board), one call turns samples into a structured result:
+
+```python
+from rakshpulse.inference.api import BPEstimator, StreamingBPEstimator
+
+est = BPEstimator()                                    # models/rakshpulse_ear_bp.joblib, sensor="max30102"
+r = est.estimate(ir=ir_counts, fs=100.0, red=red_counts, metadata={"subject": "P001"})
+r.status            # "ok" | "poor_signal" | "invalid_input" | "incompatible_model"
+r.sbp, r.dbp        # median over windows that passed the quality gate (None unless status == "ok")
+r.signal_quality    # windows usable / degraded / unusable / missing, quality score, reasons
+r.inference_mode, r.model_version, r.warnings, r.to_dict()
+
+stream = StreamingBPEstimator(est, fs=100.0, buffer_s=30)   # ring buffer for FIFO-sized chunks
+stream.push(ir_chunk, red_chunk); r = stream.estimate()
+```
+
+It validates the samples and sampling rate, runs the production pipeline and model contract, and never returns a BP
+for invalid input or poor signal. A 90 % interval is only reported for sensors the model's uncertainty is valid for
+(not `max30102`). It takes about 0.1 s for 30 s of data on a laptop CPU.
+
 The firmware prints one line per sample (`sample_index,red,ir`) after a `# rakshpulse fw=1 fs_hz=...` banner. The
 counter advances past samples lost to FIFO overflow, so the software logs gaps instead of silently joining time.
 `--fs` (sample rate ÷ averaging) is never assumed, and `record` refuses to start if it disagrees with the banner.
@@ -266,6 +344,8 @@ Example streams and a simulated dataset are in [`hardware/examples/`](hardware/e
 | Model contracts and mode-labelled inference | ✅ Implemented and tested; refuses incompatible input |
 | Training, calibration, evaluation with leakage-checked splits | ✅ Implemented; used for all research results |
 | Streaming inference and float32 C-header export | ✅ Desktop-verified; no microcontroller measurements |
+| One-command training and evaluation, master notebook, evaluation report | ✅ `scripts/run_complete_pipeline.py`; offline only |
+| Hardware inference API (samples in, structured SBP/DBP out) | ✅ `rakshpulse.inference.api`; tested with simulated and recorded signals |
 | MAX30102 BP model | ❌ None yet: needs recordings with cuff references |
 | Behind-the-ear validation | ❌ No behind-ear data exists yet ([DOMAIN_ADAPTATION](docs/DOMAIN_ADAPTATION.md)) |
 | Clinical validation (ISO 81060-2 / IEEE 1708) | ❌ Not started; no compliance is claimed |
@@ -274,9 +354,9 @@ Example streams and a simulated dataset are in [`hardware/examples/`](hardware/e
 
 - **No hardware data yet.** Every component was exercised with simulated sensors, replayed recordings and public
   datasets. MAX30102 noise, ambient light, contact pressure and placement effects are untested.
-- **Site and sensor mismatch.** The shipped model was trained on earlobe PPG from a different sensor. On its own
-  data it was barely better than predicting the mean for SBP (MAE 15.0 vs 15.29 mmHg on unseen subjects) and
-  slightly worse for DBP (10.98 vs 10.72).
+- **No population model works.** On independent test subjects of its own earlobe dataset, the shipped model is
+  not better than predicting the mean (SBP MAE 13.66 vs 14.08 mmHg, DBP 6.75 vs 6.38; differences not significant).
+- **Site and sensor mismatch.** That dataset is earlobe PPG from a different sensor (Nonin), not MAX30102.
 - **Cross-day transfer.** No method tried (normalisation, domain adaptation, hierarchical calibration) carried PPG
   information across recording days, and calibrations decay within tens of minutes.
 - **Populations.** The public cohorts are mostly healthy young adults or surgical patients; hypertensive subjects
@@ -371,6 +451,8 @@ python scripts/reproduce.py
 
 | Document | Contents |
 |---|---|
+| [Final model evaluation](reports/final_model_evaluation.md) | Generated report: dataset, protocol, all metrics, figures, limitations |
+| [Master notebook](notebooks/RakshPulse_Complete_ML.ipynb) | The complete ML workflow, executed step by step |
 | [Hardware Integration Manual (PDF)](docs/RAKSHPULSE_HARDWARE_INTEGRATION_MANUAL.pdf) | Illustrated handbook: wiring, firmware, setup, recording, cuff readings, analysis, troubleshooting |
 | [HARDWARE_HANDOFF](docs/HARDWARE_HANDOFF.md) | Serial contract, firmware, setup, commands, data formats, troubleshooting, checklist |
 | [HARDWARE_INTEGRATION](docs/HARDWARE_INTEGRATION.md) | Python inference, streaming and export interfaces for device integration |
@@ -398,14 +480,17 @@ src/rakshpulse/
   personalization/   calibration strategies, policies, baseline tracking
   inference/         contracts, engine, predictor, streaming, export
   experiments/       provenance registry
+  ml/                complete ML workflow: dataset audit and preparation, training protocol, report
+  inference/api.py   hardware-facing inference: samples in, structured SBP/DBP out
   cli.py             the `rakshpulse` command
 hardware/            MAX30102 firmware and example streams/dataset
 models/              shipped model bundles (other bundles are regenerable and git-ignored)
-scripts/             reproducible experiment entry points and audits
+scripts/             run_complete_pipeline.py (one command), reproducible experiments and audits
+reports/             generated evaluation report, CSV results and figures
 tests/               pytest suite (synthetic fixtures; no download needed)
-notebooks/           exploratory analysis
+notebooks/           RakshPulse_Complete_ML.ipynb (master notebook) and exploratory analysis
 docs/                documentation, figures and the manual's source (docs/manual_source)
-data/                committed derived datasets and manifests; raw downloads are git-ignored
+data/                committed derived datasets (data/ml: model-ready CSV) and manifests; raw downloads git-ignored
 results/             committed metrics and the run provenance registry
 ```
 

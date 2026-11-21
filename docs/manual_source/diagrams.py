@@ -739,7 +739,7 @@ def dataset_tree():
         (4, "derived/", T.TEAL, True),
         (5, "windows.csv", T.TEAL, False),
         (5, "segments.csv", T.TEAL, False),
-        (5, "predictions_auricle-ear-ridge.csv", T.TEAL, False),
+        (5, "predictions_rakshpulse-ear-bp.csv", T.TEAL, False),
         (3, "D2/  (next day: new session)", T.MUTED, True),
     ]
     for i, (lvl, s, col, folder) in enumerate(tree):
